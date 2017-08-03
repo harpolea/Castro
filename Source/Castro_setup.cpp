@@ -156,11 +156,6 @@ Castro::variableSetUp ()
   // Initialize the network
   network_init();
 
-#ifdef REACTIONS
-  // Initialize the burner
-  burner_init();
-#endif
-
   //
   // Set number of state variables and pointers to components
   //
@@ -283,12 +278,6 @@ Castro::variableSetUp ()
 
   ca_get_tagging_params(probin_file_name.dataPtr(),&probin_file_length);
 
-#ifdef SPONGE
-  // Read in the parameters for the sponge
-  // and store them in the Fortran module.
-
-  ca_get_sponge_params(probin_file_name.dataPtr(),&probin_file_length);
-#endif
 
   Interpolater* interp;
 
@@ -302,17 +291,6 @@ Castro::variableSetUp ()
       interp = &cell_cons_interp;
   }
 
-#ifdef RADIATION
-  // cell_cons_interp is not conservative in spherical coordinates.
-  // We could do this for other cases too, but I'll confine it to
-  // neutrino problems for now so as not to change the results of
-  // other people's tests.  Better to fix cell_cons_interp!
-
-  if (Geometry::IsSPHERICAL() && Radiation::nNeutrinoSpecies > 0) {
-    interp = &pc_interp;
-  }
-#endif
-
   // Note that the default is state_data_extrap = false,
   // store_in_checkpoint = true.  We only need to put these in
   // explicitly if we want to do something different,
@@ -320,12 +298,7 @@ Castro::variableSetUp ()
   bool state_data_extrap = false;
   bool store_in_checkpoint;
 
-#ifdef RADIATION
-  // Radiation should always have at least one ghost zone.
-  int ngrow_state = std::max(1, state_nghost);
-#else
   int ngrow_state = state_nghost;
-#endif
 
   BL_ASSERT(ngrow_state >= 0);
 
@@ -333,19 +306,6 @@ Castro::variableSetUp ()
   desc_lst.addDescriptor(State_Type,IndexType::TheCellType(),
 			 StateDescriptor::Point,ngrow_state,NUM_STATE,
 			 interp,state_data_extrap,store_in_checkpoint);
-
-#ifdef SELF_GRAVITY
-  store_in_checkpoint = true;
-  desc_lst.addDescriptor(PhiGrav_Type, IndexType::TheCellType(),
-			 StateDescriptor::Point, 1, 1,
-			 &cell_cons_interp, state_data_extrap,
-			 store_in_checkpoint);
-
-  store_in_checkpoint = false;
-  desc_lst.addDescriptor(Gravity_Type,IndexType::TheCellType(),
-			 StateDescriptor::Point,NUM_GROW,3,
-			 &cell_cons_interp,state_data_extrap,store_in_checkpoint);
-#endif
 
   // Source terms. Currently this holds dS/dt for each of the NVAR state variables.
 
@@ -367,17 +327,6 @@ Castro::variableSetUp ()
 			 &cell_cons_interp,state_data_extrap,store_in_checkpoint);
 #endif
 
-
-#ifdef REACTIONS
-  // Components 0:Numspec-1         are      omegadot_i
-  // Component    NumSpec            is      enuc =      (eout-ein)
-  // Component    NumSpec+1          is  rho_enuc= rho * (eout-ein)
-  store_in_checkpoint = true;
-  desc_lst.addDescriptor(Reactions_Type,IndexType::TheCellType(),
-			 StateDescriptor::Point,0,NumSpec+2,
-			 &cell_cons_interp,state_data_extrap,store_in_checkpoint);
-#endif
-
 #ifdef SDC
   // For SDC we want to store the source terms.
 
@@ -385,15 +334,6 @@ Castro::variableSetUp ()
   desc_lst.addDescriptor(SDC_Source_Type, IndexType::TheCellType(),
 			 StateDescriptor::Point,NUM_GROW,NUM_STATE,
 			 &cell_cons_interp,state_data_extrap,store_in_checkpoint);
-
-  // We also want to store the reactions source.
-
-#ifdef REACTIONS
-  store_in_checkpoint = true;
-  desc_lst.addDescriptor(SDC_React_Type, IndexType::TheCellType(),
-			 StateDescriptor::Point,NUM_GROW,QVAR,
-			 &cell_cons_interp,state_data_extrap,store_in_checkpoint);
-#endif
 #endif
 
   Array<BCRec>       bcs(NUM_STATE);
@@ -491,17 +431,6 @@ Castro::variableSetUp ()
 			bcs,
 			BndryFunc(ca_denfill,ca_hypfill));
 
-#ifdef SELF_GRAVITY
-  set_scalar_bc(bc,phys_bc);
-  desc_lst.setComponent(PhiGrav_Type,0,"phiGrav",bc,BndryFunc(ca_phigravfill));
-  set_x_vel_bc(bc,phys_bc);
-  desc_lst.setComponent(Gravity_Type,0,"grav_x",bc,BndryFunc(ca_gravxfill));
-  set_y_vel_bc(bc,phys_bc);
-  desc_lst.setComponent(Gravity_Type,1,"grav_y",bc,BndryFunc(ca_gravyfill));
-  set_z_vel_bc(bc,phys_bc);
-  desc_lst.setComponent(Gravity_Type,2,"grav_z",bc,BndryFunc(ca_gravzfill));
-#endif
-
 #ifdef ROTATION
   set_scalar_bc(bc,phys_bc);
   desc_lst.setComponent(PhiRot_Type,0,"phiRot",bc,BndryFunc(ca_phirotfill));
@@ -522,88 +451,10 @@ Castro::variableSetUp ()
 
   desc_lst.setComponent(Source_Type,Density,state_type_source_names,bcs,BndryFunc(ca_denfill,ca_hypfill));
 
-#ifdef REACTIONS
-  std::string name_react;
-  for (int i=0; i<NumSpec; ++i)
-    {
-      set_scalar_bc(bc,phys_bc);
-      name_react = "omegadot_" + spec_names[i];
-      desc_lst.setComponent(Reactions_Type, i, name_react, bc,BndryFunc(ca_reactfill));
-    }
-  desc_lst.setComponent(Reactions_Type, NumSpec  , "enuc", bc, BndryFunc(ca_reactfill));
-  desc_lst.setComponent(Reactions_Type, NumSpec+1, "rho_enuc", bc, BndryFunc(ca_reactfill));
-#endif
-
 #ifdef SDC
   for (int i = 0; i < NUM_STATE; ++i)
       state_type_source_names[i] = "sdc_sources_" + name[i];
   desc_lst.setComponent(SDC_Source_Type,Density,state_type_source_names,bcs,BndryFunc(ca_denfill,ca_hypfill));
-#ifdef REACTIONS
-  for (int i = 0; i < QVAR; ++i) {
-      char buf[64];
-      sprintf(buf, "sdc_react_source_%d", i);
-      set_scalar_bc(bc,phys_bc);
-      desc_lst.setComponent(SDC_React_Type,i,std::string(buf),bc,BndryFunc(ca_denfill));
-  }
-#endif
-#endif
-
-#ifdef RADIATION
-  int ngrow = 1;
-  int ncomp = Radiation::nGroups;
-  desc_lst.addDescriptor(Rad_Type, IndexType::TheCellType(),
-			 StateDescriptor::Point, ngrow, ncomp,
-			 interp);
-  set_scalar_bc(bc,phys_bc);
-
-  if (ParallelDescriptor::IOProcessor()) {
-    std::cout << "Radiation::nGroups = " << Radiation::nGroups << std::endl;
-    std::cout << "Radiation::nNeutrinoSpecies = "
-	      << Radiation::nNeutrinoSpecies << std::endl;
-    if (Radiation::nNeutrinoSpecies > 0) {
-      std::cout << "Radiation::nNeutrinoGroups  = ";
-      for (int n = 0; n < Radiation::nNeutrinoSpecies; n++) {
-	std::cout << " " << Radiation::nNeutrinoGroups[n];
-      }
-      std::cout << std::endl;
-      if (Radiation::nNeutrinoGroups[0] > 0 &&
-	  NumAdv != 0) {
-	amrex::Error("Neutrino solver assumes NumAdv == 0");
-      }
-      if (Radiation::nNeutrinoGroups[0] > 0 &&
-	  (NumSpec != 1 || NumAux != 1)) {
-	amrex::Error("Neutrino solver assumes NumSpec == NumAux == 1");
-      }
-    }
-  }
-
-  char rad_name[10];
-  if (!Radiation::do_multigroup) {
-    desc_lst
-      .setComponent(Rad_Type, Rad, "rad", bc,
-		    BndryFunc(ca_radfill));
-  }
-  else {
-    if (Radiation::nNeutrinoSpecies == 0 ||
-	Radiation::nNeutrinoGroups[0] == 0) {
-      for (int i = 0; i < Radiation::nGroups; i++) {
-	sprintf(rad_name, "rad%d", i);
-	desc_lst
-	  .setComponent(Rad_Type, i, rad_name, bc,
-			BndryFunc(ca_radfill));
-      }
-    }
-    else {
-      int indx = 0;
-      for (int j = 0; j < Radiation::nNeutrinoSpecies; j++) {
-	for (int i = 0; i < Radiation::nNeutrinoGroups[j]; i++) {
-	  sprintf(rad_name, "rads%dg%d", j, i);
-	  desc_lst.setComponent(Rad_Type, indx, rad_name, bc, BndryFunc(ca_radfill));
-	  indx++;
-	}
-      }
-    }
-  }
 #endif
 
   if (use_custom_knapsack_weights) {
@@ -661,12 +512,6 @@ Castro::variableSetUp ()
   //
   // Gravitational forcing
   //
-#ifdef SELF_GRAVITY
-  //    derive_lst.add("rhog",IndexType::TheCellType(),1,
-  //                   BL_FORT_PROC_CALL(CA_RHOG,ca_rhog),the_same_box);
-  //    derive_lst.addComponent("rhog",desc_lst,State_Type,Density,1);
-  //    derive_lst.addComponent("rhog",desc_lst,Gravity_Type,0,BL_SPACEDIM);
-#endif
 
   //
   // Entropy (S)
@@ -685,17 +530,17 @@ Castro::variableSetUp ()
 
     //
     // thermal diffusivity (k_th/(rho c_v))
-    //    
+    //
     derive_lst.add("diff_coeff",IndexType::TheCellType(),1,ca_derdiffcoeff,the_same_box);
     derive_lst.addComponent("diff_coeff",desc_lst,State_Type,Density,NUM_STATE);
 
 
     //
     // diffusion term (the divergence of thermal flux)
-    //    
+    //
     derive_lst.add("diff_term",IndexType::TheCellType(),1,ca_derdiffterm,grow_box_by_one);
     derive_lst.addComponent("diff_term",desc_lst,State_Type,Density,NUM_STATE);
-    
+
 
   }
 #endif
@@ -764,17 +609,6 @@ Castro::variableSetUp ()
   derive_lst.addComponent("z_velocity",desc_lst,State_Type,Density,1);
   derive_lst.addComponent("z_velocity",desc_lst,State_Type,Zmom,1);
 
-#ifdef REACTIONS
-  //
-  // Nuclear energy generation timescale t_e == e / edot
-  // Sound-crossing time t_s == dx / c_s
-  // Ratio of these is t_s_t_e == t_s / t_e
-  //
-  derive_lst.add("t_sound_t_enuc",IndexType::TheCellType(),1,ca_derenuctimescale,the_same_box);
-  derive_lst.addComponent("t_sound_t_enuc",desc_lst,State_Type,Density,NUM_STATE);
-  derive_lst.addComponent("t_sound_t_enuc",desc_lst,Reactions_Type,NumSpec,1);
-#endif
-
   derive_lst.add("magvel",IndexType::TheCellType(),1,ca_dermagvel,the_same_box);
   derive_lst.addComponent("magvel",desc_lst,State_Type,Density,1);
   derive_lst.addComponent("magvel",desc_lst,State_Type,Xmom,3);
@@ -797,90 +631,6 @@ Castro::variableSetUp ()
   derive_lst.add("angular_momentum_z",IndexType::TheCellType(),1,ca_derangmomz,the_same_box);
   derive_lst.addComponent("angular_momentum_z",desc_lst,State_Type,Density,1);
   derive_lst.addComponent("angular_momentum_z",desc_lst,State_Type,Xmom,3);
-
-#ifdef SELF_GRAVITY
-  derive_lst.add("maggrav",IndexType::TheCellType(),1,ca_dermaggrav,the_same_box);
-  derive_lst.addComponent("maggrav",desc_lst,Gravity_Type,0,3);
-#endif
-
-#ifdef PARTICLES
-  //
-  // We want a derived type that corresponds to the number of particles
-  // in each cell.  We only intend to use it in plotfiles for debugging
-  // purposes.  We'll just use the DERNULL since don't do anything in
-  // fortran for now.  We'll actually set the values in writePlotFile().
-  //
-  derive_lst.add("particle_count",IndexType::TheCellType(),1,ca_dernull,the_same_box);
-  derive_lst.addComponent("particle_count",desc_lst,State_Type,Density,1);
-
-  derive_lst.add("total_particle_count",IndexType::TheCellType(),1,ca_dernull,the_same_box);
-  derive_lst.addComponent("total_particle_count",desc_lst,State_Type,Density,1);
-#endif
-
-#ifdef RADIATION
-  if (Radiation::do_multigroup) {
-    derive_lst.add("Ertot", IndexType::TheCellType(),1,ca_derertot,the_same_box);
-    derive_lst.addComponent("Ertot",desc_lst,Rad_Type,0,Radiation::nGroups);
-  }
-#endif
-
-#ifdef NEUTRINO
-  if (Radiation::nNeutrinoSpecies > 0 &&
-      Radiation::plot_neutrino_group_energies_per_MeV) {
-    char rad_name[10];
-    int indx = 0;
-    for (int j = 0; j < Radiation::nNeutrinoSpecies; j++) {
-      for (int i = 0; i < Radiation::nNeutrinoGroups[j]; i++) {
-	sprintf(rad_name, "Neuts%dg%d", j, i);
-	derive_lst.add(rad_name,IndexType::TheCellType(),1,ca_derneut,the_same_box);
-	derive_lst.addComponent(rad_name,desc_lst,Rad_Type,indx,1);
-	indx++;
-      }
-    }
-  }
-
-  if (Radiation::nNeutrinoSpecies > 0 &&
-      Radiation::nNeutrinoGroups[0] > 0) {
-    derive_lst.add("Enue", IndexType::TheCellType(),1,ca_derenue,the_same_box);
-    derive_lst.addComponent("Enue",desc_lst,Rad_Type,0,Radiation::nGroups);
-    derive_lst.add("Enuae", IndexType::TheCellType(),1,ca_derenuae,the_same_box);
-    derive_lst.addComponent("Enuae",desc_lst,Rad_Type,0,Radiation::nGroups);
-    //
-    // rho_Yl = rho(Ye + Ynue - Ynuebar)
-    //
-    derive_lst.add("rho_Yl",IndexType::TheCellType(),1,ca_derrhoyl,the_same_box);
-    // Don't actually need density for rho * Yl
-    derive_lst.addComponent("rho_Yl",desc_lst,State_Type,Density,1);
-    // FirstAux is (rho * Ye)
-    derive_lst.addComponent("rho_Yl",desc_lst,State_Type,FirstAux,1);
-    derive_lst.addComponent("rho_Yl",desc_lst,Rad_Type,0,Radiation::nGroups);
-    //
-    // Yl = (Ye + Ynue - Ynuebar)
-    //
-    derive_lst.add("Yl",IndexType::TheCellType(),1,ca_deryl,the_same_box);
-    derive_lst.addComponent("Yl",desc_lst,State_Type,Density,1);
-    // FirstAux is (rho * Ye)
-    derive_lst.addComponent("Yl",desc_lst,State_Type,FirstAux,1);
-    derive_lst.addComponent("Yl",desc_lst,Rad_Type,0,Radiation::nGroups);
-    //
-    // Ynue
-    //
-    derive_lst.add("Ynue",IndexType::TheCellType(),1,ca_derynue,the_same_box);
-    derive_lst.addComponent("Ynue",desc_lst,State_Type,Density,1);
-    // FirstAux is (rho * Ye)
-    derive_lst.addComponent("Ynue",desc_lst,State_Type,FirstAux,1);
-    derive_lst.addComponent("Ynue",desc_lst,Rad_Type,0,Radiation::nGroups);
-    //
-    // Ynuebar
-    //
-    derive_lst.add("Ynuae",IndexType::TheCellType(),1,ca_derynuae,the_same_box);
-    derive_lst.addComponent("Ynuae",desc_lst,State_Type,Density,1);
-    // FirstAux is (rho * Ye)
-    derive_lst.addComponent("Ynuae",desc_lst,State_Type,FirstAux,1);
-    derive_lst.addComponent("Ynuae",desc_lst,Rad_Type,0,Radiation::nGroups);
-  }
-#endif
-
 
   for (int i = 0; i < NumAux; i++)  {
     derive_lst.add(aux_names[i],IndexType::TheCellType(),1,ca_derspec,the_same_box);
@@ -919,10 +669,6 @@ Castro::variableSetUp ()
     source_names[n] = "";
 
   source_names[ext_src] = "user-defined external";
-
-#ifdef SPONGE
-  source_names[sponge_src] = "sponge";
-#endif
 
 #ifdef DIFFUSION
   source_names[diff_src] = "diffusion";

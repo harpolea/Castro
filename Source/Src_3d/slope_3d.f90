@@ -1,5 +1,5 @@
 module slope_module
-  
+
   use amrex_fort_module, only : rt => amrex_real
   implicit none
 
@@ -9,9 +9,9 @@ module slope_module
 
 contains
 
-! ::: 
+! :::
 ! ::: ------------------------------------------------------------------
-! ::: 
+! :::
 
       subroutine uslope(q,flatn,qd_lo,qd_hi, &
                         dqx,dqy,dqz,qpd_lo,qpd_hi, &
@@ -39,8 +39,8 @@ contains
       real(rt)         dlft, drgt, slop, dq1
       real(rt)         dm, dp, dc, ds, sl, dl, dfm, dfp
 
-      integer ilo, ihi      
-      
+      integer ilo, ihi
+
       real(rt)        , pointer::dsgn(:,:),dlim(:,:),df(:,:),dcen(:,:)
 
       ilo = MIN(ilo1,ilo2)
@@ -65,7 +65,7 @@ contains
 
       else
 
-         do n = 1, nv 
+         do n = 1, nv
 
             ! Compute slopes in first coordinate direction
             do j = ilo2-1, ihi2+1
@@ -83,13 +83,14 @@ contains
                      dlim(i,j) = ZERO
                   endif
                   df(i,j) = dsgn(i,j)*min( dlim(i,j), abs(dcen(i,j)) )
+                  dqx(i,j,kc,n) = flatn(i,j,k3d)*df(i,j)
                enddo
 
                ! Now compute limited fourth order slopes
-               do i = ilo1-1, ihi1+1
-                  dq1       = FOUR3RD*dcen(i,j) - SIXTH*(df(i+1,j) + df(i-1,j))
-                  dqx(i,j,kc,n) = flatn(i,j,k3d)*dsgn(i,j)*min(dlim(i,j),abs(dq1))
-               enddo
+               !do i = ilo1-1, ihi1+1
+                !  dq1       = FOUR3RD*dcen(i,j) - SIXTH*(df(i+1,j) + df(i-1,j))
+                 ! dqx(i,j,kc,n) = flatn(i,j,k3d)*dsgn(i,j)*min(dlim(i,j),abs(dq1))
+               !enddo
 
             enddo
 
@@ -108,13 +109,14 @@ contains
                      dlim(i,j) = ZERO
                   endif
                   df(i,j) = dsgn(i,j)*min( dlim(i,j),abs(dcen(i,j)) )
+                  dqy(i,j,kc,n) = flatn(i,j,k3d)*df(i,j)
                enddo
 
                ! Now compute limited fourth order slopes
-               do j = ilo2-1, ihi2+1
-                  dq1 = FOUR3RD*dcen(i,j) - SIXTH*( df(i,j+1) + df(i,j-1) )
-                  dqy(i,j,kc,n) = flatn(i,j,k3d)*dsgn(i,j)*min(dlim(i,j),abs(dq1))
-               enddo
+               !do j = ilo2-1, ihi2+1
+                !  dq1 = FOUR3RD*dcen(i,j) - SIXTH*( df(i,j+1) + df(i,j-1) )
+                 ! dqy(i,j,kc,n) = flatn(i,j,k3d)*dsgn(i,j)*min(dlim(i,j),abs(dq1))
+               !enddo
             enddo
 
             ! Compute slopes in third coordinate direction
@@ -163,8 +165,9 @@ contains
                   endif
 
                   ! Now compute limited fourth order slopes
-                  dq1 = FOUR3RD*dc - SIXTH*( dfp + dfm )
-                  dqz(i,j,kc,n) = flatn(i,j,k3d)*ds*min(dl,abs(dq1))
+                  !dq1 = FOUR3RD*dc - SIXTH*( dfp + dfm )
+                  !dqz(i,j,kc,n) = flatn(i,j,k3d)*ds*min(dl,abs(dq1))
+                  dqz(i,j,kc,n) = flatn(i,j,k3d)*ds*min(dl,abs(dc))
                enddo
             enddo
          enddo
@@ -178,15 +181,15 @@ contains
 
       end subroutine uslope
 
-! ::: 
+! :::
 ! ::: ------------------------------------------------------------------
-! ::: 
+! :::
 
       subroutine pslope(p,rho,flatn,qd_lo,qd_hi, &
                         dpx,dpy,dpz,qpd_lo,qpd_hi, &
                         src,src_lo,src_hi, &
                         ilo1,ilo2,ihi1,ihi2,kc,k3d,dx)
-        
+
         use mempool_module, only : bl_allocate, bl_deallocate
         use meth_params_module
         use bl_constants_module
@@ -210,8 +213,8 @@ contains
 
         integer i, j, k
 
-        integer ilo,ihi        
-        
+        integer ilo,ihi
+
         real(rt)         dlft, drgt, dp1
         real(rt)         dm, dp, dc, dl, dfm, dfp, ds
 
@@ -264,8 +267,9 @@ contains
 
               ! Now limited fourth order slopes
               do i = ilo1-1, ihi1+1
-                 dp1         = FOUR3RD*dcen(i,j) - SIXTH*(df(i+1,j) + df(i-1,j))
-                 dpx(i,j,kc) = flatn(i,j,k3d)*dsgn(i,j)*min(dlim(i,j),abs(dp1))
+                 !dp1         = FOUR3RD*dcen(i,j) - SIXTH*(df(i+1,j) + df(i-1,j))
+                 !dpx(i,j,kc) = flatn(i,j,k3d)*dsgn(i,j)*min(dlim(i,j),abs(dp1))
+                 dpx(i,j,kc) = flatn(i,j,k3d)*dsgn(i,j)*df(i,j)
                  dpx(i,j,kc) = dpx(i,j,kc) + rho(i,j,k3d)*src(i,j,k3d,QU)*dx(1)
               enddo
            enddo
@@ -296,8 +300,9 @@ contains
 
               ! Now limited fourth order slopes
               do j = ilo2-1, ihi2+1
-                 dp1 = FOUR3RD*dcen(i,j) - SIXTH*( df(i,j+1) + df(i,j-1) )
-                 dpy(i,j,kc) = flatn(i,j,k3d)*dsgn(i,j)*min(dlim(i,j),abs(dp1))
+                 !dp1 = FOUR3RD*dcen(i,j) - SIXTH*( df(i,j+1) + df(i,j-1) )
+                 !dpy(i,j,kc) = flatn(i,j,k3d)*dsgn(i,j)*min(dlim(i,j),abs(dp1))
+                 dpy(i,j,kc) = flatn(i,j,k3d)*dsgn(i,j)*df(i,j)
                  dpy(i,j,kc) = dpy(i,j,kc) + rho(i,j,k3d)*src(i,j,k3d,QV)*dx(2)
               enddo
            enddo
@@ -357,8 +362,9 @@ contains
                  endif
 
                  ! now limited fourth order slopes
-                 dp1 = FOUR3RD*dc - SIXTH*( dfp + dfm )
-                 dpz(i,j,kc) = flatn(i,j,k3d)*ds*min(dl,abs(dp1))
+                 !dp1 = FOUR3RD*dc - SIXTH*( dfp + dfm )
+                 !dpz(i,j,kc) = flatn(i,j,k3d)*ds*min(dl,abs(dp1))
+                 dpz(i,j,kc) = flatn(i,j,k3d)*ds*min(dl,abs(dc))
                  dpz(i,j,kc) = dpz(i,j,kc) + rho(i,j,k3d)*src(i,j,k3d,QW)*dx(3)
               enddo
            enddo

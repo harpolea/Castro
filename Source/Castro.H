@@ -12,10 +12,6 @@
 #include <AMReX_Lazy.H>
 #endif
 
-#ifdef PARTICLES
-#include "AMReX_AmrParticles.H"
-#endif
-
 #include <memory>
 #include <iostream>
 
@@ -24,43 +20,23 @@ using std::ostream;
 
 
 enum StateType { State_Type = 0,
-#ifdef RADIATION
-                 Rad_Type,
-#endif
-#ifdef SELF_GRAVITY
-                 PhiGrav_Type,
-                 Gravity_Type,
-#endif
+
 #ifdef ROTATION
 		 PhiRot_Type,
 		 Rotation_Type,
 #endif
-		 Source_Type,
-#ifdef REACTIONS
-                 Reactions_Type,
-#endif
-#ifdef SDC
-		 SDC_Source_Type,
-#ifdef REACTIONS
-		 SDC_React_Type
-#endif
-#endif
+		 Source_Type
 };
 
 // Create storage for all source terms.
 
 enum sources { ext_src = 0,
-#ifdef SPONGE
-               sponge_src,
-#endif
+
 #ifdef DIFFUSION
                diff_src,
 #endif
 #ifdef HYBRID_MOMENTUM
                hybrid_src,
-#endif
-#ifdef GRAVITY
-               grav_src,
 #endif
 #ifdef ROTATION
                rot_src,
@@ -145,48 +121,6 @@ public:
     // Initialize grid data at problem start-up.
     //
     virtual void initData () override;
-
-#ifdef PARTICLES
-    //
-    // Read particle-related inputs
-    //
-    static void read_particle_params ();
-    //
-    // Initialize particle locations and velocities (and strengths if relevant)
-    //
-    void init_particles ();
-    //
-    // Write particles in checkpoint directories
-    //
-    void ParticleCheckPoint (const std::string& dir);
-    //
-    // Write particles in plotfile directories
-    //
-    void ParticlePlotFile (const std::string& dir);
-    //
-    // How to initialize at restart
-    //
-    void ParticlePostRestart (const std::string& restart_file);
-    //
-    // Derived quantities associated with particles
-    //
-    std::unique_ptr<amrex::MultiFab> ParticleDerive (const std::string& name,
-						     amrex::Real           time,
-						     int            ngrow);
-    //
-    // Timestamp particles
-    //
-    void TimestampParticles (int ngrow); 
-    //
-    // Advance the particles by dt
-    //
-    void advance_particles (int iteration, amrex::Real time, amrex::Real dt);
-    //
-    // Default verbosity of Particle class
-    //
-    static int particle_verbose;
-
-#endif
 
 #ifdef MAESTRO_INIT
     void MAESTRO_init ();
@@ -281,12 +215,6 @@ public:
 				   amrex::MultiFab& src_new,
 				   amrex::Real dt = 1.0);
 
-#ifdef SPONGE
-    void construct_old_sponge_source(amrex::Real time, amrex::Real dt);
-
-    void construct_new_sponge_source(amrex::Real time, amrex::Real dt);
-#endif
-
     void construct_old_ext_source(amrex::Real time, amrex::Real dt);
 
     void construct_new_ext_source(amrex::Real time, amrex::Real dt);
@@ -294,13 +222,6 @@ public:
     void fill_ext_source(amrex::Real time, amrex::Real dt, amrex::MultiFab& S_old, amrex::MultiFab& S_new, amrex::MultiFab& ext_src, int ng);
 
 #ifdef GRAVITY
-#ifdef SELF_GRAVITY
-    void construct_old_gravity(int amr_iteration, int amr_ncycle,
-			       amrex::Real time);
-
-    void construct_new_gravity(int amr_iteration, int amr_ncycle,
-			       amrex::Real time);
-#endif
     void construct_old_gravity_source(amrex::Real time, amrex::Real dt);
 
     void construct_new_gravity_source(amrex::Real time, amrex::Real dt);
@@ -366,7 +287,7 @@ public:
     // Do work after regrid().
     //
     virtual void post_regrid (int lbase,
-                              int new_finest) override;   
+                              int new_finest) override;
     //
     // Do work after a restart().
     //
@@ -414,30 +335,6 @@ public:
 
     static int numGrow();
 
-#ifdef REACTIONS
-#ifndef SDC
-    void react_state(amrex::MultiFab& state,
-		     amrex::MultiFab& reactions,
-		     const amrex::iMultiFab& mask,
-		     amrex::MultiFab& weights,
-		     amrex::Real time,
-		     amrex::Real dt_react,
-		     int strang_half, int  ngrow = 0);
-
-    void strang_react_first_half(amrex::Real time, amrex::Real dt);
-
-    void strang_react_second_half(amrex::Real time, amrex::Real dt);
-#else
-    void react_state(amrex::Real time, amrex::Real dt);
-    void get_react_source_prim(amrex::MultiFab& source, amrex::Real dt);
-#endif
-
-    void strang_chem (amrex::MultiFab&  state,
-                      amrex::MultiFab&  react_mf,
-                      amrex::Real       time,
-                      amrex::Real       dt);
-#endif
-
 #ifdef ROTATION
     void construct_old_rotation(int amr_iteration, int amr_ncycle, amrex::Real time);
 
@@ -450,40 +347,9 @@ public:
     void fill_rotation_field(amrex::MultiFab& phi, amrex::MultiFab& rot, amrex::MultiFab& state, amrex::Real time);
 #endif
 
-#ifdef RADIATION
-    void final_radiation_call (amrex::MultiFab& S_new, 
-                               int iteration, 
-                               int ncycle);
-#endif
-
     void reset_internal_energy (amrex::MultiFab& State);
 
     void computeTemp (amrex::MultiFab& State);
-
-#ifdef DIFFUSION
-    void construct_old_diff_source(amrex::Real time, amrex::Real dt);
-    void construct_new_diff_source(amrex::Real time, amrex::Real dt);
-
-    void getTempDiffusionTerm (amrex::Real time, amrex::MultiFab& DiffTerm, int is_old);
-    void getEnthDiffusionTerm (amrex::Real time, amrex::MultiFab& DiffTerm, int is_old);
-#if (BL_SPACEDIM == 1)
-    void getSpecDiffusionTerm (amrex::Real time, amrex::MultiFab& DiffTerm, int is_old);
-#endif
-#if (BL_SPACEDIM == 1)
-    void getViscousTerm (amrex::Real time, amrex::MultiFab& ViscousTermforMomentum, amrex::MultiFab& ViscousTermforEnergy);
-    void getFirstViscousTerm (amrex::Real time, amrex::MultiFab& ViscousTerm);
-    void getSecndViscousTerm (amrex::Real time, amrex::MultiFab& ViscousTerm);
-    void getViscousTermForEnergy (amrex::Real time, amrex::MultiFab& ViscousTermforEnergy);
-#endif
-    void add_temp_diffusion_to_source (amrex::MultiFab& ext_src, amrex::MultiFab& DiffTerm, amrex::Real t, int is_old);
-#if (BL_SPACEDIM == 1)
-    void add_spec_diffusion_to_source (amrex::MultiFab& ext_src, amrex::MultiFab& DiffTerm, amrex::Real t, int is_old);
-#endif
-#if (BL_SPACEDIM == 1)
-    void add_viscous_term_to_source   (amrex::MultiFab& ext_src, amrex::MultiFab& ViscousTermforMomentum, 
-                                       amrex::MultiFab& ViscousTermforEnergy, amrex::Real t);
-#endif
-#endif
 
 #ifdef ROTATION
   void add_rotation_to_source(amrex::MultiFab& ext_src, amrex::MultiFab& RotationTerm, amrex::Real old_time);
@@ -528,17 +394,10 @@ public:
 
     void expand_state(amrex::MultiFab& S, amrex::Real time, int ng);
 
-#ifdef SELF_GRAVITY
-    void make_radial_data (int is_new);
-#endif
-
 #ifdef AUX_UPDATE
     void advance_aux(amrex::Real time, amrex::Real dt);
 #endif
 
-#ifdef PARTICLES
-    static amrex::AmrTracerParticleContainer* theTracerPC () { return TracerPC; }
-#endif
 
     static int       NUM_STATE;
     static int       Density, Xmom, Ymom, Zmom, Eden, Eint, Temp;
@@ -577,16 +436,6 @@ protected:
     amrex::Array<std::unique_ptr<amrex::iMultiFab> > ib_mask;
     amrex::iMultiFab& build_interior_boundary_mask (int ng);
 
-#ifdef SELF_GRAVITY
-    int get_numpts();
-
-    //
-    // Difference between composite and level solve for phi.
-    //
-    amrex::MultiFab comp_minus_level_phi;
-    amrex::Array<std::unique_ptr<amrex::MultiFab> > comp_minus_level_grad_phi;
-#endif
-
     //
     // A state array with ghost zones.
     //
@@ -615,17 +464,13 @@ protected:
 #if (BL_SPACEDIM <= 2)
     amrex::MultiFab         P_radial;
 #endif
-#ifdef RADIATION
-    amrex::Array<std::unique_ptr<amrex::MultiFab> > rad_fluxes;
-#endif
+
 
     amrex::FluxRegister flux_reg;
 #if (BL_SPACEDIM <= 2)
     amrex::FluxRegister pres_reg;
 #endif
-#ifdef RADIATION
-    amrex::FluxRegister rad_flux_reg;
-#endif
+
 #ifdef GRAVITY
     amrex::FluxRegister phi_reg;
 #endif
@@ -656,7 +501,7 @@ protected:
 
     // MOL Butcher tableau
     static int MOL_STAGES;
-  
+
     static amrex::Array< amrex::Array<amrex::Real> > a_mol;
     static amrex::Array<amrex::Real> b_mol;
     static amrex::Array<amrex::Real> c_mol;
@@ -703,15 +548,6 @@ protected:
 
     void write_info ();
 
-#ifdef SELF_GRAVITY
-    void define_new_center (amrex::MultiFab& S, amrex::Real time);
-    void write_center ();
-#endif
-
-#ifdef POINTMASS
-    void pointmass_update(amrex::Real time, amrex::Real dt);
-#endif
-
     void stopJob ();
 
     //
@@ -756,10 +592,6 @@ protected:
 
     static amrex::Real getCPUTime();
 
-#ifdef PARTICLES
-    static int       do_tracer_particles;
-#endif
-
     bool             FillPatchedOldState_ok;
 
     // There can be only one Gravity object, it covers all levels:
@@ -767,20 +599,6 @@ protected:
 
     // There can be only one Diffusion object, it covers all levels:
     static class Diffusion *diffusion;
-
-#ifdef RADIATION
-    // permits radiation to be turned on and off without recompiling:
-    static int do_radiation;
-
-    // There can be only one Radiation object, it covers all levels:
-    static class Radiation *radiation;
-
-    friend class Radiation;
-#endif
-
-#ifdef PARTICLES
-    static amrex::AmrTracerParticleContainer* TracerPC;
-#endif
 
     // Name of the probin file and its length.
     static std::string probin_file;
@@ -796,10 +614,10 @@ protected:
     // retry capability
     int sub_iteration;
     int sub_ncycle;
-  
+
     // sdc
     int sdc_iteration;
-  
+
     // method of lines
     int mol_iteration;
 
@@ -863,14 +681,6 @@ Castro::get_output_at_completion()
     return output_at_completion;
 }
 
-#ifdef POINTMASS
-inline
-amrex::Real
-Castro::get_point_mass ()
-{
-    return point_mass;
-}
-#endif
 
 
 #endif /*_Castro_H_*/

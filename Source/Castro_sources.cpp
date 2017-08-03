@@ -1,9 +1,6 @@
 #include "Castro.H"
 #include "Castro_F.H"
 
-#ifdef RADIATION
-#include "Radiation.H"
-#endif
 
 using namespace amrex;
 
@@ -30,14 +27,6 @@ bool
 Castro::source_flag(int src)
 {
     switch(src) {
-
-#ifdef SPONGE
-    case sponge_src:
-	if (do_sponge)
-	    return true;
-	else
-	    return false;
-#endif
 
     case ext_src:
 	if (add_ext_src)
@@ -91,12 +80,12 @@ Castro::do_old_sources(Real time, Real dt, int amr_iteration, int amr_ncycle)
     // S_new -- note that this addition is for full dt, since we
     // will do a predictor-corrector on the sources to allow for
     // state-dependent sources.
-    
+
     // note: this is not needed for MOL, since the sources will
     // be applied as part of the overall integration
-    
+
     MultiFab& S_new = get_new_data(State_Type);
-    
+
     for (int n = 0; n < num_src; ++n)
       if (source_flag(n))
 	apply_source_to_state(S_new, *old_sources[n], dt);
@@ -167,12 +156,6 @@ Castro::construct_old_source(int src, Real time, Real dt, int amr_iteration, int
 
     switch(src) {
 
-#ifdef SPONGE
-    case sponge_src:
-	construct_old_sponge_source(time, dt);
-	break;
-#endif
-
     case ext_src:
 	construct_old_ext_source(time, dt);
 	break;
@@ -213,12 +196,6 @@ Castro::construct_new_source(int src, Real time, Real dt, int amr_iteration, int
     BL_ASSERT(src >= 0 && src < num_src);
 
     switch(src) {
-
-#ifdef SPONGE
-    case sponge_src:
-	construct_new_sponge_source(time, dt);
-	break;
-#endif
 
     case ext_src:
 	construct_new_ext_source(time, dt);
@@ -390,7 +367,7 @@ Castro::print_all_source_changes(Real dt, bool is_new)
     });
 #endif
 
-} 
+}
 
 // Obtain the sum of all source terms.
 
@@ -399,7 +376,7 @@ Castro::sum_of_sources(MultiFab& source)
 {
 
   // this computes advective_source + 1/2 (old source + new source)
-  // 
+  //
   // Note: the advective source is defined as -div{F}
   //
   // the time-centering is accomplished since new source is defined
@@ -418,81 +395,3 @@ Castro::sum_of_sources(MultiFab& source)
       MultiFab::Add(source, *new_sources[n], 0, 0, NUM_STATE, ng);
 
 }
-
-// Obtain the effective source term due to reactions on the primitive variables.
-
-#ifdef REACTIONS
-#ifdef SDC
-void
-Castro::get_react_source_prim(MultiFab& react_src, Real dt)
-{
-    MultiFab& S_old = get_old_data(State_Type);
-    MultiFab& S_new = get_new_data(State_Type);
-
-    int ng = 0;
-
-    // Carries the contribution of all non-reacting source terms.
-
-    MultiFab A(grids, dmap, NUM_STATE, ng);
-
-    sum_of_sources(A);
-
-    // Compute the state that has effectively only been updated with advection.
-    // U* = U_old + dt A
-    // where A = -div U + S_hydro
-    MultiFab S_noreact(grids, dmap, NUM_STATE, ng);
-
-    MultiFab::Copy(S_noreact, S_old, 0, 0, NUM_STATE, ng);
-    MultiFab::Saxpy(S_noreact, dt, A, 0, 0, NUM_STATE, ng);
-
-    clean_state(S_noreact);
-
-    // Compute its primitive counterpart, q*
-
-    MultiFab q_noreact(grids, dmap, QVAR, ng);
-    MultiFab qaux_noreact(grids, dmap, NQAUX, ng);
-
-    cons_to_prim(S_noreact, q_noreact, qaux_noreact);
-
-    // Compute the primitive version of the old state, q_old
-
-    MultiFab q_old(grids, dmap, QVAR, ng);
-    MultiFab qaux_old(grids, dmap, NQAUX, ng);
-
-    cons_to_prim(S_old, q_old, qaux_old);
-
-    // Compute the effective advective update on the primitive state.
-    // A(q) = (q* - q_old)/dt
-
-    MultiFab A_prim(grids, dmap, QVAR, ng);
-
-    A_prim.setVal(0.0);
-
-    if (dt > 0.0) {
-        MultiFab::Saxpy(A_prim,  1.0 / dt, q_noreact, 0, 0, QVAR, ng);
-	MultiFab::Saxpy(A_prim, -1.0 / dt, q_old,     0, 0, QVAR, ng);
-    }
-
-    // Compute the primitive version of the new state.
-
-    MultiFab q_new(grids, dmap, QVAR, ng);
-    MultiFab qaux_new(grids, dmap, NQAUX, ng);
-
-    cons_to_prim(S_new, q_new, qaux_new);
-
-    // Compute the reaction source term.
-
-    react_src.setVal(0.0, react_src.nGrow());
-
-    if (dt > 0.0) {
-        MultiFab::Saxpy(react_src,  1.0 / dt, q_new, 0, 0, QVAR, ng);
-        MultiFab::Saxpy(react_src, -1.0 / dt, q_old, 0, 0, QVAR, ng);
-    }
-
-    MultiFab::Saxpy(react_src, -1.0, A_prim, 0, 0, QVAR, ng);
-
-    // Now fill all of the ghost zones.
-    react_src.FillBoundary(geom.periodicity());
-}
-#endif
-#endif
