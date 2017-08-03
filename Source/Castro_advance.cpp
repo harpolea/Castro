@@ -2,6 +2,7 @@
 #include "Castro.H"
 #include "Castro_F.H"
 
+
 #include <cmath>
 #include <climits>
 
@@ -30,35 +31,20 @@ Castro::advance (Real time,
 {
     BL_PROFILE("Castro::advance()");
 
+    if (do_ctu) {
+        std::cout << "Use method of lines, not ctu!";
+        exit(EXIT_FAILURE);
+    }
+
     Real dt_new = dt;
 
     initialize_advance(time, dt, amr_iteration, amr_ncycle);
 
     // Do the advance.
 
-#ifdef SDC
-
-    for (int n = 0; n < sdc_iters; ++n) {
-
-        sdc_iteration = n;
-
-        if (ParallelDescriptor::IOProcessor())
-	       std::cout << "\nBeginning SDC iteration " << n + 1 << " of " << sdc_iters << ".\n\n";
-
-    	// First do the non-reacting advance and construct the relevant source terms.
-
-    	dt_new = do_advance(time, dt, amr_iteration, amr_ncycle);
-
-        if (ParallelDescriptor::IOProcessor())
-	       std::cout << "\nEnding SDC iteration " << n + 1 << " of " << sdc_iters << ".\n\n";
-
-    }
-
-#else
-
       for (int iter = 0; iter < MOL_STAGES; ++iter) {
-            mol_iteration = iter;
-            dt_new = do_advance(time, dt, amr_iteration, amr_ncycle);
+    	mol_iteration = iter;
+    	dt_new = do_advance(time, dt, amr_iteration, amr_ncycle);
       }
 
     // Check to see if this advance violated certain stability criteria.
@@ -67,10 +53,13 @@ Castro::advance (Real time,
 
     if (use_retry)
         dt_new = std::min(dt_new, retry_advance(time, dt, amr_iteration, amr_ncycle));
-#endif
 
     if (use_post_step_regrid)
-	   check_for_post_regrid(time + dt);
+	check_for_post_regrid(time + dt);
+
+#ifdef AUX_UPDATE
+    advance_aux(time, dt);
+#endif
 
     finalize_advance(time, dt, amr_iteration, amr_ncycle);
 
@@ -98,9 +87,11 @@ Castro::do_advance (Real time,
     MultiFab& S_new = get_new_data(State_Type);
 
     // Perform initialization steps.
+
     initialize_do_advance(time, dt, amr_iteration, amr_ncycle);
 
     // Check for NaN's.
+
     check_for_nan(S_old);
 
     // Since we are Strang splitting the reactions, do them now (only
@@ -108,27 +99,34 @@ Castro::do_advance (Real time,
 
     if (mol_iteration == 0) {
 
-        // Initialize the new-time data. This copy needs to come after the
-        // reactions.
-        MultiFab::Copy(S_new, Sborder, 0, 0, NUM_STATE, S_new.nGrow());
+      // Initialize the new-time data. This copy needs to come after the
+      // reactions.
 
-        // Construct the old-time sources from Sborder.  For both CTU
-        // and integration, this will already be applied to S_new (with
-        // full dt weighting), to be correctly later.  Note: this
-        // implies that we do not use the sources as integrate by the
-        // MOL integrator.  Also note -- this does not affect the
-        // prediction of the interface state, an explict source will be
-        // traced there as needed.
-        do_old_sources(prev_time, dt, amr_iteration, amr_ncycle);
+      MultiFab::Copy(S_new, Sborder, 0, 0, NUM_STATE, S_new.nGrow());
 
-        // store the result of the burn and old-time sources in Sburn for later stages
-        MultiFab::Copy(Sburn, S_new, 0, 0, NUM_STATE, S_new.nGrow());
+
+      // Construct the old-time sources from Sborder.  For both CTU
+      // and integration, this will already be applied to S_new (with
+      // full dt weighting), to be correctly later.  Note: this
+      // implies that we do not use the sources as integrate by the
+      // MOL integrator.  Also note -- this does not affect the
+      // prediction of the interface state, an explict source will be
+      // traced there as needed.
+
+
+      do_old_sources(prev_time, dt, amr_iteration, amr_ncycle);
+
+    	// store the result of the burn and old-time sources in Sburn for later stages
+    	MultiFab::Copy(Sburn, S_new, 0, 0, NUM_STATE, S_new.nGrow());
+
     }
 
     // Do the hydro update.  We build directly off of Sborder, which
     // is the state that has already seen the burn
 
-    if (do_hydro) {
+    if (do_hydro)
+    {
+
         construct_mol_hydro_source(time, dt);
     }
 
@@ -136,20 +134,30 @@ Castro::do_advance (Real time,
     // the last stage
 
     if (mol_iteration == MOL_STAGES-1) {
-          // we just finished the last stage of the MOL integration.
-          // Construct S_new now using the weighted sum of the k_mol
-          // updates
+      // we just finished the last stage of the MOL integration.
+      // Construct S_new now using the weighted sum of the k_mol
+      // updates
 
-          // Apply the update -- we need to build on Sburn, so
-          // start with that state
-          MultiFab::Copy(S_new, Sburn, 0, 0, S_new.nComp(), 0);
-          MultiFab::Saxpy(S_new, dt, hydro_source, 0, 0, S_new.nComp(), 0);
+      // Apply the update -- we need to build on Sburn, so
+      // start with that state
+      MultiFab::Copy(S_new, Sburn, 0, 0, S_new.nComp(), 0);
+      MultiFab::Saxpy(S_new, dt, hydro_source, 0, 0, S_new.nComp(), 0);
 
-          // define the temperature now
-          clean_state(S_new);
+      // define the temperature now
+      clean_state(S_new);
 
-          // Construct and apply new-time source terms.
-          do_new_sources(cur_time, dt, amr_iteration, amr_ncycle);
+    }
+    // if we are done with the update do the source correction and
+    // then the second half of the reactions
+
+    if (mol_iteration == MOL_STAGES-1) {
+
+
+      // Construct and apply new-time source terms.
+
+
+      do_new_sources(cur_time, dt, amr_iteration, amr_ncycle);
+
     }
 
     finalize_do_advance(time, dt, amr_iteration, amr_ncycle);
@@ -159,52 +167,59 @@ Castro::do_advance (Real time,
 }
 
 
+
 void
 Castro::initialize_do_advance(Real time, Real dt, int amr_iteration, int amr_ncycle)
 {
+
     // Reset the change from density resets
+
     frac_change = 1.e0;
+
     int finest_level = parent->finestLevel();
 
     // Reset the grid loss tracking.
+
     if (track_grid_losses)
       for (int i = 0; i < n_lost; i++)
-	     material_lost_through_boundary_temp[i] = 0.0;
+	material_lost_through_boundary_temp[i] = 0.0;
+
 
     // For the hydrodynamics update we need to have NUM_GROW ghost zones available,
     // but the state data does not carry ghost zones. So we use a FillPatch
     // using the state data to give us Sborder, which does have ghost zones.
 
-    // for Method of lines, our initialization of Sborder depends on
-    // which stage in the RK update we are working on
+      // for Method of lines, our initialization of Sborder depends on
+      // which stage in the RK update we are working on
 
-    if (mol_iteration == 0) {
-        // first MOL stage
-        Sborder.define(grids, dmap, NUM_STATE, NUM_GROW);
-        const Real prev_time = state[State_Type].prevTime();
-        expand_state(Sborder, prev_time, NUM_GROW);
+      if (mol_iteration == 0) {
 
-    } else {
-        // the initial state for the kth stage follows the Butcher
-        // tableau.  We need to create the proper state starting with
-        // the result after the first dt/2 burn (which we copied into
-        // Sburn) and we need to fill ghost cells.
+    	// first MOL stage
+    	Sborder.define(grids, dmap, NUM_STATE, NUM_GROW);
+    	const Real prev_time = state[State_Type].prevTime();
+    	expand_state(Sborder, prev_time, NUM_GROW);
 
-        // We'll overwrite S_new with this information, since we don't
-        // need it anymorebuild this state temporarily in S_new (which
-        // is State_Data) to allow for ghost filling.
-        MultiFab& S_new = get_new_data(State_Type);
+      } else {
 
-        MultiFab::Copy(S_new, Sburn, 0, 0, S_new.nComp(), 0);
-        for (int i = 0; i < mol_iteration; ++i)
-            MultiFab::Saxpy(S_new, dt*a_mol[mol_iteration][i], *k_mol[i], 0, 0, S_new.nComp(), 0);
+    	// the initial state for the kth stage follows the Butcher
+    	// tableau.  We need to create the proper state starting with
+    	// the result after the first dt/2 burn (which we copied into
+    	// Sburn) and we need to fill ghost cells.
 
-        Sborder.define(grids, dmap, NUM_STATE, NUM_GROW);
-        const Real new_time = state[State_Type].curTime();
-        expand_state(Sborder, new_time, NUM_GROW);
+    	// We'll overwrite S_new with this information, since we don't
+    	// need it anymorebuild this state temporarily in S_new (which
+    	// is State_Data) to allow for ghost filling.
+    	MultiFab& S_new = get_new_data(State_Type);
 
-    }
+    	MultiFab::Copy(S_new, Sburn, 0, 0, S_new.nComp(), 0);
+    	for (int i = 0; i < mol_iteration; ++i)
+    	  MultiFab::Saxpy(S_new, dt*a_mol[mol_iteration][i], *k_mol[i], 0, 0, S_new.nComp(), 0);
 
+    	Sborder.define(grids, dmap, NUM_STATE, NUM_GROW);
+    	const Real new_time = state[State_Type].curTime();
+    	expand_state(Sborder, new_time, NUM_GROW);
+
+      }
 }
 
 
@@ -213,7 +228,6 @@ void
 Castro::finalize_do_advance(Real time, Real dt, int amr_iteration, int amr_ncycle)
 {
 
-#ifndef SDC
     // Update the dSdt MultiFab. Since we want (S^{n+1} - S^{n}) / dt,
     // we only need to take twice the new-time source term, since in
     // the predictor-corrector approach, the new-time source term is
@@ -235,20 +249,10 @@ Castro::finalize_do_advance(Real time, Real dt, int amr_iteration, int amr_ncycl
     	dSdt_new.mult(2.0 / dt);
 
     }
-#else
-    // The new sources are broken into types (ext, diff, hybrid, grav,
-    // ...) via an enum.  For SDC, store the sum of the new_sources
-    // over these different physics types in the state data -- that's
-    // what hydro really cares about.
-
-    MultiFab& SDC_source_new = get_new_data(SDC_Source_Type);
-    SDC_source_new.setVal(0.0, SDC_source_new.nGrow());
-    for (int n = 0; n < num_src; ++n)
-	MultiFab::Add(SDC_source_new, *new_sources[n], 0, 0, NUM_STATE, new_sources[n]->nGrow());
-#endif
 
     Sborder.clear();
 }
+
 
 
 void
@@ -268,8 +272,8 @@ Castro::initialize_advance(Real time, Real dt, int amr_iteration, int amr_ncycle
     // Zero it out, and add them back using the saved copy of the fluxes.
 
     if (use_post_step_regrid && level > 0)
-    	if (getLevel(level-1).post_step_regrid && amr_iteration == 1)
-    	    getLevel(level-1).FluxRegCrseInit();
+	if (getLevel(level-1).post_step_regrid && amr_iteration == 1)
+	    getLevel(level-1).FluxRegCrseInit();
 
     // The option of whether to do a multilevel initialization is
     // controlled within the radiation class.  This step belongs
@@ -288,6 +292,7 @@ Castro::initialize_advance(Real time, Real dt, int amr_iteration, int amr_ncycle
 
     	if (k == Source_Type)
     	    state[k].swapTimeLevels(0.0);
+
     	state[k].allocOldData();
     	state[k].swapTimeLevels(dt);
 
@@ -305,13 +310,15 @@ Castro::initialize_advance(Real time, Real dt, int amr_iteration, int amr_ncycle
 
     if (use_retry) {
 
-        // Store the old and new time levels.
+      // Store the old and new time levels.
 
-        for (int k = 0; k < num_state_type; k++) {
+      for (int k = 0; k < num_state_type; k++) {
 
-            prev_state[k].reset(new StateData());
-            StateData::Initialize(*prev_state[k], state[k]);
-        }
+    	prev_state[k].reset(new StateData());
+
+    	StateData::Initialize(*prev_state[k], state[k]);
+
+      }
 
     }
 
@@ -344,7 +351,6 @@ Castro::initialize_advance(Real time, Real dt, int amr_iteration, int amr_ncycle
     sources_for_hydro.define(grids,dmap,NUM_STATE,NUM_GROW);
 
 
-    if (!do_ctu) {
       // if we are not doing CTU advection, then we are doing a method
       // of lines, and need storage for hte intermediate stages
       k_mol.resize(MOL_STAGES);
@@ -355,7 +361,6 @@ Castro::initialize_advance(Real time, Real dt, int amr_iteration, int amr_ncycle
 
       // for the post-burn state
       Sburn.define(grids, dmap, NUM_STATE, 0);
-    }
 
     // Zero out the current fluxes.
 
@@ -370,6 +375,7 @@ Castro::initialize_advance(Real time, Real dt, int amr_iteration, int amr_ncycle
 }
 
 
+
 void
 Castro::finalize_advance(Real time, Real dt, int amr_iteration, int amr_ncycle)
 {
@@ -382,6 +388,7 @@ Castro::finalize_advance(Real time, Real dt, int amr_iteration, int amr_ncycle)
 
       for (int i = 0; i < n_lost; i++)
     	material_lost_through_boundary_cumulative[i] += material_lost_through_boundary_temp[i];
+
     }
 
     if (do_reflux) {
@@ -408,6 +415,8 @@ Castro::finalize_advance(Real time, Real dt, int amr_iteration, int amr_ncycle)
     Sburn.clear();
 
 }
+
+
 
 Real
 Castro::retry_advance(Real time, Real dt, int amr_iteration, int amr_ncycle)
@@ -455,7 +464,7 @@ Castro::retry_advance(Real time, Real dt, int amr_iteration, int amr_ncycle)
 
     if (dt_subcycle < dt) {
 
-	// Do a basic sanity check to make sure we're not about to overflow.
+    	// Do a basic sanity check to make sure we're not about to overflow.
 
         if (dt_subcycle * INT_MAX < dt) {
     	  if (ParallelDescriptor::IOProcessor()) {
@@ -469,7 +478,7 @@ Castro::retry_advance(Real time, Real dt, int amr_iteration, int amr_ncycle)
     	  amrex::Abort("Error: integer overflow in retry.");
     	}
 
-        int sub_ncycle = ceil(dt / dt_subcycle);
+            int sub_ncycle = ceil(dt / dt_subcycle);
 
     	// Abort if we would take more subcycled timesteps than the user has permitted.
 
@@ -525,10 +534,6 @@ Castro::retry_advance(Real time, Real dt, int amr_iteration, int amr_ncycle)
 
     	  if (k == Source_Type)
     	      state[k].swapTimeLevels(0.0);
-#ifdef SDC
-    	  else if (k == SDC_Source_Type)
-    	      state[k].swapTimeLevels(0.0);
-#endif
 
     	  state[k].swapTimeLevels(0.0);
 
@@ -563,13 +568,9 @@ Castro::retry_advance(Real time, Real dt, int amr_iteration, int amr_ncycle)
     	    for (int k = 0; k < num_state_type; k++) {
 
     	        if (k == Source_Type)
-    		    state[k].swapTimeLevels(0.0);
-#ifdef SDC
-    		else if (k == SDC_Source_Type)
-    		    state[k].swapTimeLevels(0.0);
-#endif
+    		          state[k].swapTimeLevels(0.0);
 
-    		state[k].swapTimeLevels(dt_advance);
+    		    state[k].swapTimeLevels(dt_advance);
 
     	    }
 
@@ -600,8 +601,8 @@ Castro::retry_advance(Real time, Real dt, int amr_iteration, int amr_ncycle)
 
     	for (int k = 0; k < num_state_type; k++) {
 
-            if (prev_state[k]->hasOldData())
-    	      state[k].copyOld(*prev_state[k]);
+               if (prev_state[k]->hasOldData())
+    	          state[k].copyOld(*prev_state[k]);
 
     	   state[k].setTimeLevel(time + dt, dt, 0.0);
 

@@ -38,6 +38,9 @@ enum sources { ext_src = 0,
 #ifdef HYBRID_MOMENTUM
                hybrid_src,
 #endif
+#ifdef GRAVITY
+               grav_src,
+#endif
 #ifdef ROTATION
                rot_src,
 #endif
@@ -122,6 +125,8 @@ public:
     //
     virtual void initData () override;
 
+
+
 #ifdef MAESTRO_INIT
     void MAESTRO_init ();
 #endif
@@ -186,10 +191,6 @@ public:
 
     void check_for_nan(amrex::MultiFab& state, int check_ghost=0);
 
-#ifdef SDC
-    void cons_to_prim(amrex::MultiFab& u, amrex::MultiFab& q, amrex::MultiFab& qaux);
-#endif
-
     bool source_flag(int src);
 
     static int get_output_at_completion();
@@ -214,6 +215,7 @@ public:
 				   amrex::MultiFab& src_old,
 				   amrex::MultiFab& src_new,
 				   amrex::Real dt = 1.0);
+
 
     void construct_old_ext_source(amrex::Real time, amrex::Real dt);
 
@@ -351,6 +353,31 @@ public:
 
     void computeTemp (amrex::MultiFab& State);
 
+#ifdef DIFFUSION
+    void construct_old_diff_source(amrex::Real time, amrex::Real dt);
+    void construct_new_diff_source(amrex::Real time, amrex::Real dt);
+
+    void getTempDiffusionTerm (amrex::Real time, amrex::MultiFab& DiffTerm, int is_old);
+    void getEnthDiffusionTerm (amrex::Real time, amrex::MultiFab& DiffTerm, int is_old);
+#if (BL_SPACEDIM == 1)
+    void getSpecDiffusionTerm (amrex::Real time, amrex::MultiFab& DiffTerm, int is_old);
+#endif
+#if (BL_SPACEDIM == 1)
+    void getViscousTerm (amrex::Real time, amrex::MultiFab& ViscousTermforMomentum, amrex::MultiFab& ViscousTermforEnergy);
+    void getFirstViscousTerm (amrex::Real time, amrex::MultiFab& ViscousTerm);
+    void getSecndViscousTerm (amrex::Real time, amrex::MultiFab& ViscousTerm);
+    void getViscousTermForEnergy (amrex::Real time, amrex::MultiFab& ViscousTermforEnergy);
+#endif
+    void add_temp_diffusion_to_source (amrex::MultiFab& ext_src, amrex::MultiFab& DiffTerm, amrex::Real t, int is_old);
+#if (BL_SPACEDIM == 1)
+    void add_spec_diffusion_to_source (amrex::MultiFab& ext_src, amrex::MultiFab& DiffTerm, amrex::Real t, int is_old);
+#endif
+#if (BL_SPACEDIM == 1)
+    void add_viscous_term_to_source   (amrex::MultiFab& ext_src, amrex::MultiFab& ViscousTermforMomentum,
+                                       amrex::MultiFab& ViscousTermforEnergy, amrex::Real t);
+#endif
+#endif
+
 #ifdef ROTATION
   void add_rotation_to_source(amrex::MultiFab& ext_src, amrex::MultiFab& RotationTerm, amrex::Real old_time);
   void time_center_rotation(amrex::MultiFab& S_new, amrex::MultiFab& OldRotationTerm, amrex::Real cur_time, amrex::Real dt);
@@ -397,7 +424,6 @@ public:
 #ifdef AUX_UPDATE
     void advance_aux(amrex::Real time, amrex::Real dt);
 #endif
-
 
     static int       NUM_STATE;
     static int       Density, Xmom, Ymom, Zmom, Eden, Eint, Temp;
@@ -465,12 +491,10 @@ protected:
     amrex::MultiFab         P_radial;
 #endif
 
-
     amrex::FluxRegister flux_reg;
 #if (BL_SPACEDIM <= 2)
     amrex::FluxRegister pres_reg;
 #endif
-
 #ifdef GRAVITY
     amrex::FluxRegister phi_reg;
 #endif
@@ -591,6 +615,7 @@ protected:
     static amrex::Real      startCPUTime;
 
     static amrex::Real getCPUTime();
+
 
     bool             FillPatchedOldState_ok;
 
