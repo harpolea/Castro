@@ -75,9 +75,7 @@ Array< Array<Real> > Castro::a_mol;
 Array<Real> Castro::b_mol;
 Array<Real> Castro::c_mol;
 
-
 #include <castro_defaults.H>
-
 
 std::string  Castro::probin_file = "probin";
 
@@ -205,20 +203,18 @@ Castro::read_params ()
 #elif (BL_SPACEDIM == 2)
     if ( Geometry::IsSPHERICAL() )
       {
-	amrex::Abort("We don't support spherical coordinate systems in 2D");
+	         amrex::Abort("We don't support spherical coordinate systems in 2D");
       }
 #elif (BL_SPACEDIM == 3)
     if ( Geometry::IsRZ() )
       {
-	amrex::Abort("We don't support cylindrical coordinate systems in 3D");
+	         amrex::Abort("We don't support cylindrical coordinate systems in 3D");
       }
     else if ( Geometry::IsSPHERICAL() )
       {
-	amrex::Abort("We don't support spherical coordinate systems in 3D");
+	         amrex::Abort("We don't support spherical coordinate systems in 3D");
       }
 #endif
-
-
 
     // sanity checks
 
@@ -233,54 +229,41 @@ Castro::read_params ()
     // add it in trans_3d
     if (ppm_type == 0 && ppm_trace_sources == 1)
       {
-	if (ParallelDescriptor::IOProcessor())
-	    std::cout << "WARNING: ppm_trace_sources = 1 not implemented for ppm_type = 0" << std::endl;
-	ppm_trace_sources = 0;
-	pp.add("ppm_trace_sources",ppm_trace_sources);
-      }
+    	if (ParallelDescriptor::IOProcessor())
+    	    std::cout << "WARNING: ppm_trace_sources = 1 not implemented for ppm_type = 0" << std::endl;
+    	       ppm_trace_sources = 0;
+    	          pp.add("ppm_trace_sources",ppm_trace_sources);
+          }
+
+        if (use_colglaz >= 0)
+          {
+    	         std::cerr << "ERROR:: use_colglaz is deprecated.  Use riemann_solver instead\n";
+    	            amrex::Error();
+          }
 
 
-    if (hybrid_riemann == 1 && BL_SPACEDIM == 1)
-      {
-        std::cerr << "hybrid_riemann only implemented in 2- and 3-d\n";
-        amrex::Error();
-      }
+        // Make sure not to call refluxing if we're not actually doing any hydro.
+        if (do_hydro == 0) do_reflux = 0;
 
-    if (hybrid_riemann == 1 && (Geometry::IsSPHERICAL() || Geometry::IsRZ() ))
-      {
-        std::cerr << "hybrid_riemann should only be used for Cartesian coordinates\n";
-        amrex::Error();
-      }
-
-    if (use_colglaz >= 0)
-      {
-	std::cerr << "ERROR:: use_colglaz is deprecated.  Use riemann_solver instead\n";
-	amrex::Error();
-      }
-
-
-    // Make sure not to call refluxing if we're not actually doing any hydro.
-    if (do_hydro == 0) do_reflux = 0;
-
-    if (max_dt < fixed_dt)
-      {
-	std::cerr << "cannot have max_dt < fixed_dt\n";
-	amrex::Error();
-      }
+        if (max_dt < fixed_dt)
+          {
+    	         std::cerr << "cannot have max_dt < fixed_dt\n";
+    	            amrex::Error();
+          }
 
 #ifdef ROTATION
     if (do_rotation) {
       if (rotational_period <= 0.0) {
-	std::cerr << "Error:Castro::Rotation enabled but rotation period less than zero\n";
-	amrex::Error();
+	         std::cerr << "Error:Castro::Rotation enabled but rotation period less than zero\n";
+	            amrex::Error();
       }
     }
     if (Geometry::IsRZ())
       rot_axis = 2;
 #if (BL_SPACEDIM == 1)
       if (do_rotation) {
-	std::cerr << "ERROR:Castro::Rotation not implemented in 1d\n";
-	amrex::Error();
+	         std::cerr << "ERROR:Castro::Rotation not implemented in 1d\n";
+	            amrex::Error();
       }
 #endif
 #endif
@@ -293,7 +276,7 @@ Castro::read_params ()
     Array<int> tilesize(BL_SPACEDIM);
     if (pp.queryarr("hydro_tile_size", tilesize, 0, BL_SPACEDIM))
     {
-	for (int i=0; i<BL_SPACEDIM; i++) hydro_tile_size[i] = tilesize[i];
+	       for (int i=0; i<BL_SPACEDIM; i++) hydro_tile_size[i] = tilesize[i];
     }
 
 }
@@ -408,7 +391,7 @@ Castro::buildMetrics ()
     for (int dir = 0; dir < BL_SPACEDIM; dir++)
     {
         area[dir].clear();
-	area[dir].define(getEdgeBoxArray(dir),dmap,1,NUM_GROW);
+    	area[dir].define(getEdgeBoxArray(dir),dmap,1,NUM_GROW);
         geom.GetFaceArea(area[dir],dir);
     }
 
@@ -440,67 +423,65 @@ Castro::initMFs()
 
     if (do_reflux && level > 0) {
 
-	flux_reg.define(grids, dmap, crse_ratio, level, NUM_STATE);
-	flux_reg.setVal(0.0);
+    	flux_reg.define(grids, dmap, crse_ratio, level, NUM_STATE);
+    	flux_reg.setVal(0.0);
 
 #if (BL_SPACEDIM < 3)
-	if (!Geometry::IsCartesian()) {
-	    pres_reg.define(grids, dmap, crse_ratio, level, 1);
-	    pres_reg.setVal(0.0);
-	}
+    	if (!Geometry::IsCartesian()) {
+    	    pres_reg.define(grids, dmap, crse_ratio, level, 1);
+    	    pres_reg.setVal(0.0);
+    	}
 #endif
-
     }
 
     // Set the flux register scalings.
 
     if (do_reflux) {
 
-	flux_crse_scale = -1.0;
-	flux_fine_scale = 1.0;
+    	flux_crse_scale = -1.0;
+    	flux_fine_scale = 1.0;
 
-	// The fine pressure scaling depends on dimensionality,
-	// as the dimensionality determines the number of
-	// adjacent zones. In 1D the face is a point so
-	// there's only one fine neighbor for a given coarse
-	// face; in 2D there's crse_ratio[1] faces adjacent
-	// to a face perpendicular to the radial dimension;
-	// and in 3D there would be crse_ratio**2, though
-	// we do not separate the pressure out in 3D. Note
-	// that the scaling by dt has already been handled
-	// in the construction of the P_radial array.
+    	// The fine pressure scaling depends on dimensionality,
+    	// as the dimensionality determines the number of
+    	// adjacent zones. In 1D the face is a point so
+    	// there's only one fine neighbor for a given coarse
+    	// face; in 2D there's crse_ratio[1] faces adjacent
+    	// to a face perpendicular to the radial dimension;
+    	// and in 3D there would be crse_ratio**2, though
+    	// we do not separate the pressure out in 3D. Note
+    	// that the scaling by dt has already been handled
+    	// in the construction of the P_radial array.
 
-	// The coarse pressure scaling is the same as for the
-	// fluxes, we want the total refluxing contribution
-	// over the full set of fine timesteps to equal P_radial.
+    	// The coarse pressure scaling is the same as for the
+    	// fluxes, we want the total refluxing contribution
+    	// over the full set of fine timesteps to equal P_radial.
 
 #if (BL_SPACEDIM == 1)
-	pres_crse_scale = 1.0;
-	pres_fine_scale = 1.0;
+    	pres_crse_scale = 1.0;
+    	pres_fine_scale = 1.0;
 #elif (BL_SPACEDIM == 2)
-	pres_crse_scale = 1.0;
-	pres_fine_scale = 1.0 / crse_ratio[1];
+    	pres_crse_scale = 1.0;
+    	pres_fine_scale = 1.0 / crse_ratio[1];
 #endif
 
     }
 
     if (keep_sources_until_end || (do_reflux && update_sources_after_reflux)) {
 
-	// These arrays hold all source terms that update the state.
+    	// These arrays hold all source terms that update the state.
 
-	for (int n = 0; n < num_src; ++n) {
-	    old_sources[n].reset(new MultiFab(grids, dmap, NUM_STATE, NUM_GROW));
-	    new_sources[n].reset(new MultiFab(grids, dmap, NUM_STATE, get_new_data(State_Type).nGrow()));
-	}
+    	for (int n = 0; n < num_src; ++n) {
+    	    old_sources[n].reset(new MultiFab(grids, dmap, NUM_STATE, NUM_GROW));
+    	    new_sources[n].reset(new MultiFab(grids, dmap, NUM_STATE, get_new_data(State_Type).nGrow()));
+    	}
 
-	// This array holds the hydrodynamics update.
+    	// This array holds the hydrodynamics update.
 
-	hydro_source.define(grids,dmap,NUM_STATE,0);
+    	hydro_source.define(grids,dmap,NUM_STATE,0);
 
     }
 
     use_post_step_regrid = 0;
-
 }
 
 void
@@ -540,52 +521,51 @@ Castro::setGridInfo ()
       const int* domhi_coarse = geom.Domain().hiVect();
 
       for (int dir = 0; dir < 3; dir++) {
-	dx_level[dir] = (ZFILL(dx_coarse))[dir];
+    	dx_level[dir] = (ZFILL(dx_coarse))[dir];
 
-	domlo_level[dir] = (ARLIM_3D(domlo_coarse))[dir];
-	domhi_level[dir] = (ARLIM_3D(domhi_coarse))[dir];
+    	domlo_level[dir] = (ARLIM_3D(domlo_coarse))[dir];
+    	domhi_level[dir] = (ARLIM_3D(domhi_coarse))[dir];
 
-	// Refinement ratio and error buffer on finest level are meaningless,
-	// and we want them to be zero on the finest level because some
-	// of the algorithms depend on this feature.
+    	// Refinement ratio and error buffer on finest level are meaningless,
+    	// and we want them to be zero on the finest level because some
+    	// of the algorithms depend on this feature.
 
-	ref_ratio_to_f[dir + 3 * (nlevs - 1)] = 0;
-	n_error_buf_to_f[nlevs-1] = 0;
+    	ref_ratio_to_f[dir + 3 * (nlevs - 1)] = 0;
+    	n_error_buf_to_f[nlevs-1] = 0;
       }
 
       for (int lev = 0; lev <= max_level; lev++)
-	blocking_factor_to_f[lev] = parent->blockingFactor(lev)[0];
+	     blocking_factor_to_f[lev] = parent->blockingFactor(lev)[0];
 
       for (int lev = 1; lev <= max_level; lev++) {
-	IntVect ref_ratio = parent->refRatio(lev-1);
+	         IntVect ref_ratio = parent->refRatio(lev-1);
 
-	// Note that we are explicitly calculating here what the
-	// data would be on refined levels rather than getting the
-	// data directly from those levels, because some potential
-	// refined levels may not exist at the beginning of the simulation.
+    	// Note that we are explicitly calculating here what the
+    	// data would be on refined levels rather than getting the
+    	// data directly from those levels, because some potential
+    	// refined levels may not exist at the beginning of the simulation.
 
-	for (int dir = 0; dir < 3; dir++)
-	  if (dir < BL_SPACEDIM) {
-	    dx_level[3 * lev + dir] = dx_level[3 * (lev - 1) + dir] / ref_ratio[dir];
-	    int ncell = (domhi_level[3 * (lev - 1) + dir] - domlo_level[3 * (lev - 1) + dir] + 1) * ref_ratio[dir];
-	    domlo_level[3 * lev + dir] = domlo_level[dir];
-	    domhi_level[3 * lev + dir] = domlo_level[3 * lev + dir] + ncell - 1;
-	    ref_ratio_to_f[3 * (lev - 1) + dir] = ref_ratio[dir];
-	  } else {
-	    dx_level[3 * lev + dir] = 0.0;
-	    domlo_level[3 * lev + dir] = 0;
-	    domhi_level[3 * lev + dir] = 0;
-	    ref_ratio_to_f[3 * (lev - 1) + dir] = 0;
-	  }
+    	for (int dir = 0; dir < 3; dir++)
+    	  if (dir < BL_SPACEDIM) {
+    	    dx_level[3 * lev + dir] = dx_level[3 * (lev - 1) + dir] / ref_ratio[dir];
+    	    int ncell = (domhi_level[3 * (lev - 1) + dir] - domlo_level[3 * (lev - 1) + dir] + 1) * ref_ratio[dir];
+    	    domlo_level[3 * lev + dir] = domlo_level[dir];
+    	    domhi_level[3 * lev + dir] = domlo_level[3 * lev + dir] + ncell - 1;
+    	    ref_ratio_to_f[3 * (lev - 1) + dir] = ref_ratio[dir];
+    	  } else {
+    	    dx_level[3 * lev + dir] = 0.0;
+    	    domlo_level[3 * lev + dir] = 0;
+    	    domhi_level[3 * lev + dir] = 0;
+    	    ref_ratio_to_f[3 * (lev - 1) + dir] = 0;
+    	  }
 
-	n_error_buf_to_f[lev - 1] = parent->nErrorBuf(lev - 1);
+    	n_error_buf_to_f[lev - 1] = parent->nErrorBuf(lev - 1);
       }
 
       ca_set_grid_info(max_level, dx_level, domlo_level, domhi_level,
 		       ref_ratio_to_f, n_error_buf_to_f, blocking_factor_to_f);
 
     }
-
 }
 
 void
@@ -608,13 +588,13 @@ Castro::initData ()
     const Real SMALL = 1.e-13;
     if (fabs(dx[0] - dx[1]) > SMALL*dx[0])
       {
-	amrex::Abort("We don't support dx != dy");
+	         amrex::Abort("We don't support dx != dy");
       }
 #elif (BL_SPACEDIM == 3)
     const Real SMALL = 1.e-13;
     if ( (fabs(dx[0] - dx[1]) > SMALL*dx[0]) || (fabs(dx[0] - dx[2]) > SMALL*dx[0]) )
       {
-	amrex::Abort("We don't support dx != dy != dz");
+	         amrex::Abort("We don't support dx != dy != dz");
       }
 #endif
 
@@ -633,28 +613,28 @@ Castro::initData ()
     {
        for (MFIter mfi(S_new); mfi.isValid(); ++mfi)
        {
-	  RealBox gridloc = RealBox(grids[mfi.index()],geom.CellSize(),geom.ProbLo());
-          const Box& box     = mfi.validbox();
-          const int* lo      = box.loVect();
-          const int* hi      = box.hiVect();
+    	  RealBox gridloc = RealBox(grids[mfi.index()],geom.CellSize(),geom.ProbLo());
+              const Box& box     = mfi.validbox();
+              const int* lo      = box.loVect();
+              const int* hi      = box.hiVect();
 
 #ifdef DIMENSION_AGNOSTIC
           BL_FORT_PROC_CALL(CA_INITDATA,ca_initdata)
           (level, cur_time, ARLIM_3D(lo), ARLIM_3D(hi), ns,
-  	   BL_TO_FORTRAN_3D(S_new[mfi]), ZFILL(dx),
-  	   ZFILL(gridloc.lo()), ZFILL(gridloc.hi()));
+      	   BL_TO_FORTRAN_3D(S_new[mfi]), ZFILL(dx),
+      	   ZFILL(gridloc.lo()), ZFILL(gridloc.hi()));
 #else
           BL_FORT_PROC_CALL(CA_INITDATA,ca_initdata)
-  	  (level, cur_time, lo, hi, ns,
-  	   BL_TO_FORTRAN(S_new[mfi]), dx,
-  	   gridloc.lo(), gridloc.hi());
+      	  (level, cur_time, lo, hi, ns,
+      	   BL_TO_FORTRAN(S_new[mfi]), dx,
+      	   gridloc.lo(), gridloc.hi());
 #endif
 
-          // Verify that the sum of (rho X)_i = rho at every cell
-	  const int idx = mfi.tileIndex();
+              // Verify that the sum of (rho X)_i = rho at every cell
+    	  const int idx = mfi.tileIndex();
 
-          ca_check_initial_species(ARLIM_3D(lo), ARLIM_3D(hi),
-				   BL_TO_FORTRAN_3D(S_new[mfi]), &idx);
+              ca_check_initial_species(ARLIM_3D(lo), ARLIM_3D(hi),
+    				   BL_TO_FORTRAN_3D(S_new[mfi]), &idx);
        }
        enforce_consistent_e(S_new);
 
@@ -663,7 +643,7 @@ Castro::initData ()
        int ng = S_new.nGrow();
 
        if (ng > 0)
-	   AmrLevel::FillPatch(*this, S_new, ng, cur_time, State_Type, 0, S_new.nComp());
+	      AmrLevel::FillPatch(*this, S_new, ng, cur_time, State_Type, 0, S_new.nComp());
     }
 
 #endif // MAESTRO_INIT
@@ -702,8 +682,8 @@ Castro::init (AmrLevel &old)
     setTimeLevel(cur_time,dt_old,dt_new);
 
     for (int s = 0; s < num_state_type; ++s) {
-	MultiFab& state_MF = get_new_data(s);
-	FillPatch(old, state_MF, state_MF.nGrow(), cur_time, s, 0, state_MF.nComp());
+    	MultiFab& state_MF = get_new_data(s);
+    	FillPatch(old, state_MF, state_MF.nGrow(), cur_time, s, 0, state_MF.nComp());
     }
 
 }
@@ -729,13 +709,13 @@ Castro::init ()
     // the data on the coarse level has already been advanced.
 
     if (getLevel(level-1).use_post_step_regrid)
-	time = prev_time;
+	   time = prev_time;
 
     setTimeLevel(time,dt_old,dt);
 
     for (int s = 0; s < num_state_type; ++s) {
-	MultiFab& state_MF = get_new_data(s);
-	FillCoarsePatch(state_MF, 0, time, s, 0, state_MF.nComp());
+    	MultiFab& state_MF = get_new_data(s);
+    	FillCoarsePatch(state_MF, 0, time, s, 0, state_MF.nComp());
     }
 }
 
@@ -784,9 +764,9 @@ Castro::estTimeStep (Real dt_old)
     if (do_hydro)
     {
 
-	  // Compute hydro-limited timestep.
-	if (do_hydro)
-	  {
+    	  // Compute hydro-limited timestep.
+    	if (do_hydro)
+    	  {
 
 #ifdef _OPENMP
 #pragma omp parallel
@@ -795,18 +775,18 @@ Castro::estTimeStep (Real dt_old)
 	      Real dt = max_dt / cfl;
 
 	      for (MFIter mfi(stateMF,true); mfi.isValid(); ++mfi)
-		{
-		  const Box& box = mfi.tilebox();
+    		{
+    		  const Box& box = mfi.tilebox();
 
-		  ca_estdt(ARLIM_3D(box.loVect()), ARLIM_3D(box.hiVect()),
-			   BL_TO_FORTRAN_3D(stateMF[mfi]),
-			   ZFILL(dx),&dt);
-		}
+    		  ca_estdt(ARLIM_3D(box.loVect()), ARLIM_3D(box.hiVect()),
+    			   BL_TO_FORTRAN_3D(stateMF[mfi]),
+    			   ZFILL(dx),&dt);
+    		}
 #ifdef _OPENMP
 #pragma omp critical (castro_estdt)
 #endif
 	      {
-		estdt_hydro = std::min(estdt_hydro,dt);
+		      estdt_hydro = std::min(estdt_hydro,dt);
 	      }
 	    }
 	  }
@@ -819,8 +799,8 @@ Castro::estTimeStep (Real dt_old)
        // Determine if this is more restrictive than the maximum timestep limiting
 
        if (estdt_hydro < estdt) {
-	 limiter = "hydro";
-	 estdt = estdt_hydro;
+    	 limiter = "hydro";
+    	 estdt = estdt_hydro;
        }
     }
 
@@ -986,12 +966,12 @@ Castro::post_timestep (int iteration)
     // will also do the sync solve associated with the reflux.
 
     if (do_reflux && level < parent->finestLevel())
-	reflux(level, level+1);
+	   reflux(level, level+1);
 
     // Ensure consistency with finer grids.
 
     if (level < finest_level)
-	avgDown();
+	   avgDown();
 
     MultiFab& S_new = get_new_data(State_Type);
 
@@ -1003,7 +983,7 @@ Castro::post_timestep (int iteration)
     // Flush Fortran output
 
     if (verbose)
-	flush_output();
+	   flush_output();
 
 #ifdef DO_PROBLEM_POST_TIMESTEP
 
@@ -1019,32 +999,32 @@ Castro::post_timestep (int iteration)
     if (level == 0)
     {
         int nstep = parent->levelSteps(0);
-	Real dtlev = parent->dtLevel(0);
-	Real cumtime = parent->cumTime() + dtlev;
+    	Real dtlev = parent->dtLevel(0);
+    	Real cumtime = parent->cumTime() + dtlev;
 
-	bool sum_int_test = false;
+    	bool sum_int_test = false;
 
-	if (sum_interval > 0) {
+    	if (sum_interval > 0) {
 
-	  if (nstep%sum_interval == 0)
-	    sum_int_test = true;
+    	  if (nstep%sum_interval == 0)
+    	    sum_int_test = true;
 
-	}
+    	}
 
-	bool sum_per_test = false;
+    	bool sum_per_test = false;
 
-	if (sum_per > 0.0) {
+    	if (sum_per > 0.0) {
 
-	  const int num_per_old = floor((cumtime - dtlev) / sum_per);
-	  const int num_per_new = floor((cumtime        ) / sum_per);
+    	  const int num_per_old = floor((cumtime - dtlev) / sum_per);
+    	  const int num_per_new = floor((cumtime        ) / sum_per);
 
-	  if (num_per_old != num_per_new)
-	    sum_per_test = true;
+    	  if (num_per_old != num_per_new)
+    	    sum_per_test = true;
 
-	}
+    	}
 
-        if (sum_int_test || sum_per_test)
-	  sum_integrated_quantities();
+            if (sum_int_test || sum_per_test)
+    	       sum_integrated_quantities();
     }
 }
 
@@ -1144,7 +1124,7 @@ Castro::post_init (Real stop_time)
 
 #endif
 
-        int nstep = parent->levelSteps(0);
+    int nstep = parent->levelSteps(0);
 	Real dtlev = parent->dtLevel(0);
 	Real cumtime = parent->cumTime();
 	if (cumtime != 0.0) cumtime += dtlev;
@@ -1171,7 +1151,7 @@ Castro::post_init (Real stop_time)
 	}
 
         if (sum_int_test || sum_per_test)
-	  sum_integrated_quantities();
+	       sum_integrated_quantities();
 }
 
 void
@@ -1206,12 +1186,12 @@ Castro::okToContinue ()
     if (signalStopJob) {
       test = 0;
       if (ParallelDescriptor::IOProcessor())
-	std::cout << " Signalling a stop of the run due to signalStopJob = true." << std::endl;
+	     std::cout << " Signalling a stop of the run due to signalStopJob = true." << std::endl;
     }
     else if (parent->dtLevel(0) < dt_cutoff) {
       test = 0;
       if (ParallelDescriptor::IOProcessor())
-	std::cout << " Signalling a stop of the run because dt < dt_cutoff." << std::endl;
+	     std::cout << " Signalling a stop of the run because dt < dt_cutoff." << std::endl;
     }
 
     return test;
@@ -1235,7 +1215,7 @@ Castro::advance_aux(Real time, Real dt)
         const Box& box = mfi.tilebox();
         FArrayBox& old_fab = S_old[mfi];
         FArrayBox& new_fab = S_new[mfi];
-	void ca_auxupdate(BL_TO_FORTRAN(old_fab),
+	    void ca_auxupdate(BL_TO_FORTRAN(old_fab),
 			  BL_TO_FORTRAN(new_fab),
 			  box.loVect(), box.hiVect(),
 			  &dt);
@@ -1317,19 +1297,19 @@ Castro::reflux(int crse_level, int fine_level)
 	if (update_sources_after_reflux) {
 
 	    for (int i = 0; i < BL_SPACEDIM; ++i) {
-		temp_fluxes[i].reset(new MultiFab(crse_lev.fluxes[i]->boxArray(),
-						  crse_lev.fluxes[i]->DistributionMap(),
-						  crse_lev.fluxes[i]->nComp(), crse_lev.fluxes[i]->nGrow()));
-		temp_fluxes[i]->setVal(0.0);
+    		temp_fluxes[i].reset(new MultiFab(crse_lev.fluxes[i]->boxArray(),
+    						  crse_lev.fluxes[i]->DistributionMap(),
+    						  crse_lev.fluxes[i]->nComp(), crse_lev.fluxes[i]->nGrow()));
+    		temp_fluxes[i]->setVal(0.0);
 	    }
 	    for (OrientationIter fi; fi; ++fi) {
-		const FabSet& fs = (*reg)[fi()];
-		int idir = fi().coordDir();
-		fs.copyTo(*temp_fluxes[idir], 0, 0, 0, temp_fluxes[idir]->nComp());
+    		const FabSet& fs = (*reg)[fi()];
+    		int idir = fi().coordDir();
+    		fs.copyTo(*temp_fluxes[idir], 0, 0, 0, temp_fluxes[idir]->nComp());
 	    }
 	    for (int i = 0; i < BL_SPACEDIM; ++i) {
-		MultiFab::Add(*crse_lev.fluxes[i], *temp_fluxes[i], 0, 0, crse_lev.fluxes[i]->nComp(), 0);
-		temp_fluxes[i].reset();
+    		MultiFab::Add(*crse_lev.fluxes[i], *temp_fluxes[i], 0, 0, crse_lev.fluxes[i]->nComp(), 0);
+    		temp_fluxes[i].reset();
 	    }
 
 	    // Reflux into the hydro_source array so that we have the most up-to-date version of it.
@@ -1356,24 +1336,24 @@ Castro::reflux(int crse_level, int fine_level)
 
 	    if (update_sources_after_reflux) {
 
-		temp_fluxes[0].reset(new MultiFab(crse_lev.P_radial.boxArray(),
-						  crse_lev.P_radial.DistributionMap(),
-						  crse_lev.P_radial.nComp(), crse_lev.P_radial.nGrow()));
-		temp_fluxes[0]->setVal(0.0);
+    		temp_fluxes[0].reset(new MultiFab(crse_lev.P_radial.boxArray(),
+    						  crse_lev.P_radial.DistributionMap(),
+    						  crse_lev.P_radial.nComp(), crse_lev.P_radial.nGrow()));
+    		temp_fluxes[0]->setVal(0.0);
 
-                for (OrientationIter fi; fi; ++fi)
-		{
-		    const FabSet& fs = (*reg)[fi()];
-		    int idir = fi().coordDir();
-		    if (idir == 0) {
-			fs.copyTo(*temp_fluxes[idir], 0, 0, 0, temp_fluxes[idir]->nComp());
-		    }
-                }
+                    for (OrientationIter fi; fi; ++fi)
+    		{
+    		    const FabSet& fs = (*reg)[fi()];
+    		    int idir = fi().coordDir();
+    		    if (idir == 0) {
+        			fs.copyTo(*temp_fluxes[idir], 0, 0, 0, temp_fluxes[idir]->nComp());
+    		    }
+            }
 
-		MultiFab::Add(crse_lev.P_radial, *temp_fluxes[0], 0, 0, crse_lev.P_radial.nComp(), 0);
-		temp_fluxes[0].reset();
+    		MultiFab::Add(crse_lev.P_radial, *temp_fluxes[0], 0, 0, crse_lev.P_radial.nComp(), 0);
+    		temp_fluxes[0].reset();
 
-                reg->Reflux(crse_lev.hydro_source, dr, 1.0, 0, Xmom, 1, crse_lev.geom);
+                    reg->Reflux(crse_lev.hydro_source, dr, 1.0, 0, Xmom, 1, crse_lev.geom);
 
 	    }
 
@@ -1399,24 +1379,24 @@ Castro::reflux(int crse_level, int fine_level)
 
     if (update_sources_after_reflux) {
 
-	for (int lev = fine_level; lev >= crse_level; --lev) {
+    	for (int lev = fine_level; lev >= crse_level; --lev) {
 
-	    MultiFab& S_new = getLevel(lev).get_new_data(State_Type);
-	    Real time = getLevel(lev).state[State_Type].curTime();
-	    Real dt = parent->dtLevel(lev);
+    	    MultiFab& S_new = getLevel(lev).get_new_data(State_Type);
+    	    Real time = getLevel(lev).state[State_Type].curTime();
+    	    Real dt = parent->dtLevel(lev);
 
-	    for (int n = 0; n < num_src; ++n)
-                if (source_flag(n))
-		    getLevel(lev).apply_source_to_state(S_new, *getLevel(lev).new_sources[n], -dt);
+    	    for (int n = 0; n < num_src; ++n)
+                    if (source_flag(n))
+    		    getLevel(lev).apply_source_to_state(S_new, *getLevel(lev).new_sources[n], -dt);
 
-	    // Make the state data consistent with this earlier version before
-	    // recalculating the new-time source terms.
+    	    // Make the state data consistent with this earlier version before
+    	    // recalculating the new-time source terms.
 
-	    getLevel(lev).clean_state(S_new);
+    	    getLevel(lev).clean_state(S_new);
 
-	    getLevel(lev).do_new_sources(time, dt);
+    	    getLevel(lev).do_new_sources(time, dt);
 
-	}
+    	}
 
     }
 
@@ -1485,8 +1465,8 @@ Castro::enforce_consistent_e (MultiFab& S)
         const int* lo      = box.loVect();
         const int* hi      = box.hiVect();
 
-	const int idx      = mfi.tileIndex();
-        ca_enforce_consistent_e(ARLIM_3D(lo), ARLIM_3D(hi), BL_TO_FORTRAN_3D(S[mfi]), &idx);
+    	const int idx      = mfi.tileIndex();
+            ca_enforce_consistent_e(ARLIM_3D(lo), ARLIM_3D(hi), BL_TO_FORTRAN_3D(S[mfi]), &idx);
     }
 }
 
@@ -1510,11 +1490,11 @@ Castro::enforce_min_density (MultiFab& S_old, MultiFab& S_new)
     if (print_update_diagnostics)
     {
 
-	// Before we do anything, make a copy of the state.
+    	// Before we do anything, make a copy of the state.
 
-	reset_source.define(S_new.boxArray(), S_new.DistributionMap(), S_new.nComp(), 0);
+    	reset_source.define(S_new.boxArray(), S_new.DistributionMap(), S_new.nComp(), 0);
 
-	MultiFab::Copy(reset_source, S_new, 0, 0, S_new.nComp(), 0);
+    	MultiFab::Copy(reset_source, S_new, 0, 0, S_new.nComp(), 0);
 
     }
 
@@ -1523,18 +1503,18 @@ Castro::enforce_min_density (MultiFab& S_old, MultiFab& S_new)
 #endif
     for (MFIter mfi(S_new, true); mfi.isValid(); ++mfi) {
 
-	const Box& bx = mfi.growntilebox();
+    	const Box& bx = mfi.growntilebox();
 
-	FArrayBox& stateold = S_old[mfi];
-	FArrayBox& statenew = S_new[mfi];
-	FArrayBox& vol      = volume[mfi];
-	const int idx = mfi.tileIndex();
+    	FArrayBox& stateold = S_old[mfi];
+    	FArrayBox& statenew = S_new[mfi];
+    	FArrayBox& vol      = volume[mfi];
+    	const int idx = mfi.tileIndex();
 
-	ca_enforce_minimum_density(stateold.dataPtr(), ARLIM_3D(stateold.loVect()), ARLIM_3D(stateold.hiVect()),
-				   statenew.dataPtr(), ARLIM_3D(statenew.loVect()), ARLIM_3D(statenew.hiVect()),
-				   vol.dataPtr(), ARLIM_3D(vol.loVect()), ARLIM_3D(vol.hiVect()),
-				   ARLIM_3D(bx.loVect()), ARLIM_3D(bx.hiVect()),
-				   &dens_change, &verbose, &idx);
+    	ca_enforce_minimum_density(stateold.dataPtr(), ARLIM_3D(stateold.loVect()), ARLIM_3D(stateold.hiVect()),
+    				   statenew.dataPtr(), ARLIM_3D(statenew.loVect()), ARLIM_3D(statenew.hiVect()),
+    				   vol.dataPtr(), ARLIM_3D(vol.loVect()), ARLIM_3D(vol.hiVect()),
+    				   ARLIM_3D(bx.loVect()), ARLIM_3D(bx.hiVect()),
+    				   &dens_change, &verbose, &idx);
 
     }
 
@@ -1554,11 +1534,11 @@ Castro::enforce_min_density (MultiFab& S_old, MultiFab& S_new)
 	    ParallelDescriptor::ReduceRealSum(reset_update.dataPtr(), reset_update.size(), ParallelDescriptor::IOProcessorNumber());
 
 	    if (ParallelDescriptor::IOProcessor()) {
-		if (std::abs(reset_update[0]) != 0.0) {
-		    std::cout << std::endl << "  Contributions to the state from negative density resets:" << std::endl;
+    		if (std::abs(reset_update[0]) != 0.0) {
+    		    std::cout << std::endl << "  Contributions to the state from negative density resets:" << std::endl;
 
-		    print_source_change(reset_update);
-		}
+    		    print_source_change(reset_update);
+    		}
 	    }
 
 #ifdef BL_LAZY
@@ -1853,11 +1833,11 @@ Castro::reset_internal_energy(MultiFab& S_new)
 	    ParallelDescriptor::ReduceRealSum(reset_update.dataPtr(), reset_update.size(), ParallelDescriptor::IOProcessorNumber());
 
 	    if (ParallelDescriptor::IOProcessor()) {
-		if (std::abs(reset_update[Eint]) != 0.0) {
-		    std::cout << std::endl << "  Contributions to the state from negative energy resets:" << std::endl;
+    		if (std::abs(reset_update[Eint]) != 0.0) {
+    		    std::cout << std::endl << "  Contributions to the state from negative energy resets:" << std::endl;
 
-		    print_source_change(reset_update);
-		}
+    		    print_source_change(reset_update);
+    		}
 	    }
 
 #ifdef BL_LAZY
@@ -1878,9 +1858,9 @@ Castro::computeTemp(MultiFab& State)
   for (MFIter mfi(State,true); mfi.isValid(); ++mfi)
     {
       const Box& bx = mfi.growntilebox();
-	const int idx = mfi.tileIndex();
-	ca_compute_temp(ARLIM_3D(bx.loVect()), ARLIM_3D(bx.hiVect()),
-			BL_TO_FORTRAN_3D(State[mfi]), &idx);
+    	const int idx = mfi.tileIndex();
+    	ca_compute_temp(ARLIM_3D(bx.loVect()), ARLIM_3D(bx.hiVect()),
+    			BL_TO_FORTRAN_3D(State[mfi]), &idx);
     }
 }
 
@@ -1942,12 +1922,12 @@ Castro::build_fine_mask()
     {
         FArrayBox& fab = fine_mask[mfi];
 
-	const std::vector< std::pair<int,Box> >& isects = baf.intersections(fab.box());
+    	const std::vector< std::pair<int,Box> >& isects = baf.intersections(fab.box());
 
-	for (int ii = 0; ii < isects.size(); ++ii)
-	{
-	    fab.setVal(0.0,isects[ii].second,0);
-	}
+    	for (int ii = 0; ii < isects.size(); ++ii)
+    	{
+    	    fab.setVal(0.0,isects[ii].second,0);
+    	}
     }
 
     return fine_mask;
@@ -1958,9 +1938,9 @@ Castro::build_interior_boundary_mask (int ng)
 {
     for (int i = 0; i < ib_mask.size(); ++i)
     {
-	if (ib_mask[i]->nGrow() == ng) {
-	    return *ib_mask[i];
-	}
+    	if (ib_mask[i]->nGrow() == ng) {
+    	    return *ib_mask[i];
+    	}
     }
 
     //  If we got here, we need to build a new one
@@ -2004,10 +1984,9 @@ Castro::check_for_nan(MultiFab& state, int check_ghost)
     {
       for (int i = 0; i < state.nComp(); i++)
         {
-	  if (state.contains_nan(Density + i, 1, ng, true))
-            {
-	      std::string abort_string = std::string("State has NaNs in the ") + desc_lst[State_Type].name(i) + std::string(" component::check_for_nan()");
-	      amrex::Abort(abort_string.c_str());
+    	  if (state.contains_nan(Density + i, 1, ng, true)) {
+    	      std::string abort_string = std::string("State has NaNs in the ") + desc_lst[State_Type].name(i) + std::string(" component::check_for_nan()");
+    	      amrex::Abort(abort_string.c_str());
             }
         }
     }

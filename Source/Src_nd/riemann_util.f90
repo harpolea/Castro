@@ -479,4 +479,54 @@ contains
 
   end subroutine compute_flux
 
+  pure subroutine compute_flux2(idir, bnd_fac, U, p, F)
+
+    use meth_params_module, only: NVAR, URHO, UMX, UMY, UMZ, UEDEN, UEINT, UTEMP, &
+         npassive, upass_map
+    use prob_params_module, only : mom_flux_has_p
+
+    integer, intent(in) :: idir, bnd_fac
+    real(rt)        , intent(in) :: U(NVAR)
+    real(rt)        , intent(in) :: p
+    real(rt)        , intent(out) :: F(NVAR)
+
+    integer :: ipassive, n
+    real(rt)         :: u_flx
+
+    if (idir == 1) then
+       u_flx = U(UMX)/U(URHO)
+    elseif (idir == 2) then
+       u_flx = U(UMY)/U(URHO)
+    elseif (idir == 3) then
+       u_flx = U(UMZ)/U(URHO)
+    endif
+
+    if (bnd_fac == 0) then
+       u_flx = ZERO
+    endif
+
+    F(URHO) = U(URHO)*u_flx
+
+    F(UMX) = U(UMX)*u_flx
+    F(UMY) = U(UMY)*u_flx
+    F(UMZ) = U(UMZ)*u_flx
+
+    if (mom_flux_has_p(idir)%comp(UMX-1+idir)) then
+       ! we do not include the pressure term in any non-Cartesian
+       ! coordinate directions
+       F(UMX-1+idir) = F(UMX-1+idir) + p
+    endif
+
+    F(UEINT) = U(UEINT)*u_flx
+    F(UEDEN) = (U(UEDEN) + p)*u_flx
+
+    F(UTEMP) = ZERO
+
+    do ipassive = 1, npassive
+       n = upass_map(ipassive)
+       F(n) = U(n)*u_flx
+    enddo
+
+end subroutine compute_flux2
+
 end module riemann_util_module
