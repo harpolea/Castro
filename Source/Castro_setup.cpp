@@ -5,10 +5,6 @@
 #include "Castro.H"
 #include "Castro_F.H"
 #include <Derive_F.H>
-#ifdef RADIATION
-# include "Radiation.H"
-# include "RAD_F.H"
-#endif
 
 #include "AMReX_buildInfo.H"
 
@@ -165,11 +161,6 @@ Castro::variableSetUp ()
   Xmom = cnt++;
   Ymom = cnt++;
   Zmom = cnt++;
-#ifdef HYBRID_MOMENTUM
-  Rmom = cnt++;
-  Lmom = cnt++;
-  Pmom = cnt++;
-#endif
   Eden = cnt++;
   Eint = cnt++;
   Temp = cnt++;
@@ -327,15 +318,6 @@ Castro::variableSetUp ()
 			 &cell_cons_interp,state_data_extrap,store_in_checkpoint);
 #endif
 
-#ifdef SDC
-  // For SDC we want to store the source terms.
-
-  store_in_checkpoint = true;
-  desc_lst.addDescriptor(SDC_Source_Type, IndexType::TheCellType(),
-			 StateDescriptor::Point,NUM_GROW,NUM_STATE,
-			 &cell_cons_interp,state_data_extrap,store_in_checkpoint);
-#endif
-
   Array<BCRec>       bcs(NUM_STATE);
   Array<std::string> name(NUM_STATE);
 
@@ -345,11 +327,6 @@ Castro::variableSetUp ()
   cnt++; set_x_vel_bc(bc,phys_bc);  bcs[cnt] = bc; name[cnt] = "xmom";
   cnt++; set_y_vel_bc(bc,phys_bc);  bcs[cnt] = bc; name[cnt] = "ymom";
   cnt++; set_z_vel_bc(bc,phys_bc);  bcs[cnt] = bc; name[cnt] = "zmom";
-#ifdef HYBRID_MOMENTUM
-  cnt++; set_scalar_bc(bc,phys_bc);  bcs[cnt] = bc; name[cnt] = "rmom";
-  cnt++; set_scalar_bc(bc,phys_bc);  bcs[cnt] = bc; name[cnt] = "lmom";
-  cnt++; set_scalar_bc(bc,phys_bc);  bcs[cnt] = bc; name[cnt] = "pmom";
-#endif
   cnt++; set_scalar_bc(bc,phys_bc); bcs[cnt] = bc; name[cnt] = "rho_E";
   cnt++; set_scalar_bc(bc,phys_bc); bcs[cnt] = bc; name[cnt] = "rho_e";
   cnt++; set_scalar_bc(bc,phys_bc); bcs[cnt] = bc; name[cnt] = "Temp";
@@ -519,32 +496,6 @@ Castro::variableSetUp ()
   derive_lst.add("entropy",IndexType::TheCellType(),1,ca_derentropy,the_same_box);
   derive_lst.addComponent("entropy",desc_lst,State_Type,Density,NUM_STATE);
 
-#ifdef DIFFUSION
-  if (diffuse_temp) {
-    //
-    // thermal conductivity (k_th)
-    //
-    derive_lst.add("thermal_cond",IndexType::TheCellType(),1,ca_dercond,the_same_box);
-    derive_lst.addComponent("thermal_cond",desc_lst,State_Type,Density,NUM_STATE);
-
-
-    //
-    // thermal diffusivity (k_th/(rho c_v))
-    //
-    derive_lst.add("diff_coeff",IndexType::TheCellType(),1,ca_derdiffcoeff,the_same_box);
-    derive_lst.addComponent("diff_coeff",desc_lst,State_Type,Density,NUM_STATE);
-
-
-    //
-    // diffusion term (the divergence of thermal flux)
-    //
-    derive_lst.add("diff_term",IndexType::TheCellType(),1,ca_derdiffterm,grow_box_by_one);
-    derive_lst.addComponent("diff_term",desc_lst,State_Type,Density,NUM_STATE);
-
-
-  }
-#endif
-
   //
   // Vorticity
   //
@@ -669,14 +620,6 @@ Castro::variableSetUp ()
     source_names[n] = "";
 
   source_names[ext_src] = "user-defined external";
-
-#ifdef DIFFUSION
-  source_names[diff_src] = "diffusion";
-#endif
-
-#ifdef HYBRID_MOMENTUM
-  source_names[hybrid_src] = "hybrid";
-#endif
 
 #ifdef GRAVITY
   source_names[grav_src] = "gravity";

@@ -28,20 +28,6 @@ ifeq ($(USE_GRAV), TRUE)
 CEXE_sources += Castro_gravity.cpp
 endif
 
-ifeq ($(USE_POINTMASS), TRUE)
-CEXE_sources += Castro_pointmass.cpp
-endif
-
 ifeq ($(USE_ROTATION), TRUE)
 CEXE_sources += Castro_rotation.cpp
-endif
-
-ifeq ($(USE_DIFFUSION), TRUE)
-CEXE_sources += Castro_diffusion.cpp
-CEXE_sources += Diffusion.cpp
-CEXE_headers += Diffusion.H
-endif
-
-ifeq ($(USE_HYBRID_MOMENTUM), TRUE)
-CEXE_sources += Castro_hybrid.cpp
 endif

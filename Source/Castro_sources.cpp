@@ -34,16 +34,6 @@ Castro::source_flag(int src)
 	else
 	    return false;
 
-#ifdef DIFFUSION
-    case diff_src:
-	return true;
-#endif
-
-#ifdef HYBRID_MOMENTUM
-    case hybrid_src:
-	return true;
-#endif
-
 #ifdef GRAVITY
     case grav_src:
 	if (do_grav)
@@ -160,18 +150,6 @@ Castro::construct_old_source(int src, Real time, Real dt, int amr_iteration, int
 	construct_old_ext_source(time, dt);
 	break;
 
-#ifdef DIFFUSION
-    case diff_src:
-	construct_old_diff_source(time, dt);
-	break;
-#endif
-
-#ifdef HYBRID_MOMENTUM
-    case hybrid_src:
-	construct_old_hybrid_source(time, dt);
-	break;
-#endif
-
 #ifdef GRAVITY
     case grav_src:
 	construct_old_gravity_source(time, dt);
@@ -200,18 +178,6 @@ Castro::construct_new_source(int src, Real time, Real dt, int amr_iteration, int
     case ext_src:
 	construct_new_ext_source(time, dt);
 	break;
-
-#ifdef DIFFUSION
-    case diff_src:
-	construct_new_diff_source(time, dt);
-	break;
-#endif
-
-#ifdef HYBRID_MOMENTUM
-    case hybrid_src:
-	construct_new_hybrid_source(time, dt);
-	break;
-#endif
 
 #ifdef GRAVITY
     case grav_src:

@@ -32,12 +32,6 @@ enum StateType { State_Type = 0,
 
 enum sources { ext_src = 0,
 
-#ifdef DIFFUSION
-               diff_src,
-#endif
-#ifdef HYBRID_MOMENTUM
-               hybrid_src,
-#endif
 #ifdef GRAVITY
                grav_src,
 #endif
@@ -353,31 +347,6 @@ public:
 
     void computeTemp (amrex::MultiFab& State);
 
-#ifdef DIFFUSION
-    void construct_old_diff_source(amrex::Real time, amrex::Real dt);
-    void construct_new_diff_source(amrex::Real time, amrex::Real dt);
-
-    void getTempDiffusionTerm (amrex::Real time, amrex::MultiFab& DiffTerm, int is_old);
-    void getEnthDiffusionTerm (amrex::Real time, amrex::MultiFab& DiffTerm, int is_old);
-#if (BL_SPACEDIM == 1)
-    void getSpecDiffusionTerm (amrex::Real time, amrex::MultiFab& DiffTerm, int is_old);
-#endif
-#if (BL_SPACEDIM == 1)
-    void getViscousTerm (amrex::Real time, amrex::MultiFab& ViscousTermforMomentum, amrex::MultiFab& ViscousTermforEnergy);
-    void getFirstViscousTerm (amrex::Real time, amrex::MultiFab& ViscousTerm);
-    void getSecndViscousTerm (amrex::Real time, amrex::MultiFab& ViscousTerm);
-    void getViscousTermForEnergy (amrex::Real time, amrex::MultiFab& ViscousTermforEnergy);
-#endif
-    void add_temp_diffusion_to_source (amrex::MultiFab& ext_src, amrex::MultiFab& DiffTerm, amrex::Real t, int is_old);
-#if (BL_SPACEDIM == 1)
-    void add_spec_diffusion_to_source (amrex::MultiFab& ext_src, amrex::MultiFab& DiffTerm, amrex::Real t, int is_old);
-#endif
-#if (BL_SPACEDIM == 1)
-    void add_viscous_term_to_source   (amrex::MultiFab& ext_src, amrex::MultiFab& ViscousTermforMomentum,
-                                       amrex::MultiFab& ViscousTermforEnergy, amrex::Real t);
-#endif
-#endif
-
 #ifdef ROTATION
   void add_rotation_to_source(amrex::MultiFab& ext_src, amrex::MultiFab& RotationTerm, amrex::Real old_time);
   void time_center_rotation(amrex::MultiFab& S_new, amrex::MultiFab& OldRotationTerm, amrex::Real cur_time, amrex::Real dt);
@@ -405,16 +374,6 @@ public:
 
     void set_special_tagging_flag (amrex::Real time);
 
-#ifdef HYBRID_MOMENTUM
-    void construct_old_hybrid_source(amrex::Real time, amrex::Real dt);
-
-    void construct_new_hybrid_source(amrex::Real time, amrex::Real dt);
-
-    void fill_hybrid_hydro_source(amrex::MultiFab& state, amrex::MultiFab& source);
-
-    void hybrid_sync(amrex::MultiFab& state);
-#endif
-
     void add_force_to_sources (amrex::MultiFab& force, amrex::MultiFab& sources, amrex::MultiFab& state);
 
     void apply_source_to_state (amrex::MultiFab& state, amrex::MultiFab& source, amrex::Real dt);
@@ -427,9 +386,6 @@ public:
 
     static int       NUM_STATE;
     static int       Density, Xmom, Ymom, Zmom, Eden, Eint, Temp;
-#ifdef HYBRID_MOMENTUM
-    static int       Rmom, Lmom, Pmom;
-#endif
 #ifdef SHOCK_VAR
     static int       Shock;
 #endif
@@ -623,7 +579,7 @@ protected:
     static class Gravity *gravity;
 
     // There can be only one Diffusion object, it covers all levels:
-    static class Diffusion *diffusion;
+    //static class Diffusion *diffusion;
 
     // Name of the probin file and its length.
     static std::string probin_file;

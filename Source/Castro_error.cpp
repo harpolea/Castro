@@ -1,10 +1,6 @@
 
 #include "Castro.H"
 #include "Castro_error_F.H"
-#ifdef RADIATION
-# include "Radiation.H"
-# include "RAD_F.H"
-#endif
 
 using std::string;
 using namespace amrex;
@@ -35,15 +31,5 @@ Castro::ErrorSetUp ()
 #endif
 
 //   err_list.add("entropy",1,ErrorRec::Special,ca_enterror);
-
-#ifdef REACTIONS
-    err_list.add("t_sound_t_enuc",0,ErrorRec::Special,ca_nucerror);
-#endif
-
-#ifdef RADIATION
-    if (do_radiation && !Radiation::do_multigroup) {
-      err_list.add("rad",1,ErrorRec::Special,ca_raderror);
-    }
-#endif
 
 }

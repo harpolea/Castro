@@ -23,7 +23,7 @@ public:
   int NoComposite();
   int DoCompositeCorrection();
   int test_results_of_solves ();
-  
+
   void set_mass_offset(amrex::Real time, bool multi_level=true);
 
   amrex::Array<std::unique_ptr<amrex::MultiFab> >& get_grad_phi_prev(int level);
@@ -43,7 +43,7 @@ public:
 		      int               is_new);
 
 
-  void solve_for_delta_phi (int                        crse_level, 
+  void solve_for_delta_phi (int                        crse_level,
                             int                        fine_level,
                             const amrex::Array<amrex::MultiFab*>&          rhs,
                             const amrex::Array<amrex::MultiFab*>&          delta_phi,
@@ -54,7 +54,7 @@ public:
 
   void multilevel_solve_for_new_phi (int level, int finest_level,
                                      int use_previous_phi_as_guess = 0);
-  void actual_multilevel_solve      (int level, int finest_level, 
+  void actual_multilevel_solve      (int level, int finest_level,
                                      const amrex::Array<amrex::Array<amrex::MultiFab*> >& grad_phi,
 				     int is_new,
                                      int use_previous_phi_as_guess = 0);
@@ -67,7 +67,7 @@ public:
 					amrex::MultiFab& cml_phi,
 					amrex::Array<std::unique_ptr<amrex::MultiFab> >& cml_gphi);
 
-  void GetCrsePhi(int level, 
+  void GetCrsePhi(int level,
                   amrex::MultiFab& phi_crse,
                   amrex::Real time);
 
@@ -167,9 +167,6 @@ protected:
   void unweight_edges(int level, const amrex::Array<amrex::MultiFab*>& edges);
 #endif
 
-#ifdef POINTMASS
-    void add_pointmass_to_gravity (int level, amrex::MultiFab& phi, amrex::MultiFab& grav_vector, amrex::Real point_mass);
-#endif
 
 private:
 

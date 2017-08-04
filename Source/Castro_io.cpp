@@ -14,18 +14,6 @@
 #include "Castro_io.H"
 #include <AMReX_ParmParse.H>
 
-#ifdef RADIATION
-#include "Radiation.H"
-#endif
-
-#ifdef SELF_GRAVITY
-#include "Gravity.H"
-#endif
-
-#ifdef DIFFUSION
-#include "Diffusion.H"
-#endif
-
 #ifdef _OPENMP
 #include <omp.h>
 #endif
@@ -73,7 +61,7 @@ Castro::restart (Amr&     papa,
    	    if (CastroHeaderFile.good()) {
 		char foo[256];
 		// first line: Checkpoint version: ?
-		CastroHeaderFile.getline(foo, 256, ':');  
+		CastroHeaderFile.getline(foo, 256, ':');
 		CastroHeaderFile >> input_version;
    		CastroHeaderFile.close();
   	    } else {
@@ -82,39 +70,19 @@ Castro::restart (Amr&     papa,
    	}
   	ParallelDescriptor::Bcast(&input_version, 1, ParallelDescriptor::IOProcessorNumber());
     }
- 
+
     BL_ASSERT(input_version >= 0);
- 
+
     // also need to mod checkPoint function to store the new version in a text file
 
     AmrLevel::restart(papa,is,bReadSpecial);
 
     if (input_version == 0) { // old checkpoint without PhiGrav_Type
-#ifdef SELF_GRAVITY
-      state[PhiGrav_Type].restart(desc_lst[PhiGrav_Type], state[Gravity_Type]);
-#endif
     }
 
     if (input_version < 3) { // old checkpoint without Source_Type
       state[Source_Type].restart(desc_lst[Source_Type], state[State_Type]);
     }
-
-#ifdef REACTIONS
-    if (input_version < 4) { // old checkpoint without Reactions_Type
-      state[Reactions_Type].restart(desc_lst[Reactions_Type], state[State_Type]);
-    }
-#endif
-
-#ifdef SDC
-    if (input_version < 5) { // old checkpoint without SDC_Source_Type
-      state[SDC_Source_Type].restart(desc_lst[SDC_Source_Type], state[State_Type]);
-    }
-#ifdef REACTIONS
-    if (input_version < 5) { // old checkpoint without SDC_React_Type
-      state[SDC_React_Type].restart(desc_lst[SDC_React_Type], state[State_Type]);
-    }
-#endif
-#endif
 
     // For versions < 2, we didn't store all three components
     // of the momenta in the checkpoint when doing 1D or 2D simulations.
@@ -169,43 +137,6 @@ Castro::restart (Amr&     papa,
       // Now swap the pointers.
 
       get_state_data(State_Type).replaceNewData(new_data);
-
-    }
- 
-#endif
-
-#ifdef REACTIONS
-
-    // For versions < 4, the way we stored information for the burning timestep 
-    // limiter was to write out the maximum value of de/dt to the ReactHeader file.
-
-    if (input_version < 4) {
-
-      // Get data from the reactions header file.
-
-      Real max_dedt = 0.0;
-
-      // Note that we want all grids on the domain to have this value,
-      // so we have all processors read this in. We could do the same
-      // with a broadcast from the IOProcessor but this avoids communication.
-
-      std::ifstream ReactFile;
-      std::string FullPathReactFile = parent->theRestartFile();
-      FullPathReactFile += "/ReactHeader";
-      ReactFile.open(FullPathReactFile.c_str(), std::ios::in);
-
-      // Maximum rate of change of internal energy in last timestep.
-
-      ReactFile >> max_dedt;
-
-      ReactFile.close();
-
-      // Set the energy change to the components of the
-      // reactions MultiFab; it will get overwritten later
-      // but will achieve our desired effect of being
-      // utilized in the first timestep calculation.
-
-      get_new_data(Reactions_Type).setVal(max_dedt);
 
     }
 
@@ -265,7 +196,7 @@ Castro::restart (Amr&     papa,
 	for (int j = 0; j < len; j++)
 	  int_dir_name[j] = (int) dir_for_pass[j];
 
-	problem_restart(int_dir_name.dataPtr(), &len);      
+	problem_restart(int_dir_name.dataPtr(), &len);
 
 	delete [] dir_for_pass;
 
@@ -296,7 +227,7 @@ Castro::restart (Amr&     papa,
           Box domain(geom.Domain());
           int d,lo=0,hi=0;
           if (Geometry::IsRZ()) {
-             if (grown_factor != 2) 
+             if (grown_factor != 2)
                 amrex::Abort("Must have grown_factor = 2");
 
              d = 0;
@@ -323,7 +254,7 @@ Castro::restart (Amr&     papa,
                 } else if (grown_factor == 3) {
                    lo =   (dlen)/3    ;
                    hi = 2*(dlen)/3 - 1;
-                } else { 
+                } else {
                    amrex::Abort("Must have grown_factor = 2 or 3");
                 }
                 orig_domain.setSmall(d,lo);
@@ -364,43 +295,6 @@ Castro::restart (Amr&     papa,
 
     if (grown_factor > 1 && level == 1)
         getLevel(0).avgDown();
-
-#ifdef SELF_GRAVITY
-#if (BL_SPACEDIM > 1)
-    if ( (level == 0) && (spherical_star == 1) ) {
-       MultiFab& S_new = get_new_data(State_Type);
-       int nc = S_new.nComp();
-       int n1d = get_numpts();
-       allocate_outflow_data(&n1d,&nc);
-       int is_new = 1;
-       make_radial_data(is_new);
-    }
-#endif
-
-    if (do_grav && level == 0) {
-       BL_ASSERT(gravity == 0);
-       gravity = new Gravity(parent,parent->finestLevel(),&phys_bc,Density);
-    }
-#endif
-
-#ifdef DIFFUSION
-    if (level == 0) {
-       BL_ASSERT(diffusion == 0);
-       diffusion = new Diffusion(parent,&phys_bc);
-    }
-#endif
-
-#ifdef RADIATION
-    if (do_radiation) {
-      if (radiation == 0) {
-        // radiation is a static object, only alloc if not already there
-        int rad_restart = 1; // disables quasi-steady initialization
-        radiation = new Radiation(parent, this, rad_restart);
-      }
-      radiation->regrid(level, grids, dmap);
-      radiation->restart(level, grids, dmap, parent->theRestartFile(), is);
-    }
-#endif
 }
 
 void
@@ -410,34 +304,10 @@ Castro::set_state_in_checkpoint (Array<int>& state_in_checkpoint)
     state_in_checkpoint[i] = 1;
 
   for (int i=0; i<num_state_type; ++i) {
-#ifdef SELF_GRAVITY
-    if (input_version == 0 && i == PhiGrav_Type) {
-      // We are reading an old checkpoint with no PhiGrav_Type
-      state_in_checkpoint[i] = 0;
-    }
-#endif
     if (input_version < 3 && i == Source_Type) {
       // We are reading an old checkpoint with no Source_Type
       state_in_checkpoint[i] = 0;
     }
-#ifdef REACTIONS
-    if (input_version < 4 && i == Reactions_Type) {
-      // We are reading an old checkpoint with no Reactions_Type
-      state_in_checkpoint[i] = 0;
-    }
-#endif
-#ifdef SDC
-    if (input_version < 5 && i == SDC_Source_Type) {
-      // We are reading an old checkpoint with no SDC_Source_Type
-      state_in_checkpoint[i] = 0;
-    }
-#ifdef REACTIONS
-    if (input_version < 5 && i == SDC_React_Type) {
-      // We are reading an old checkpoint with no SDC_React_Type
-      state_in_checkpoint[i] = 0;
-    }
-#endif
-#endif
   }
 }
 
@@ -448,16 +318,6 @@ Castro::checkPoint(const std::string& dir,
                    bool dump_old_default)
 {
   AmrLevel::checkPoint(dir, os, how, dump_old);
-
-#ifdef RADIATION
-  if (do_radiation) {
-    radiation->checkPoint(level, dir, os, how);
-  }
-#endif
-
-#ifdef PARTICLES
-  ParticleCheckPoint(dir);
-#endif
 
   if (level == 0 && ParallelDescriptor::IOProcessor())
     {
@@ -509,7 +369,7 @@ Castro::checkPoint(const std::string& dir,
 	    for (int j = 0; j < len; j++)
 		int_dir_name[j] = (int) dir_for_pass[j];
 
-	    problem_checkpoint(int_dir_name.dataPtr(), &len);      
+	    problem_checkpoint(int_dir_name.dataPtr(), &len);
 
 	    delete [] dir_for_pass;
 	}
@@ -533,33 +393,11 @@ Castro::setPlotVariables ()
 {
   AmrLevel::setPlotVariables();
 
-#ifdef RADIATION
-  if (Radiation::nNeutrinoSpecies > 0 &&
-      Radiation::plot_neutrino_group_energies_total == 0) {
-    char rad_name[10];
-    for (int j = 0; j < Radiation::nNeutrinoSpecies; j++) {
-      for (int i = 0; i < Radiation::nNeutrinoGroups[j]; i++) {
-        sprintf(rad_name, "rads%dg%d", j, i);
-        parent->deleteStatePlotVar(rad_name);
-      }
-    }
-  }
-#endif
-
   // Don't add the Source_Type data to the plotfile, we only
   // want to store it in the checkpoints.
 
   for (int i = 0; i < desc_lst[Source_Type].nComp(); i++)
       parent->deleteStatePlotVar(desc_lst[Source_Type].name(i));
-
-#ifdef SDC
-  for (int i = 0; i < desc_lst[SDC_Source_Type].nComp(); i++)
-      parent->deleteStatePlotVar(desc_lst[SDC_Source_Type].name(i));
-#ifdef REACTIONS
-  for (int i = 0; i < desc_lst[SDC_React_Type].nComp(); i++)
-      parent->deleteStatePlotVar(desc_lst[SDC_React_Type].name(i));
-#endif
-#endif
 
   ParmParse pp("castro");
 
@@ -669,7 +507,7 @@ Castro::writeJobInfo (const std::string& dir)
   jobInfoFile << "COMP version:  " << buildInfoGetCompVersion() << "\n";
 
   jobInfoFile << "\n";
-  
+
   jobInfoFile << "C++ compiler:  " << buildInfoGetCXXName() << "\n";
   jobInfoFile << "C++ flags:     " << buildInfoGetCXXFlags() << "\n";
 
@@ -700,7 +538,7 @@ Castro::writeJobInfo (const std::string& dir)
   if (strlen(githash2) > 0) {
     jobInfoFile << "AMReX        git describe: " << githash2 << "\n";
   }
-  if (strlen(githash3) > 0) {	
+  if (strlen(githash3) > 0) {
     jobInfoFile << "Microphysics git describe: " << githash3 << "\n";
   }
 
@@ -788,15 +626,15 @@ Castro::writeJobInfo (const std::string& dir)
       //
       ca_get_spec_names(int_spec_names.dataPtr(),&i,&len);
       char* spec_name = new char[len+1];
-      for (int j = 0; j < len; j++) 
+      for (int j = 0; j < len; j++)
 	spec_name[j] = int_spec_names[j];
       spec_name[len] = '\0';
 
       // get A and Z
       ca_get_spec_az(&i, &Aion, &Zion);
 
-      jobInfoFile << 
-	std::setw(6) << i << SkipSpace << 
+      jobInfoFile <<
+	std::setw(6) << i << SkipSpace <<
 	std::setw(mlen+1) << std::setfill(' ') << spec_name << SkipSpace <<
 	std::setw(7) << Aion << SkipSpace <<
 	std::setw(7) << Zion << "\n";
@@ -822,10 +660,6 @@ Castro::writePlotFile (const std::string& dir,
                        VisMF::How     how)
 {
 
-#ifdef PARTICLES
-  ParticlePlotFile(dir);
-#endif
-
     int i, n;
     //
     // The list of indices of State to write to plotfile.
@@ -849,17 +683,6 @@ Castro::writePlotFile (const std::string& dir,
     {
         if (parent->isDerivePlotVar(it->name()))
         {
-#ifdef PARTICLES
-            if (it->name() == "particle_count" ||
-                it->name() == "total_particle_count")
-            {
-                if (Castro::theTracerPC())
-                {
-                    derive_names.push_back(it->name());
-                    num_derive++;
-                }
-            } else
-#endif
 	    {
 		derive_names.push_back(it->name());
 		num_derive++;
@@ -868,10 +691,6 @@ Castro::writePlotFile (const std::string& dir,
     }
 
     int n_data_items = plot_var_map.size() + num_derive;
-
-#ifdef RADIATION
-    if (Radiation::nplotvar > 0) n_data_items += Radiation::nplotvar;
-#endif
 
     Real cur_time = state[State_Type].curTime();
 
@@ -904,11 +723,6 @@ Castro::writePlotFile (const std::string& dir,
             os << rec->variableName(0) << '\n';
         }
 
-#ifdef RADIATION
-	for (i=0; i<Radiation::nplotvar; ++i)
-	    os << Radiation::plotvar_names[i] << '\n';
-#endif
-
         os << BL_SPACEDIM << '\n';
         os << parent->cumTime() << '\n';
         int f_lev = parent->finestLevel();
@@ -937,18 +751,6 @@ Castro::writePlotFile (const std::string& dir,
         os << (int) Geometry::Coord() << '\n';
         os << "0\n"; // Write bndry data.
 
-#ifdef RADIATION
-	if (do_radiation && Radiation::do_multigroup) {
-	  std::ofstream groupfile;
-	  std::string FullPathGroupFile = dir;
-	  FullPathGroupFile += "/RadiationGroups";
-	  groupfile.open(FullPathGroupFile.c_str(), std::ios::out);
-
-	  radiation->write_groups(groupfile);
-
-	  groupfile.close();
-	}
-#endif
 	writeJobInfo(dir);
 
     }
@@ -1033,13 +835,6 @@ Castro::writePlotFile (const std::string& dir,
 	    cnt++;
 	}
     }
-
-#ifdef RADIATION
-    if (Radiation::nplotvar > 0) {
-	MultiFab::Copy(plotMF,*(radiation->plotvar[level]),0,cnt,Radiation::nplotvar,0);
-	cnt += Radiation::nplotvar;
-    }
-#endif
 
     //
     // Use the Full pathname when naming the MultiFab.

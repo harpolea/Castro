@@ -82,24 +82,6 @@ static amrex::Real react_T_max;
 static amrex::Real react_rho_min;
 static amrex::Real react_rho_max;
 static int disable_shock_burning;
-#ifdef DIFFUSION
-static int diffuse_temp;
-#endif
-#ifdef DIFFUSION
-static int diffuse_enth;
-#endif
-#ifdef DIFFUSION
-static int diffuse_spec;
-#endif
-#ifdef DIFFUSION
-static int diffuse_vel;
-#endif
-#ifdef DIFFUSION
-static amrex::Real diffuse_cutoff_density;
-#endif
-#ifdef DIFFUSION
-static amrex::Real diffuse_cond_scale_fac;
-#endif
 static int do_grav;
 static int moving_center;
 static int grav_source_type;

@@ -17,10 +17,6 @@ ca_f90EXE_sources += problem_derive_nd.f90
 ca_F90EXE_sources += sponge_nd.F90
 ca_f90EXE_sources += riemann_util.f90
 
-ifeq ($(USE_HYBRID_MOMENTUM), TRUE)
-ca_F90EXE_sources += hybrid_advection_nd.F90
-endif
-
 ca_F90EXE_sources += flatten_nd.F90
 
 ca_f90EXE_sources += math.f90
@@ -33,19 +29,10 @@ ca_f90EXE_sources += prescribe_grav_nd.f90
 ca_f90EXE_sources += Gravity_nd.f90
 ca_F90EXE_sources += gravity_sources_nd.F90
 endif
-
-ifeq ($(USE_POINTMASS), TRUE)
-ca_f90EXE_sources += pointmass_nd.f90
-endif
-
 ifeq ($(USE_ROTATION), TRUE)
 ca_f90EXE_sources += Rotation_nd.f90
 ca_F90EXE_sources += Rotation_frequency.F90
 ca_F90EXE_sources += rotation_sources_nd.F90
-endif
-
-ifeq ($(USE_REACT), TRUE)
-ca_F90EXE_sources += React_nd.F90
 endif
 
 ifeq ($(DIMENSION_AGNOSTIC), TRUE)
@@ -54,11 +41,6 @@ ca_F90EXE_sources += filcc_nd.F90
 ca_F90EXE_sources += ext_src_nd.F90
 ca_F90EXE_sources += Prob_nd.F90
 ca_F90EXE_sources += problem_tagging_nd.F90
-endif
-
-ifeq ($(USE_DIFFUSION), TRUE)
-ca_f90EXE_sources += Diffusion_nd.f90
-ca_f90EXE_sources += Enthalpy_nd.f90
 endif
 
 ca_F90EXE_sources += castro_c_interfaces_nd.F90

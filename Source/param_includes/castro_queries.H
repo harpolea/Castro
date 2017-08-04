@@ -82,24 +82,6 @@ pp.query("react_T_max", react_T_max);
 pp.query("react_rho_min", react_rho_min);
 pp.query("react_rho_max", react_rho_max);
 pp.query("disable_shock_burning", disable_shock_burning);
-#ifdef DIFFUSION
-pp.query("diffuse_temp", diffuse_temp);
-#endif
-#ifdef DIFFUSION
-pp.query("diffuse_enth", diffuse_enth);
-#endif
-#ifdef DIFFUSION
-pp.query("diffuse_spec", diffuse_spec);
-#endif
-#ifdef DIFFUSION
-pp.query("diffuse_vel", diffuse_vel);
-#endif
-#ifdef DIFFUSION
-pp.query("diffuse_cutoff_density", diffuse_cutoff_density);
-#endif
-#ifdef DIFFUSION
-pp.query("diffuse_cond_scale_fac", diffuse_cond_scale_fac);
-#endif
 pp.query("do_grav", do_grav);
 pp.query("moving_center", moving_center);
 pp.query("grav_source_type", grav_source_type);

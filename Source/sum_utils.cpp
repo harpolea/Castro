@@ -3,11 +3,6 @@
 #include <Castro.H>
 #include <Castro_F.H>
 
-#ifdef SELF_GRAVITY
-#include <Gravity.H>
-#include <Gravity_F.H>
-#endif
-
 using namespace amrex;
 
 Real
@@ -64,7 +59,7 @@ Castro::volWgtSum (const std::string& name,
 
 #ifdef _OPENMP
 #pragma omp parallel reduction(+:sum)
-#endif    
+#endif
     for (MFIter mfi(*mf,true); mfi.isValid(); ++mfi)
     {
         FArrayBox& fab = (*mf)[mfi];
@@ -112,11 +107,11 @@ Castro::volWgtSquaredSum (const std::string& name,
 
 #ifdef _OPENMP
 #pragma omp parallel reduction(+:sum)
-#endif    
+#endif
     for (MFIter mfi(*mf,true); mfi.isValid(); ++mfi)
     {
         FArrayBox& fab = (*mf)[mfi];
-    
+
         Real s = 0.0;
         const Box& box  = mfi.tilebox();
         const int* lo   = box.loVect();
@@ -161,11 +156,11 @@ Castro::locWgtSum (const std::string& name,
 
 #ifdef _OPENMP
 #pragma omp parallel reduction(+:sum)
-#endif    
+#endif
     for (MFIter mfi(*mf,true); mfi.isValid(); ++mfi)
     {
         FArrayBox& fab = (*mf)[mfi];
-    
+
         Real s = 0.0;
         const Box& box  = mfi.tilebox();
         const int* lo   = box.loVect();
@@ -211,11 +206,11 @@ Castro::locWgtSum2D (const std::string& name,
 
 #ifdef _OPENMP
 #pragma omp parallel reduction(+:sum)
-#endif    
+#endif
     for (MFIter mfi(*mf,true); mfi.isValid(); ++mfi)
     {
         FArrayBox& fab = (*mf)[mfi];
-    
+
         Real s = 0.0;
         const Box& box  = mfi.tilebox();
         const int* lo   = box.loVect();
@@ -239,7 +234,7 @@ Castro::locWgtSum2D (const std::string& name,
 }
 
 Real
-Castro::volWgtSumMF (const MultiFab& mf, int comp, bool local) 
+Castro::volWgtSumMF (const MultiFab& mf, int comp, bool local)
 {
     BL_PROFILE("Castro::volWgtSumMF()");
 
@@ -248,7 +243,7 @@ Castro::volWgtSumMF (const MultiFab& mf, int comp, bool local)
 
 #ifdef _OPENMP
 #pragma omp parallel reduction(+:sum)
-#endif    
+#endif
     for (MFIter mfi(mf,true); mfi.isValid(); ++mfi)
     {
         const FArrayBox& fab = mf[mfi];
@@ -277,7 +272,7 @@ Castro::volWgtSumMF (const MultiFab& mf, int comp, bool local)
 
 Real
 Castro::volWgtSumOneSide (const std::string& name,
-                          Real               time, 
+                          Real               time,
                           int                side,
                           int                bdir,
 			  bool               local)
@@ -304,11 +299,11 @@ Castro::volWgtSumOneSide (const std::string& name,
 
 #ifdef _OPENMP
 #pragma omp parallel reduction(+:sum)
-#endif    
+#endif
     for (MFIter mfi(*mf,true); mfi.isValid(); ++mfi)
     {
         FArrayBox& fab = (*mf)[mfi];
-    
+
         Real s = 0.0;
         const Box& box  = mfi.tilebox();
         const int* lo   = box.loVect();
@@ -329,7 +324,7 @@ Castro::volWgtSumOneSide (const std::string& name,
         // Note that this routine will do a volume weighted sum of
         // whatever quantity is passed in, not strictly the "mass".
         //
-        
+
         bool doSum = false;
         if ( side == 0 && *(lo + bdir) <= *(hiLeftPtr + bdir) ) {
           doSum = true;
@@ -341,7 +336,7 @@ Castro::volWgtSumOneSide (const std::string& name,
             loFinal   = lo;
             hiFinal   = hiLeftPtr;
 	  }
-	}  
+	}
         else if ( side == 1 && *(hi + bdir) >= *(loRightPtr + bdir) ) {
           doSum = true;
           if ( *(lo + bdir) >= *(loRightPtr + bdir) ) {
@@ -360,9 +355,9 @@ Castro::volWgtSumOneSide (const std::string& name,
 		     ZFILL(dx),BL_TO_FORTRAN_3D(volume[mfi]),&s);
 
         }
-        
+
         sum += s;
-		
+
     }
 
     if (!local)
@@ -374,7 +369,7 @@ Castro::volWgtSumOneSide (const std::string& name,
 Real
 Castro::locWgtSumOneSide (const std::string& name,
                           Real               time,
-                          int                idir, 
+                          int                idir,
                           int                side,
                           int                bdir,
 			  bool               local)
@@ -388,8 +383,8 @@ Castro::locWgtSumOneSide (const std::string& name,
 
     Real sum            = 0.0;
     const Real* dx      = geom.CellSize();
-    auto        mf      = derive(name,time,0); 
-    const int* domhi    = geom.Domain().hiVect(); 
+    auto        mf      = derive(name,time,0);
+    const int* domhi    = geom.Domain().hiVect();
 
     BL_ASSERT(mf);
 
@@ -401,7 +396,7 @@ Castro::locWgtSumOneSide (const std::string& name,
 
 #ifdef _OPENMP
 #pragma omp parallel reduction(+:sum)
-#endif        
+#endif
     for (MFIter mfi(*mf,true); mfi.isValid(); ++mfi)
     {
         FArrayBox& fab = (*mf)[mfi];
@@ -420,11 +415,11 @@ Castro::locWgtSumOneSide (const std::string& name,
         const int* hiLeftPtr  = hiLeft;
         const int* loRightPtr = loRight;
         const int* loFinal;
-        const int* hiFinal;        
+        const int* hiFinal;
         //
         // Note that this routine will do a volume weighted sum of
         // whatever quantity is passed in, not strictly the "mass".
-        // 
+        //
 
         bool doSum = false;
         if ( side == 0 && *(lo + bdir) <= *(hiLeftPtr + bdir) ) {
@@ -437,7 +432,7 @@ Castro::locWgtSumOneSide (const std::string& name,
             loFinal   = box.loVect();
             hiFinal   = hiLeftPtr;
 	  }
-	}  
+	}
         else if ( side == 1 && *(hi + bdir) >= *(loRightPtr + bdir) ) {
           doSum = true;
           if ( *(lo + bdir) >= *(loRightPtr + bdir) ) {
@@ -456,9 +451,9 @@ Castro::locWgtSumOneSide (const std::string& name,
 			ZFILL(dx),BL_TO_FORTRAN_3D(volume[mfi]),&s,idir);
 
         }
-     
+
         sum += s;
-        
+
     }
 
     if (!local)
@@ -469,7 +464,7 @@ Castro::locWgtSumOneSide (const std::string& name,
 }
 
 Real
-Castro::volProductSum (const std::string& name1, 
+Castro::volProductSum (const std::string& name1,
                        const std::string& name2,
                        Real time, bool local)
 {
@@ -492,12 +487,12 @@ Castro::volProductSum (const std::string& name1,
 
 #ifdef _OPENMP
 #pragma omp parallel reduction(+:sum)
-#endif    
+#endif
     for (MFIter mfi(*mf1,true); mfi.isValid(); ++mfi)
     {
         FArrayBox& fab1 = (*mf1)[mfi];
         FArrayBox& fab2 = (*mf2)[mfi];
-    
+
         Real s = 0.0;
         const Box& box  = mfi.tilebox();
         const int* lo   = box.loVect();
@@ -505,7 +500,7 @@ Castro::volProductSum (const std::string& name1,
 
 	ca_sumproduct(ARLIM_3D(lo),ARLIM_3D(hi),BL_TO_FORTRAN_3D(fab1),
 		      BL_TO_FORTRAN_3D(fab2),ZFILL(dx),BL_TO_FORTRAN_3D(volume[mfi]),&s);
-        
+
         sum += s;
     }
 
@@ -537,11 +532,11 @@ Castro::locSquaredSum (const std::string& name,
 
 #ifdef _OPENMP
 #pragma omp parallel reduction(+:sum)
-#endif    
+#endif
     for (MFIter mfi(*mf,true); mfi.isValid(); ++mfi)
     {
         FArrayBox& fab = (*mf)[mfi];
-    
+
         Real s = 0.0;
         const Box& box  = mfi.tilebox();
         const int* lo   = box.loVect();
@@ -558,4 +553,3 @@ Castro::locSquaredSum (const std::string& name,
 
     return sum;
 }
-

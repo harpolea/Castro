@@ -502,7 +502,7 @@ Gravity::solve_for_delta_phi (int                        crse_level,
 		coeffs[ilev][i].reset(new MultiFab(amrex::convert(grids[amr_lev],
                                                                   IntVect::TheDimensionVector(i)),
                                                    dmap[amr_lev], 1, 0));
-						   
+
 		coeffs[ilev][i]->setVal(1.0);
 	    }
 
@@ -654,7 +654,7 @@ Gravity::gravity_sync (int crse_level, int fine_level, const Array<MultiFab*>& d
 
     // Do multi-level solve for delta_phi.
 
-    solve_for_delta_phi(crse_level, fine_level, 
+    solve_for_delta_phi(crse_level, fine_level,
 			amrex::GetArrOfPtrs(rhs),
 			amrex::GetArrOfPtrs(delta_phi),
 			amrex::GetArrOfArrOfPtrs(ec_gdPhi));
@@ -974,13 +974,6 @@ Gravity::get_old_grav_vector(int level, MultiFab& grav_vector, Real time)
 	AmrLevel::FillPatch(*amrlev,grav_vector,ng,time,Gravity_Type,0,BL_SPACEDIM);
     }
 #endif
-
-#ifdef POINTMASS
-    Castro* cs = dynamic_cast<Castro*>(&parent->getLevel(level));
-    Real point_mass = cs->get_point_mass();
-    MultiFab& phi = LevelData[level]->get_old_data(PhiGrav_Type);
-    add_pointmass_to_gravity(level,phi,grav_vector,point_mass);
-#endif
 }
 
 void
@@ -1051,13 +1044,6 @@ Gravity::get_new_grav_vector(int level, MultiFab& grav_vector, Real time)
 	AmrLevel* amrlev = &parent->getLevel(level) ;
 	AmrLevel::FillPatch(*amrlev,grav_vector,ng,time,Gravity_Type,0,BL_SPACEDIM);
     }
-#endif
-
-#ifdef POINTMASS
-    Castro* cs = dynamic_cast<Castro*>(&parent->getLevel(level));
-    Real point_mass = cs->get_point_mass();
-    MultiFab& phi = LevelData[level]->get_new_data(PhiGrav_Type);
-    add_pointmass_to_gravity(level,phi,grav_vector,point_mass);
 #endif
 }
 
@@ -1590,7 +1576,7 @@ Gravity::fill_multipole_BCs(int crse_level, int fine_level, const Array<MultiFab
 
 	// Create a local copy of the RHS so that we can mask it.
 
-        MultiFab source(Rhs[lev - crse_level]->boxArray(), 
+        MultiFab source(Rhs[lev - crse_level]->boxArray(),
 			Rhs[lev - crse_level]->DistributionMap(), 1, 0);
 
 	MultiFab::Copy(source, *Rhs[lev - crse_level], 0, 0, 1, 0);
@@ -2153,26 +2139,6 @@ Gravity::set_mass_offset (Real time, bool multi_level)
     }
 }
 
-#ifdef POINTMASS
-void
-Gravity::add_pointmass_to_gravity (int level, MultiFab& phi, MultiFab& grav_vector, Real point_mass)
-{
-   const Real* dx     = parent->Geom(level).CellSize();
-   const Real* problo = parent->Geom(level).ProbLo();
-#ifdef _OPENMP
-#pragma omp parallel
-#endif
-   for (MFIter mfi(grav_vector,true); mfi.isValid(); ++mfi)
-   {
-       const Box& bx = mfi.growntilebox();
-
-       pm_add_to_grav(&point_mass,BL_TO_FORTRAN_3D(phi[mfi]),
-		      BL_TO_FORTRAN_3D(grav_vector[mfi]),
-                      ZFILL(problo),ZFILL(dx),
-		      ARLIM_3D(bx.loVect()),ARLIM_3D(bx.hiVect()));
-   }
-}
-#endif
 
 #if (BL_SPACEDIM == 3)
 Real
@@ -2589,7 +2555,7 @@ Gravity::solve_phi_with_fmg (int crse_level, int fine_level,
                 coeffs[ilev][i].reset(new MultiFab(amrex::convert(grids[amr_lev],
                                                                   IntVect::TheDimensionVector(i)),
                                                    dmap[amr_lev], 1, 0));
-						   
+
 		coeffs[ilev][i]->setVal(1.0);
 	    }
 
@@ -2761,9 +2727,9 @@ Gravity::update_max_rhs()
 
 	    for (int i = 0; i < BL_SPACEDIM ; i++) {
 		coeffs[lev][i].reset(new MultiFab(amrex::convert(grids[lev],
-                                                                 IntVect::TheDimensionVector(i)),                                   
+                                                                 IntVect::TheDimensionVector(i)),
                                                   dmap[lev], 1, 0));
-						  
+
 		coeffs[lev][i]->setVal(1.0);
 	    }
 

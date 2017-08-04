@@ -35,32 +35,10 @@ ifeq ($(USE_GRAV), TRUE)
    ifndef USE_SELF_GRAV
       USE_SELF_GRAV = TRUE
    endif
-   ifeq ($(USE_SELF_GRAV), TRUE)
-      DEFINES += -DSELF_GRAVITY
-   endif
 endif
 
 ifeq ($(USE_GR), TRUE)
    DEFINES += -DGR_GRAV
-endif
-
-ifeq ($(USE_REACT), TRUE)
-   DEFINES += -DREACTIONS
-endif
-
-ifeq ($(USE_SDC), TRUE)
-   USERSuffix   = .SDC
-   DEFINES += -DSDC
-endif
-
-ifeq ($(USE_DIFFUSION), TRUE)
-   DEFINES += -DDIFFUSION
-endif
-
-ifeq ($(USE_HYBRID_MOMENTUM), TRUE)
-   ifeq ($(DIM), 3)
-      DEFINES += -DHYBRID_MOMENTUM
-   endif
 endif
 
 ifeq ($(USE_SHOCK_VAR), TRUE)
@@ -71,25 +49,9 @@ ifeq ($(USE_AUX_UPDATE), TRUE)
    DEFINES += -DAUX_UPDATE
 endif
 
-ifeq ($(USE_POINTMASS), TRUE)
-   DEFINES += -DPOINTMASS
-endif
 
 ifeq ($(USE_POST_SIM), TRUE)
    DEFINES += -DDO_PROBLEM_POST_SIMULATION
-endif
-
-ifeq ($(USE_RAD), TRUE)
-   DEFINES += -DRADIATION
-   DEFINES += -DRAD_INTERP
-
-   ifeq ($(USE_NEUTRINO), TRUE)
-      DEFINES += -DNEUTRINO
-      USERSuffix   = .Neutrino
-      ifeq ($(USE_DUMPMODEL), TRUE)
-         DEFINES += -DHAS_DUMPMODEL
-      endif
-   endif
 endif
 
 ifeq ($(USE_MAESTRO_INIT), TRUE)
@@ -103,10 +65,6 @@ endif
 
 ifeq ($(USE_ROTATION), TRUE)
    DEFINES += -DROTATION
-endif
-
-ifeq ($(USE_RAD), TRUE)
-   USE_HYPRE := TRUE
 endif
 
 ifeq ($(USE_HYPRE), TRUE)
@@ -133,9 +91,6 @@ all: $(executable)
 ifdef MICROPHYSICS_HOME
    EOS_PATH := $(MICROPHYSICS_HOME)/EOS/$(strip $(EOS_dir))
    NETWORK_PATH := $(MICROPHYSICS_HOME)/networks/$(strip $(Network_dir))
-ifeq ($(USE_DIFFUSION), TRUE)
-   COND_PATH := $(MICROPHYSICS_HOME)/conductivity/$(strip $(Conductivity_dir))
-endif
 endif
 
 # if the EOS / network / conductivity name exists in
@@ -147,13 +102,6 @@ endif
 
 ifneq "$(wildcard $(NETWORK_HOME)/$(strip $(Network_dir)) )" ""
    NETWORK_PATH := $(NETWORK_HOME)/$(strip $(Network_dir))
-endif
-
-ifeq ($(USE_DIFFUSION), TRUE)
-ifneq "$(wildcard $(COND_HOME)/$(strip $(Conductivity_dir)) )" ""
-   COND_PATH := $(COND_HOME)/$(strip $(Conductivity_dir))
-endif
-   VISC_PATH := $(VISC_HOME)/constant
 endif
 
 # Problems can specify the input file for general_null by
@@ -195,57 +143,16 @@ ifdef MICROPHYSICS_HOME
    include $(MICROPHYSICS_HOME)/networks/Make.package
 endif
 
-ifeq ($(USE_DIFFUSION), TRUE)
-   include $(TOP)/Microphysics/conductivity/Make.package
-   include $(COND_HOME)/Make.package
-   include $(COND_PATH)/Make.package
-   include $(VISC_PATH)/Make.package
-   EXTERN_CORE += $(COND_HOME)
-   EXTERN_CORE += $(COND_PATH)
-   EXTERN_CORE += $(VISC_PATH)
-endif
-
-ifeq ($(USE_RAD), TRUE)
-   OPAC_PATH := $(TOP)/Microphysics/opacity/$(Opacity_dir)
-   include $(OPAC_PATH)/Make.package
-   EXTERN_CORE += $(OPAC_PATH)
-endif
-
 INCLUDE_LOCATIONS += $(EOS_HOME) $(EOS_PATH)
 VPATH_LOCATIONS   += $(EOS_HOME) $(EOS_PATH)
 
 INCLUDE_LOCATIONS += $(NETWORK_HOME) $(NETWORK_PATH)
 VPATH_LOCATIONS   += $(NETWORK_HOME) $(NETWORK_PATH)
 
-ifeq ($(USE_DIFFUSION), TRUE)
-   INCLUDE_LOCATIONS += $(COND_HOME) $(COND_PATH) $(VISC_PATH)
-   VPATH_LOCATIONS   += $(COND_HOME) $(COND_PATH) $(VISC_PATH)
-endif
-
-ifeq ($(USE_RAD), TRUE)
-   INCLUDE_LOCATIONS += $(OPAC_PATH)
-   VPATH_LOCATIONS   += $(OPAC_PATH)
-
-   LAPACK_dir    := $(TOP)/Util/LAPACK
-   include $(LAPACK_dir)/Make.package
-   EXTERN_CORE += $(TOP)/Util/LAPACK
-   INCLUDE_LOCATIONS += $(LAPACK_dir)
-   VPATH_LOCATIONS   += $(LAPACK_dir)
-endif
-
-
 # AMReX directories -- note the Make.package for these adds these
 # directories into VPATH_LOCATIONS and INCLUDE_LOCATIONS for us, so we
 # don't need to do it here
 Pdirs 	:= Base AmrCore Amr Boundary
-
-ifeq ($(USE_PARTICLES), TRUE)
-  Pdirs += Particle
-endif
-
-ifeq ($(USE_RAD), TRUE)
-   Pdirs += LinearSolvers/C_CellMG
-endif
 
 Bpack	+= $(foreach dir, $(Pdirs), $(AMREX_HOME)/Src/$(dir)/Make.package)
 
@@ -253,11 +160,6 @@ Bpack	+= $(foreach dir, $(Pdirs), $(AMREX_HOME)/Src/$(dir)/Make.package)
 # Castro directories
 Bdirs 	:= Source Source/param_includes Source/Src_$(DIM)d Source/Src_nd \
            constants Util/model_parser
-
-ifeq ($(USE_RAD), TRUE)
-Bdirs +=   Source/Radiation Source/Radiation/_interpbndry \
-           Source/Radiation/RadSrc_$(DIM)d Source/Radiation/RadSrc_nd
-endif
 
 Bpack	+= $(foreach dir, $(Bdirs), $(TOP)/$(dir)/Make.package)
 Blocs	+= $(foreach dir, $(Bdirs), $(TOP)/$(dir))
@@ -288,10 +190,6 @@ ifeq ($(USE_GRAV), TRUE)
    USE_MG = TRUE
 endif
 
-ifeq ($(USE_DIFFUSION), TRUE)
-   USE_MG = TRUE
-endif
-
 ifeq ($(USE_MG), TRUE)
    include $(AMREX_HOME)/Src/LinearSolvers/C_to_F_MG/Make.package
    include $(AMREX_HOME)/Src/LinearSolvers/F_MG/FParallelMG.mak
@@ -318,14 +216,6 @@ INCLUDE_LOCATIONS +=  $(AMREX_HOME)/Tools/C_scripts
 
 
 MNAMES := EOS=$(EOS_PATH) NETWORK=$(NETWORK_PATH)
-ifeq ($(USE_DIFFUSION), TRUE)
-   MNAMES += CONDUCTIVITY=$(COND_PATH)
-   MNAMES += VISCOSITY=$(VISC_PATH)
-endif
-
-ifeq ($(USE_RAD), TRUE)
-   MNAMES += OPACITY=$(OPAC_PATH)
-endif
 
 # we make AMReX_buildInfo.cpp as we make the .o file, so we can delete it
 # immediately.  this way if the build is interrupted, we are guaranteed

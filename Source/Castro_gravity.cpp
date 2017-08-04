@@ -95,7 +95,7 @@ Castro::construct_old_gravity(int amr_iteration, int amr_ncycle, Real time)
 	    gravity->test_level_grad_phi_prev(level);
 
 	}
- 
+
     }
 
     // Define the old gravity vector.
@@ -226,10 +226,6 @@ Castro::construct_new_gravity(int amr_iteration, int amr_ncycle, Real time)
 void Castro::construct_old_gravity_source(Real time, Real dt)
 {
 
-#ifdef SELF_GRAVITY
-    MultiFab& phi_old = get_old_data(PhiGrav_Type);
-    MultiFab& grav_old = get_old_data(Gravity_Type);
-#endif
 
     old_sources[grav_src]->setVal(0.0);
 
@@ -295,12 +291,6 @@ void Castro::construct_new_gravity_source(Real time, Real dt)
 			ARLIM_3D(domlo), ARLIM_3D(domhi),
 			BL_TO_FORTRAN_3D(S_old[mfi]),
 			BL_TO_FORTRAN_3D(S_new[mfi]),
-#ifdef SELF_GRAVITY
-			BL_TO_FORTRAN_3D(phi_old[mfi]),
-			BL_TO_FORTRAN_3D(phi_new[mfi]),
-			BL_TO_FORTRAN_3D(grav_old[mfi]),
-			BL_TO_FORTRAN_3D(grav_new[mfi]),
-#endif
 			BL_TO_FORTRAN_3D(volume[mfi]),
 			BL_TO_FORTRAN_3D((*fluxes[0])[mfi]),
 			BL_TO_FORTRAN_3D((*fluxes[1])[mfi]),

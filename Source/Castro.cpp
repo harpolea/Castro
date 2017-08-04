@@ -23,23 +23,6 @@
 #include <AMReX_ParmParse.H>
 #include <Castro_error_F.H>
 
-#ifdef RADIATION
-#include "Radiation.H"
-#include "RAD_F.H"
-#endif
-
-#ifdef PARTICLES
-#include <AMReX_Particles_F.H>
-#endif
-
-#ifdef SELF_GRAVITY
-#include "Gravity.H"
-#endif
-
-#ifdef DIFFUSION
-#include "Diffusion.H"
-#endif
-
 #ifdef _OPENMP
 #include <omp.h>
 #endif
@@ -66,11 +49,6 @@ int          Castro::Temp          = -1;
 int          Castro::Xmom          = -1;
 int          Castro::Ymom          = -1;
 int          Castro::Zmom          = -1;
-#ifdef HYBRID_MOMENTUM
-int          Castro::Rmom          = -1;
-int          Castro::Lmom          = -1;
-int          Castro::Pmom          = -1;
-#endif
 
 int          Castro::NumSpec       = 0;
 int          Castro::FirstSpec     = -1;
@@ -100,23 +78,6 @@ Array<Real> Castro::c_mol;
 
 #include <castro_defaults.H>
 
-#ifdef SELF_GRAVITY
-// the gravity object
-Gravity*     Castro::gravity  = 0;
-#endif
-
-#ifdef DIFFUSION
-// the diffusion object
-Diffusion*    Castro::diffusion  = 0;
-#endif
-
-#ifdef RADIATION
-int          Castro::do_radiation = -1;
-
-// the radiation object
-Radiation*   Castro::radiation = 0;
-#endif
-
 
 std::string  Castro::probin_file = "probin";
 
@@ -142,44 +103,6 @@ int          Castro::num_state_type = 0;
 void
 Castro::variableCleanUp ()
 {
-#ifdef SELF_GRAVITY
-  if (gravity != 0) {
-    if (verbose > 1 && ParallelDescriptor::IOProcessor()) {
-      std::cout << "Deleting gravity in variableCleanUp..." << '\n';
-    }
-    delete gravity;
-    gravity = 0;
-  }
-#endif
-
-#ifdef DIFFUSION
-  if (diffusion != 0) {
-    if (verbose > 1 && ParallelDescriptor::IOProcessor()) {
-      std::cout << "Deleting diffusion in variableCleanUp..." << '\n';
-    }
-    delete diffusion;
-    diffusion = 0;
-  }
-#endif
-
-#ifdef RADIATION
-  if (radiation != 0) { int report = (verbose || radiation->verbose);
-    if (report && ParallelDescriptor::IOProcessor()) {
-      std::cout << "Deleting radiation in variableCleanUp..." << '\n';
-    }
-    delete radiation;
-    radiation = 0;
-    if (report && ParallelDescriptor::IOProcessor()) {
-      std::cout << "                                        done" << std::endl;
-    }
-  }
-#endif
-
-#ifdef PARTICLES
-  delete TracerPC;
-  TracerPC = 0;
-#endif
-
     desc_lst.clear();
 }
 
@@ -345,22 +268,6 @@ Castro::read_params ()
 	amrex::Error();
       }
 
-#ifdef PARTICLES
-    read_particle_params();
-#endif
-
-#ifdef RADIATION
-    pp.get("do_radiation",do_radiation);
-
-    // Some radiation parameters are initialized here because they
-    // may be used in variableSetUp, well before the call to the
-    // Radiation constructor,
-
-    if (do_radiation) {
-      Radiation::read_static_params();
-    }
-#endif
-
 #ifdef ROTATION
     if (do_rotation) {
       if (rotational_period <= 0.0) {
@@ -420,57 +327,6 @@ Castro::Castro (Amr&            papa,
       material_lost_through_boundary_temp[i] = 0.0;
     }
 
-#ifdef SELF_GRAVITY
-
-   // Initialize to zero here in case we run with do_grav = false.
-   MultiFab& new_grav_mf = get_new_data(Gravity_Type);
-   new_grav_mf.setVal(0.0);
-
-   if (do_grav) {
-      // gravity is a static object, only alloc if not already there
-      if (gravity == 0)
-	gravity = new Gravity(parent,parent->finestLevel(),&phys_bc,Density);
-
-      // Passing numpts_1d at level 0
-      if (!Geometry::isAllPeriodic() && gravity != 0)
-      {
-         int numpts_1d = get_numpts();
-
-	 // For 1D, we need to add ghost cells to the numpts
-	 // given to us by Castro.
-
-#if (BL_SPACEDIM == 1)
-	 numpts_1d += 2 * NUM_GROW;
-#endif
-
-         gravity->set_numpts_in_gravity(numpts_1d);
-      }
-
-      gravity->install_level(level,this,volume,area);
-
-      if (verbose && level == 0 &&  ParallelDescriptor::IOProcessor())
-         std::cout << "Setting the gravity type to " << gravity->get_gravity_type() << std::endl;
-
-#ifdef SELF_GRAVITY
-      if (gravity->get_gravity_type() == "PoissonGrav" && gravity->NoComposite() != 0 && gravity->NoSync() == 0)
-      {
-	  std::cerr << "Error: not meaningful to have gravity.no_sync == 0 without having gravity.no_composite == 0.";
-	  amrex::Error();
-      }
-#endif
-
-       // We need to initialize this to zero since certain bc types don't overwrite the potential NaNs
-       // ghost cells because they are only multiplying them by a zero coefficient.
-       MultiFab& phi_new = get_new_data(PhiGrav_Type);
-       phi_new.setVal(0.0,phi_new.nGrow());
-
-   } else {
-       MultiFab& phi_new = get_new_data(PhiGrav_Type);
-       phi_new.setVal(0.0);
-   }
-
-#endif
-
 #ifdef ROTATION
 
    // Initialize rotation data to zero.
@@ -488,60 +344,11 @@ Castro::Castro (Amr&            papa,
    MultiFab& dSdt_new = get_new_data(Source_Type);
    dSdt_new.setVal(0.0);
 
-#ifdef REACTIONS
-
-   // Initialize reaction data to zero.
-
-   MultiFab& reactions_new = get_new_data(Reactions_Type);
-   reactions_new.setVal(0.0);
-
-#endif
-
-#ifdef SDC
-   // Initialize old and new source terms to zero.
-
-   MultiFab& sources_new = get_new_data(SDC_Source_Type);
-   sources_new.setVal(0.0);
-
-   // Initialize reactions source term to zero.
-
-#ifdef REACTIONS
-   MultiFab& react_src_new = get_new_data(SDC_React_Type);
-   react_src_new.setVal(0.0);
-#endif
-#endif
-
-#ifdef DIFFUSION
-      // diffusion is a static object, only alloc if not already there
-      if (diffusion == 0)
-	diffusion = new Diffusion(parent,&phys_bc);
-
-      diffusion->install_level(level,this,volume,area);
-#endif
-
-#ifdef RADIATION
-    if (do_radiation) {
-      if (radiation == 0) {
-	// radiation is a static object, only alloc if not already there
-	radiation = new Radiation(parent, this);
-      }
-      radiation->regrid(level, grids, dmap);
-    }
-#endif
-
 
     // initialize the Godunov state array used in hydro -- we wait
     // until here so that ngroups is defined (if needed) in
     // rad_params_module
-#ifdef RADIATION
-    ca_init_godunov_indices_rad();
-    ca_get_qradvar(&QRADVAR);
-
-    // NQAUX depends on radiation groups, so get it fresh here
-    ca_get_nqaux(&NQAUX);
-#else
     ca_init_godunov_indices();
-#endif
 
     // NQ will be used to dimension the primitive variable state
     // vector it will include the "pure" hydrodynamical variables +
@@ -552,12 +359,6 @@ Castro::Castro (Amr&            papa,
 
 Castro::~Castro ()
 {
-#ifdef RADIATION
-    if (radiation != 0) {
-      //radiation->cleanup(level);
-      radiation->close(level);
-    }
-#endif
 }
 
 void
@@ -637,15 +438,6 @@ Castro::initMFs()
 	P_radial.define(getEdgeBoxArray(0), dmap, 1, 0);
 #endif
 
-#ifdef RADIATION
-    if (Radiation::rad_hydro_combined) {
-	rad_fluxes.resize(BL_SPACEDIM);
-        for (int dir = 0; dir < BL_SPACEDIM; ++dir) {
-	    rad_fluxes[dir].reset(new MultiFab(getEdgeBoxArray(dir), dmap, Radiation::nGroups, 0));
-	}
-    }
-#endif
-
     if (do_reflux && level > 0) {
 
 	flux_reg.define(grids, dmap, crse_ratio, level, NUM_STATE);
@@ -655,20 +447,6 @@ Castro::initMFs()
 	if (!Geometry::IsCartesian()) {
 	    pres_reg.define(grids, dmap, crse_ratio, level, 1);
 	    pres_reg.setVal(0.0);
-	}
-#endif
-
-#ifdef RADIATION
-	if (Radiation::rad_hydro_combined) {
-	    rad_flux_reg.define(grids, dmap, crse_ratio, level, Radiation::nGroups);
-	    rad_flux_reg.setVal(0.0);
-	}
-#endif
-
-#ifdef SELF_GRAVITY
-	if (do_grav && gravity->get_gravity_type() == "PoissonGrav" && gravity->NoSync() == 0) {
-	    phi_reg.define(grids, dmap, crse_ratio, level, 1);
-	    phi_reg.setVal(0.0);
 	}
 #endif
 
@@ -845,26 +623,6 @@ Castro::initData ()
     if (verbose && ParallelDescriptor::IOProcessor())
        std::cout << "Initializing the data at level " << level << std::endl;
 
-#ifdef RADIATION
-    // rad quantities are in the state even if (do_radiation == 0)
-    MultiFab &Rad_new = get_new_data(Rad_Type);
-    Rad_new.setVal(0.);
-#endif
-
-#ifdef REACTIONS
-    MultiFab &React_new = get_new_data(Reactions_Type);
-    React_new.setVal(0.);
-#endif
-
-#ifdef SDC
-   MultiFab& sources_new = get_new_data(SDC_Source_Type);
-   sources_new.setVal(0.0);
-#ifdef REACTIONS
-   MultiFab& react_src_new = get_new_data(SDC_React_Type);
-   react_src_new.setVal(0.0);
-#endif
-#endif
-
    if (Knapsack_Weight_Type > 0) {
        get_new_data(Knapsack_Weight_Type).setVal(1.0);
    }
@@ -892,16 +650,10 @@ Castro::initData ()
   	   gridloc.lo(), gridloc.hi());
 #endif
 
-	  // Generate the initial hybrid momenta based on this user data.
-
-#ifdef HYBRID_MOMENTUM
-	  ca_init_hybrid_momentum(lo, hi, BL_TO_FORTRAN_3D(S_new[mfi]));
-#endif
-
           // Verify that the sum of (rho X)_i = rho at every cell
 	  const int idx = mfi.tileIndex();
 
-          ca_check_initial_species(ARLIM_3D(lo), ARLIM_3D(hi), 
+          ca_check_initial_species(ARLIM_3D(lo), ARLIM_3D(hi),
 				   BL_TO_FORTRAN_3D(S_new[mfi]), &idx);
        }
        enforce_consistent_e(S_new);
@@ -914,65 +666,9 @@ Castro::initData ()
 	   AmrLevel::FillPatch(*this, S_new, ng, cur_time, State_Type, 0, S_new.nComp());
     }
 
-#ifdef RADIATION
-    if (do_radiation) {
-      for (MFIter mfi(S_new); mfi.isValid(); ++mfi) {
-          int i = mfi.index();
-
-	  if (radiation->verbose > 2) {
-	    std::cout << "Calling RADINIT at level " << level << ", grid "
-		 << i << std::endl;
-	  }
-
-          RealBox    gridloc(grids[mfi.index()],
-                             geom.CellSize(), geom.ProbLo());
-          const Box& box = mfi.validbox();
-          const int* lo  = box.loVect();
-          const int* hi  = box.hiVect();
-
-	  Rad_new[mfi].setVal(0.0);
-
-	  BL_FORT_PROC_CALL(CA_INITRAD,ca_initrad)
-	      (level, cur_time, lo, hi, Radiation::nGroups,
-	       BL_TO_FORTRAN(Rad_new[mfi]),dx,
-	       gridloc.lo(),gridloc.hi());
-
-	  if (Radiation::nNeutrinoSpecies > 0 && Radiation::nNeutrinoGroups[0] == 0) {
-	      // Hack: running photon radiation through neutrino solver
-            Rad_new[mfi].mult(Radiation::Etorad,
-                            0, Radiation::nGroups);
-	  }
-
-          if (Rad_new.nComp() > Radiation::nGroups) {
-            // Initialize flux components to 0
-            Rad_new[mfi].setVal(0.0, box, Radiation::nGroups,
-                              Rad_new.nComp() - Radiation::nGroups);
-          }
-      }
-    }
-#endif // RADIATION
-
 #endif // MAESTRO_INIT
 
     set_special_tagging_flag(cur_time);
-
-#ifdef SELF_GRAVITY
-#if (BL_SPACEDIM > 1)
-    if ( (level == 0) && (spherical_star == 1) ) {
-       int nc = S_new.nComp();
-       int n1d = get_numpts();
-       allocate_outflow_data(&n1d,&nc);
-       int is_new = 1;
-       make_radial_data(is_new);
-    }
-#endif
-
-    MultiFab& G_new = get_new_data(Gravity_Type);
-    G_new.setVal(0.);
-
-    MultiFab& phi_new = get_new_data(PhiGrav_Type);
-    phi_new.setVal(0.);
-#endif
 
     MultiFab& dSdt_new = get_new_data(Source_Type);
     dSdt_new.setVal(0.);
@@ -983,11 +679,6 @@ Castro::initData ()
 
     MultiFab& phirot_new = get_new_data(PhiRot_Type);
     phirot_new.setVal(0.);
-#endif
-
-#ifdef PARTICLES
-    if (level == 0)
-	init_particles();
 #endif
 
     if (verbose && ParallelDescriptor::IOProcessor())
@@ -1090,51 +781,8 @@ Castro::estTimeStep (Real dt_old)
     // criterion, we will get exactly max_dt for a timestep.
 
     Real estdt_hydro = max_dt / cfl;
-
-#ifdef DIFFUSION
-    if (do_hydro or diffuse_temp or diffuse_enth)
-#else
     if (do_hydro)
-#endif
     {
-
-#ifdef RADIATION
-      if (Radiation::rad_hydro_combined) {
-
-	  // Compute radiation + hydro limited timestep.
-
-#ifdef _OPENMP
-#pragma omp parallel
-#endif
-	  {
-	      Real dt = max_dt / cfl;
-
-	      const MultiFab& radMF = get_new_data(Rad_Type);
-	      FArrayBox gPr;
-
-	      for (MFIter mfi(stateMF, true); mfi.isValid(); ++mfi)
-	      {
-	          const Box& tbox = mfi.tilebox();
-	          const Box& vbox = mfi.validbox();
-
-		  gPr.resize(tbox);
-		  radiation->estimate_gamrPr(stateMF[mfi], radMF[mfi], gPr, dx, vbox);
-
-		  ca_estdt_rad(BL_TO_FORTRAN(stateMF[mfi]),
-			       BL_TO_FORTRAN(gPr),
-			       tbox.loVect(),tbox.hiVect(),dx,&dt);
-              }
-#ifdef _OPENMP
-#pragma omp critical (castro_estdt_rad)
-#endif
-	      {
-	          estdt_hydro = std::min(estdt_hydro,dt);
-              }
-          }
-      }
-      else
-      {
-#endif
 
 	  // Compute hydro-limited timestep.
 	if (do_hydro)
@@ -1163,62 +811,6 @@ Castro::estTimeStep (Real dt_old)
 	    }
 	  }
 
-#ifdef DIFFUSION
-	// Diffusion-limited timestep
-	// Note that the diffusion uses the same CFL safety factor
-	// as the main hydrodynamics timestep limiter.
-	if (diffuse_temp)
-	{
-#ifdef _OPENMP
-#pragma omp parallel
-#endif
-	    {
-	      Real dt = max_dt / cfl;
-
-	      for (MFIter mfi(stateMF,true); mfi.isValid(); ++mfi)
-		{
-		  const Box& box = mfi.tilebox();
-		  ca_estdt_temp_diffusion(ARLIM_3D(box.loVect()), ARLIM_3D(box.hiVect()),
-			  	          BL_TO_FORTRAN_3D(stateMF[mfi]),
-				          ZFILL(dx),&dt);
-		}
-#ifdef _OPENMP
-#pragma omp critical (castro_estdt)
-#endif
-	      {
-		estdt_hydro = std::min(estdt_hydro,dt);
-	      }
-	    }
-	}
-	if (diffuse_enth)
-	{
-#ifdef _OPENMP
-#pragma omp parallel
-#endif
-	    {
-	      Real dt = max_dt / cfl;
-
-	      for (MFIter mfi(stateMF,true); mfi.isValid(); ++mfi)
-		{
-		  const Box& box = mfi.tilebox();
-		  ca_estdt_enth_diffusion(ARLIM_3D(box.loVect()), ARLIM_3D(box.hiVect()),
-				          BL_TO_FORTRAN_3D(stateMF[mfi]),
-				          ZFILL(dx),&dt);
-		}
-#ifdef _OPENMP
-#pragma omp critical (castro_estdt)
-#endif
-	      {
-		estdt_hydro = std::min(estdt_hydro,dt);
-	      }
-	    }
-	}
-#endif  // diffusion
-
-#ifdef RADIATION
-      }
-#endif
-
        ParallelDescriptor::ReduceRealMin(estdt_hydro);
        estdt_hydro *= cfl;
        if (verbose && ParallelDescriptor::IOProcessor())
@@ -1231,78 +823,6 @@ Castro::estTimeStep (Real dt_old)
 	 estdt = estdt_hydro;
        }
     }
-
-#ifdef REACTIONS
-    MultiFab& S_new = get_new_data(State_Type);
-    MultiFab& R_new = get_new_data(Reactions_Type);
-
-    // Dummy value to start with
-    Real estdt_burn = max_dt;
-
-    if (do_react) {
-
-        // Compute burning-limited timestep.
-
-#ifdef _OPENMP
-#pragma omp parallel
-#endif
-        {
-            Real dt = max_dt;
-
-	    for (MFIter mfi(S_new); mfi.isValid(); ++mfi)
-	    {
-	        const Box& box = mfi.validbox();
-
-		if (state[State_Type].hasOldData() && state[Reactions_Type].hasOldData()) {
-
-		  MultiFab& S_old = get_old_data(State_Type);
-		  MultiFab& R_old = get_old_data(Reactions_Type);
-
-		  ca_estdt_burning(BL_TO_FORTRAN_3D(S_old[mfi]),
-                                   BL_TO_FORTRAN_3D(S_new[mfi]),
-				   BL_TO_FORTRAN_3D(R_old[mfi]),
-				   BL_TO_FORTRAN_3D(R_new[mfi]),
-				   ARLIM_3D(box.loVect()),ARLIM_3D(box.hiVect()),
-				   ZFILL(dx),&dt_old,&dt);
-
-		} else {
-
-		  ca_estdt_burning(BL_TO_FORTRAN_3D(S_new[mfi]),
-                                   BL_TO_FORTRAN_3D(S_new[mfi]),
-				   BL_TO_FORTRAN_3D(R_new[mfi]),
-				   BL_TO_FORTRAN_3D(R_new[mfi]),
-				   ARLIM_3D(box.loVect()),ARLIM_3D(box.hiVect()),
-				   ZFILL(dx),&dt_old,&dt);
-
-		}
-
-	    }
-#ifdef _OPENMP
-#pragma omp critical (castro_estdt_burning)
-#endif
-	    {
-	        estdt_burn = std::min(estdt_burn,dt);
-	    }
-
-        }
-
-	ParallelDescriptor::ReduceRealMin(estdt_burn);
-
-	if (verbose && ParallelDescriptor::IOProcessor() && estdt_burn < max_dt)
-	  std::cout << "...estimated burning-limited timestep at level " << level << ": " << estdt_burn << std::endl;
-
-	// Determine if this is more restrictive than the hydro limiting
-
-	if (estdt_burn < estdt) {
-	  limiter = "burning";
-	  estdt = estdt_burn;
-	}
-    }
-#endif
-
-#ifdef RADIATION
-    if (do_radiation) radiation->EstTimeStep(estdt, level);
-#endif
 
     if (verbose && ParallelDescriptor::IOProcessor())
       std::cout << "Castro::estTimeStep (" << limiter << "-limited) at level " << level << ":  estdt = " << estdt << '\n';
@@ -1462,20 +982,6 @@ Castro::post_timestep (int iteration)
     //
     int finest_level = parent->finestLevel();
 
-#ifdef RADIATION
-    if (do_radiation && (level < finest_level)) {
-        // computeTemp is not needed before or after this call because
-        // setup for deferred sync does not touch state, only flux registers.
-        radiation->deferred_sync_setup(level);
-
-	if (do_reflux) {
-	    radiation->reflux(level);
-	    // Since radiation->reflux does not touch the fluid state,
-	    // we do need to recompute Temp here.
-	}
-    }
-#endif
-
     // Now do the refluxing. If we're using gravity it
     // will also do the sync solve associated with the reflux.
 
@@ -1539,44 +1045,7 @@ Castro::post_timestep (int iteration)
 
         if (sum_int_test || sum_per_test)
 	  sum_integrated_quantities();
-
-#ifdef SELF_GRAVITY
-        if (moving_center) write_center();
-#endif
     }
-
-#ifdef RADIATION
-    if (level == 0) {
-      if (do_radiation) {
-	for (int lev = finest_level; lev >= 0; lev--) {
-	  radiation->analytic_solution(lev);
-	}
-      }
-    }
-
-    // diagnostic stuff
-
-    if (level == 0)
-      do_energy_diagnostics();
-#endif
-
-#ifdef PARTICLES
-    if (TracerPC)
-    {
-	const int ncycle = parent->nCycle(level);
-	//
-	// Don't redistribute/timestamp on the final subiteration except on the coarsest grid.
-	//
-	if (iteration < ncycle || level == 0)
-	{
-	    int ngrow = (level == 0) ? 0 : iteration;
-
-	    TracerPC->Redistribute(level, parent->finestLevel(), ngrow);
-
-	    TimestampParticles(ngrow+1);
-	}
-    }
-#endif
 }
 
 void
@@ -1585,62 +1054,6 @@ Castro::post_restart ()
    BL_PROFILE("Castro::post_restart()");
 
    Real cur_time = state[State_Type].curTime();
-
-#ifdef PARTICLES
-   ParticlePostRestart(parent->theRestartFile());
-#endif
-
-#ifdef SELF_GRAVITY
-    if (do_grav)
-    {
-        if (level == 0)
-        {
-            // Passing numpts_1d at level 0
-            int numpts_1d = get_numpts ();
-
-#if (BL_SPACEDIM == 1)
-	    numpts_1d += 2 * NUM_GROW;
-#endif
-
-            gravity->set_numpts_in_gravity(numpts_1d);
-
-            for (int lev = 0; lev <= parent->finestLevel(); lev++)
-            {
-                AmrLevel& this_level  = getLevel(lev);
-                Castro& cs_level = getLevel(lev);
-                gravity->install_level(lev,&this_level,
-                                       cs_level.Volume(),cs_level.Area());
-            }
-
-            if (moving_center == 1)
-            {
-               MultiFab&  S_new = get_new_data(State_Type);
-               define_new_center(S_new,cur_time);
-            }
-
-            gravity->set_mass_offset(cur_time);
-
-            if ( gravity->get_gravity_type() == "PoissonGrav")
-            {
-                if (gravity->NoComposite() != 1)
-                {
- 		   int use_previous_phi = 1;
-
-		   // Update the maximum density, used in setting the solver tolerance.
-
-		   gravity->update_max_rhs();
-
-		   gravity->multilevel_solve_for_new_phi(0,parent->finestLevel(),use_previous_phi);
-                   if (gravity->test_results_of_solves() == 1)
-                       gravity->test_composite_phi(level);
-                }
-            }
-
-            if (grown_factor > 1)
-                post_grown_restart();
-        }
-    }
-#endif
 
 #ifdef ROTATION
     MultiFab& phirot_new = get_new_data(PhiRot_Type);
@@ -1654,34 +1067,12 @@ Castro::post_restart ()
     }
 #endif
 
-#ifdef DIFFUSION
-      // diffusion is a static object, only alloc if not already there
-      if (diffusion == 0)
-        diffusion = new Diffusion(parent,&phys_bc);
-
-      if (level == 0)
-         for (int lev = 0; lev <= parent->finestLevel(); lev++) {
-            AmrLevel& this_level = getLevel(lev);
-                Castro& cs_level = getLevel(lev);
-            diffusion->install_level(lev,&this_level,
-                                     cs_level.Volume(),cs_level.Area());
-         }
-#endif
-
     set_special_tagging_flag(cur_time);
 
     // initialize the Godunov state array used in hydro -- we wait
     // until here so that ngroups is defined (if needed) in
     // rad_params_module
-#ifdef RADIATION
-    ca_init_godunov_indices_rad();
-    ca_get_qradvar(&QRADVAR);
-
-    // NQAUX depends on radiation groups, so get it fresh here
-    ca_get_nqaux(&NQAUX);
-#else
     ca_init_godunov_indices();
-#endif
 
     // NQ will be used to dimension the primitive variable state
     // vector it will include the "pure" hydrodynamical variables +
@@ -1700,100 +1091,11 @@ Castro::postCoarseTimeStep (Real cumtime)
     // postCoarseTimeStep() is only called by level 0.
     BL_ASSERT(level == 0);
     AmrLevel::postCoarseTimeStep(cumtime);
-#ifdef SELF_GRAVITY
-    if (do_grav)
-        gravity->set_mass_offset(cumtime, 0);
-#endif
 }
 
 void
 Castro::check_for_post_regrid (Real time)
 {
-
-#ifdef REACTIONS
-    // Check whether we violated the burning stability criterion. This
-    // will manifest as any zones at this time signifying that they
-    // need to be tagged that do not have corresponding zones on the fine level.
-
-    if (level < parent->maxLevel()) {
-
-	TagBoxArray tags(grids, dmap);
-
-	tags.setVal(TagBox::CLEAR);
-
-	int err_idx = -1;
-
-	for (int i = 0; i < err_list.size(); ++i) {
-	    if (err_list[i].name() == "t_sound_t_enuc") {
-		err_idx = i;
-		break;
-	    }
-	}
-
-	if (err_idx < 0) {
-	    amrex::Abort("Error: t_sound_t_enuc error function not found.");
-	}
-
-	apply_tagging_func(tags, TagBox::CLEAR, TagBox::SET, time, err_idx);
-
-	// Globally collate the tags.
-
-	std::vector<IntVect> tvec;
-
-	tags.collate(tvec);
-
-	// If we requested any tags at all, we have a potential trigger for a regrid.
-
-	int num_tags = tvec.size();
-
-	bool missing_on_fine_level = false;
-
-	if (num_tags > 0) {
-
-	    if (level == parent->finestLevel()) {
-
-		// If there is no level above us at all, we know a regrid is needed.
-
-		missing_on_fine_level = true;
-
-	    } else {
-
-		// If there is a level above us, we need to check whether
-		// every tagged zone has a corresponding entry in the fine
-		// grid. If not, we need to trigger a regrid so we can get
-		// those other zones refined too.
-
-		const BoxArray& fgrids = getLevel(level+1).boxArray();
-
-		for (int i = 0; i < tvec.size(); ++i) {
-
-		    Box c_bx(tvec[i], tvec[i]);
-		    Box f_bx = c_bx.refine(parent->refRatio(level));
-
-		    if (!fgrids.contains(f_bx)) {
-			missing_on_fine_level = true;
-			break;
-		    }
-
-		}
-
-	    }
-
-	}
-
-	if (missing_on_fine_level) {
-	    post_step_regrid = 1;
-
-	    if (amrex::ParallelDescriptor::IOProcessor()) {
-		std::cout << "\n"
-			  << "Current refinement pattern insufficient at level " << level << ".\n"
-			  << "Performing a regrid to obtain more refinement.\n";
-
-	    }
-	}
-
-    }
-#endif
 
 }
 
@@ -1802,78 +1104,6 @@ Castro::post_regrid (int lbase,
                      int new_finest)
 {
     fine_mask.clear();
-
-#ifdef PARTICLES
-    if (TracerPC && level == lbase) {
-	TracerPC->Redistribute(lbase);
-    }
-#endif
-
-#ifdef SELF_GRAVITY
-    if (do_grav)
-    {
-
-	if (use_post_step_regrid && getLevel(lbase).post_step_regrid && gravity->get_gravity_type() == "PoissonGrav") {
-
-	   if (level > lbase) {
-
-	       // In the case where we're coming here during a regrid that occurs
-	       // after a timestep, we only want to interpolate the gravitational
-	       // field from the old time. The state data will already have been
-	       // filled, so all we need to do is interpolate the grad_phi data.
-
-	       // Instantiate a bare physical BC function for grad_phi. It doesn't do anything
-	       // since the fine levels for Poisson gravity do not touch the physical boundary.
-
-	       GradPhiPhysBCFunct gp_phys_bc;
-
-	       // We need to use a nodal interpolater.
-
-	       Interpolater* gp_interp = &node_bilinear_interp;
-
-	       Array<MultiFab*> grad_phi_coarse = amrex::GetArrOfPtrs(gravity->get_grad_phi_prev(level-1));
-	       Array<MultiFab*> grad_phi_fine = amrex::GetArrOfPtrs(gravity->get_grad_phi_curr(level));
-
-	       Real time = getLevel(lbase).get_state_data(Gravity_Type).prevTime();
-
-	       // For the BCs, we will use the Gravity_Type BCs for convenience, but these will
-	       // not do anything because we do not fill on physical boundaries.
-
-	       const Array<BCRec>& gp_bcs = getLevel(level).get_desc_lst()[Gravity_Type].getBCs();
-
-	       for (int n = 0; n < BL_SPACEDIM; ++n) {
-		   amrex::InterpFromCoarseLevel(*grad_phi_fine[n], time, *grad_phi_coarse[n],
-						0, 0, 1,
-						parent->Geom(level-1), parent->Geom(level),
-						gp_phys_bc, gp_phys_bc, parent->refRatio(level-1),
-						gp_interp, gp_bcs);
-	       }
-
-	   }
-
-       } else {
-
-	    const Real cur_time = state[State_Type].curTime();
-	    if ( (level == lbase) && cur_time > 0.)
-	    {
-		if ( gravity->get_gravity_type() == "PoissonGrav" && (gravity->NoComposite() != 1) ) {
-		    int use_previous_phi = 1;
-
-		    // Update the maximum density, used in setting the solver tolerance.
-
-		    if (level == 0)
-			gravity->update_max_rhs();
-
-		    gravity->multilevel_solve_for_new_phi(level,new_finest,use_previous_phi);
-
-		}
-
-	    }
-
-	}
-
-    }
-#endif
 }
 
 void
@@ -1892,38 +1122,6 @@ Castro::post_init (Real stop_time)
     for (int k = finest_level-1; k>= 0; k--)
         getLevel(k).avgDown();
 
-#ifdef SELF_GRAVITY
-
-    if (do_grav) {
-
-       Real cur_time = state[State_Type].curTime();
-
-       if (gravity->get_gravity_type() == "PoissonGrav") {
-
-	  // Update the maximum density, used in setting the solver tolerance.
-
-	  gravity->update_max_rhs();
-
-          // Calculate offset before first multilevel solve.
-          gravity->set_mass_offset(cur_time);
-
-          if (gravity->NoComposite() != 1)  {
-             gravity->multilevel_solve_for_new_phi(level,finest_level);
-             if (gravity->test_results_of_solves() == 1)
-                gravity->test_composite_phi(level);
-          }
-       }
-
-       // Make this call just to fill the initial state data.
-       for (int k = 0; k <= parent->finestLevel(); k++)
-       {
-          BoxArray ba = getLevel(k).boxArray();
-          MultiFab& grav_new = getLevel(k).get_new_data(Gravity_Type);
-          gravity->get_new_grav_vector(k,grav_new,cur_time);
-       }
-    }
-#endif
-
 #ifdef ROTATION
     MultiFab& phirot_new = get_new_data(PhiRot_Type);
     MultiFab& rot_new = get_new_data(Rotation_Type);
@@ -1935,26 +1133,6 @@ Castro::post_init (Real stop_time)
     else {
       phirot_new.setVal(0.0);
       rot_new.setVal(0.0);
-    }
-#endif
-
-#ifdef RADIATION
-    if (do_radiation) {
-      // The option of whether to do a multilevel initialization is
-      // controlled within the radiation class.
-
-      radiation->post_init(level);
-
-      for (int k = finest_level-1; k>= 0; k--) {
-        getLevel(k).avgDown(Rad_Type);
-      }
-
-      do_energy_diagnostics();
-
-      // re-estimate the initial timestep using the initialized
-      // fine-level data and radiation field.
-      //if (level == 0)
-      //post_init_estDT();
     }
 #endif
 
@@ -1994,11 +1172,6 @@ Castro::post_init (Real stop_time)
 
         if (sum_int_test || sum_per_test)
 	  sum_integrated_quantities();
-
-#ifdef SELF_GRAVITY
-    if (level == 0 && moving_center == 1)
-       write_center();
-#endif
 }
 
 void
@@ -2006,36 +1179,6 @@ Castro::post_grown_restart ()
 {
     if (level > 0)
         return;
-
-#ifdef SELF_GRAVITY
-    if (do_grav) {
-	int finest_level = parent->finestLevel();
-	Real cur_time = state[State_Type].curTime();
-
-	if (gravity->get_gravity_type() == "PoissonGrav") {
-
-	  // Update the maximum density, used in setting the solver tolerance.
-
-	  gravity->update_max_rhs();
-
-          // Calculate offset before first multilevel solve.
-          gravity->set_mass_offset(cur_time);
-
-          if (gravity->NoComposite() != 1)  {
-             gravity->multilevel_solve_for_new_phi(level,finest_level);
-             if (gravity->test_results_of_solves() == 1)
-                gravity->test_composite_phi(level);
-          }
-       }
-
-       // Make this call just to fill the initial state data.
-       for (int k = 0; k <= parent->finestLevel(); k++)
-       {
-          MultiFab& grav_new = getLevel(k).get_new_data(Gravity_Type);
-          gravity->get_new_grav_vector(k,grav_new,cur_time);
-       }
-    }
-#endif
 
 #ifdef ROTATION
     MultiFab& phirot_new = get_new_data(PhiRot_Type);
@@ -2048,28 +1191,6 @@ Castro::post_grown_restart ()
     else {
       phirot_new.setVal(0.0);
       rot_new.setVal(0.0);
-    }
-#endif
-
-#ifdef RADIATION
-    if (do_radiation) {
-      // The option of whether to do a multilevel initialization is
-      // controlled within the radiation class.
-
-      radiation->post_init(level);
-
-      int finest_level = parent->finestLevel();
-
-      for (int k = finest_level-1; k>= 0; k--) {
-        getLevel(k).avgDown(Rad_Type);
-      }
-
-      do_energy_diagnostics();
-
-      // re-estimate the initial timestep using the initialized
-      // fine-level data and radiation field.
-      //if (level == 0)
-      //post_init_estDT();
     }
 #endif
 }
@@ -2138,12 +1259,6 @@ Castro::FluxRegCrseInit() {
 	fine_level.pres_reg.CrseInit(P_radial, 0, 0, 0, 1, pres_crse_scale);
 #endif
 
-#ifdef RADIATION
-    if (Radiation::rad_hydro_combined)
-	for (int i = 0; i < BL_SPACEDIM; ++i)
-	    fine_level.rad_flux_reg.CrseInit(*rad_fluxes[i], i, 0, 0, Radiation::nGroups, flux_crse_scale);
-#endif
-
 }
 
 
@@ -2160,12 +1275,6 @@ Castro::FluxRegFineAdd() {
 	getLevel(level).pres_reg.FineAdd(P_radial, 0, 0, 0, 1, pres_fine_scale);
 #endif
 
-#ifdef RADIATION
-    if (Radiation::rad_hydro_combined)
-	for (int i = 0; i < BL_SPACEDIM; ++i)
-	    getLevel(level).rad_flux_reg.FineAdd(*rad_fluxes[i], i, 0, 0, Radiation::nGroups, flux_fine_scale);
-#endif
-
 }
 
 
@@ -2177,31 +1286,6 @@ Castro::reflux(int crse_level, int fine_level)
     BL_ASSERT(fine_level > crse_level);
 
     const Real strt = ParallelDescriptor::second();
-
-#ifdef SELF_GRAVITY
-    int nlevs = fine_level - crse_level + 1;
-
-    Array<std::unique_ptr<MultiFab> > drho(nlevs);
-    Array<std::unique_ptr<MultiFab> > dphi(nlevs);
-
-    if (do_grav && gravity->get_gravity_type() == "PoissonGrav" && gravity->NoSync() == 0)  {
-
-	for (int lev = crse_level; lev <= fine_level; ++lev) {
-
-	    const auto& amrlevel = getLevel(lev);
-	    const auto& ba = amrlevel.boxArray();
-	    const auto& dm = amrlevel.DistributionMap();
-
-	    drho[lev - crse_level].reset(new MultiFab(ba, dm, 1, 0));
-	    dphi[lev - crse_level].reset(new MultiFab(ba, dm, 1, 0));
-
-	    drho[lev - crse_level]->setVal(0.0);
-	    dphi[lev - crse_level]->setVal(0.0);
-
-	}
-
-    }
-#endif
 
     FluxRegister* reg;
 
@@ -2225,15 +1309,6 @@ Castro::reflux(int crse_level, int fine_level)
 
 	// Store the density change, for the gravity sync.
 
-#ifdef SELF_GRAVITY
-	int ilev = lev - crse_level - 1;
-
-	if (do_grav && gravity->get_gravity_type() == "PoissonGrav" && gravity->NoSync() == 0) {
-	    reg->Reflux(*drho[ilev], crse_lev.volume, 1.0, 0, Density, 1, crse_lev.geom);
-	    amrex::average_down(*drho[ilev + 1], *drho[ilev], 0, 1, getLevel(lev).crse_ratio);
-	}
-#endif
-
 	// Also update the coarse fluxes MultiFabs using the reflux data. This should only make
 	// a difference if we re-evaluate the source terms later.
 
@@ -2242,7 +1317,7 @@ Castro::reflux(int crse_level, int fine_level)
 	if (update_sources_after_reflux) {
 
 	    for (int i = 0; i < BL_SPACEDIM; ++i) {
-		temp_fluxes[i].reset(new MultiFab(crse_lev.fluxes[i]->boxArray(), 
+		temp_fluxes[i].reset(new MultiFab(crse_lev.fluxes[i]->boxArray(),
 						  crse_lev.fluxes[i]->DistributionMap(),
 						  crse_lev.fluxes[i]->nComp(), crse_lev.fluxes[i]->nGrow()));
 		temp_fluxes[i]->setVal(0.0);
@@ -2281,12 +1356,12 @@ Castro::reflux(int crse_level, int fine_level)
 
 	    if (update_sources_after_reflux) {
 
-		temp_fluxes[0].reset(new MultiFab(crse_lev.P_radial.boxArray(), 
+		temp_fluxes[0].reset(new MultiFab(crse_lev.P_radial.boxArray(),
 						  crse_lev.P_radial.DistributionMap(),
 						  crse_lev.P_radial.nComp(), crse_lev.P_radial.nGrow()));
 		temp_fluxes[0]->setVal(0.0);
 
-                for (OrientationIter fi; fi; ++fi) 
+                for (OrientationIter fi; fi; ++fi)
 		{
 		    const FabSet& fs = (*reg)[fi()];
 		    int idir = fi().coordDir();
@@ -2307,77 +1382,9 @@ Castro::reflux(int crse_level, int fine_level)
 	}
 #endif
 
-#ifdef RADIATION
-
-	// This follows the same logic as the pure hydro fluxes; see above for details.
-
-	if (Radiation::rad_hydro_combined) {
-
-	    reg = &getLevel(lev).rad_flux_reg;
-
-	    reg->ClearInternalBorders(crse_lev.geom);
-
-	    reg->Reflux(crse_lev.get_new_data(Rad_Type), crse_lev.volume, 1.0, 0, 0, Radiation::nGroups, crse_lev.geom);
-
-	    if (update_sources_after_reflux) {
-
-		for (int i = 0; i < BL_SPACEDIM; ++i) {
-		    temp_fluxes[i].reset(new MultiFab(crse_lev.rad_fluxes[i]->boxArray(), 
-						      crse_lev.rad_fluxes[i]->DistributionMap(),
-						      crse_lev.rad_fluxes[i]->nComp(), crse_lev.rad_fluxes[i]->nGrow()));
-		    temp_fluxes[i]->setVal(0.0);
-		}
-		for (OrientationIter fi; fi; ++fi) {
-		    const FabSet& fs = (*reg)[fi()];
-		    int idir = fi().coordDir();
-		    fs.copyTo(*temp_fluxes[idir], 0, 0, 0, temp_fluxes[idir]->nComp());
-		}
-		for (int i = 0; i < BL_SPACEDIM; ++i) {
-		    MultiFab::Add(*crse_lev.rad_fluxes[i], *temp_fluxes[i], 0, 0, crse_lev.rad_fluxes[i]->nComp(), 0);
-		    temp_fluxes[i].reset();
-		}
-
-	    }
-
-	    reg->setVal(0.0);
-
-	}
-
-#endif	
-
-#ifdef SELF_GRAVITY
-	if (do_grav && gravity->get_gravity_type() == "PoissonGrav" && gravity->NoSync() == 0)  {
-
-	    reg = &getLevel(lev).phi_reg;
-
-	    // Note that the scaling by the area here is corrected for by dividing by the
-	    // cell volume in the reflux. In this way we get a discrete divergence that
-	    // is analogous to the divergence of the flux in the hydrodynamics. See Equation
-	    // 37 in the Castro I paper. The dimensions of dphi are therefore actually
-	    // phi / cm**2, which makes it correct for the RHS of the Poisson equation.
-
-	    for (int i = 0; i < BL_SPACEDIM; ++i) {
-		reg->CrseInit(*(gravity->get_grad_phi_curr(lev-1)[i]), crse_lev.area[i], i, 0, 0, 1, -1.0);
-		reg->FineAdd(*(gravity->get_grad_phi_curr(lev)[i]), fine_lev.area[i], i, 0, 0, 1, 1.0);
-	    }
-
-	    reg->Reflux(*dphi[ilev], crse_lev.volume, 1.0, 0, 0, 1, crse_lev.geom);
-
-	    amrex::average_down(*dphi[ilev + 1], *dphi[ilev], 0, 1, getLevel(lev).crse_ratio);
-
-	    reg->setVal(0.0);
-
-	}
-#endif
-
     }
 
     // Do the sync solve across all levels.
-
-#ifdef SELF_GRAVITY
-    if (do_grav && gravity->get_gravity_type() == "PoissonGrav" && gravity->NoSync() == 0)
-	gravity->gravity_sync(crse_level, fine_level, amrex::GetArrOfPtrs(drho), amrex::GetArrOfPtrs(dphi));
-#endif
 
     // Now subtract the new-time updates to the state data,
     // recompute it, and add it back. This corrects for the fact
@@ -2439,35 +1446,12 @@ Castro::avgDown ()
 
   avgDown(State_Type);
 
-#ifdef SELF_GRAVITY
-  avgDown(Gravity_Type);
-  avgDown(PhiGrav_Type);
-#endif
-
 #ifdef ROTATION
   avgDown(Rotation_Type);
   avgDown(PhiRot_Type);
 #endif
 
   avgDown(Source_Type);
-
-#ifdef REACTIONS
-  avgDown(Reactions_Type);
-#endif
-
-#ifdef SDC
-  avgDown(SDC_Source_Type);
-#ifdef REACTIONS
-  avgDown(SDC_React_Type);
-#endif
-#endif
-
-#ifdef RADIATION
-  if (do_radiation) {
-    avgDown(Rad_Type);
-  }
-#endif
-
 }
 
 void
@@ -2483,7 +1467,7 @@ Castro::normalize_species (MultiFab& S_new)
        const Box& bx = mfi.growntilebox(ng);
        const int idx = mfi.tileIndex();
 
-       ca_normalize_species(BL_TO_FORTRAN_3D(S_new[mfi]), 
+       ca_normalize_species(BL_TO_FORTRAN_3D(S_new[mfi]),
 			    ARLIM_3D(bx.loVect()), ARLIM_3D(bx.hiVect()), &idx);
     }
 }
@@ -2545,7 +1529,7 @@ Castro::enforce_min_density (MultiFab& S_old, MultiFab& S_new)
 	FArrayBox& statenew = S_new[mfi];
 	FArrayBox& vol      = volume[mfi];
 	const int idx = mfi.tileIndex();
-	
+
 	ca_enforce_minimum_density(stateold.dataPtr(), ARLIM_3D(stateold.loVect()), ARLIM_3D(stateold.hiVect()),
 				   statenew.dataPtr(), ARLIM_3D(statenew.loVect()), ARLIM_3D(statenew.hiVect()),
 				   vol.dataPtr(), ARLIM_3D(vol.loVect()), ARLIM_3D(vol.hiVect()),
@@ -2777,27 +1761,7 @@ Castro::derive (const std::string& name,
                 Real           time,
                 int            ngrow)
 {
-#ifdef NEUTRINO
-  if (name.substr(0,4) == "Neut") {
-    // Extract neutrino energy group number from name string and
-    // pass to fortran so that derive will have access to it:
-    int is = atoi(name.c_str() + name.find('s') + 1);
-    int ig = atoi(name.c_str() + name.find('g') + 1);
-
-    BL_ASSERT(is < Radiation::nNeutrinoSpecies);
-    for (int n = 0; n < is; n++) {
-      ig += Radiation::nNeutrinoGroups[n];
-    }
-
-    ca_setgroup(ig);
-  }
-#endif
-
-#ifdef PARTICLES
-  return ParticleDerive(name,time,ngrow);
-#else
    return AmrLevel::derive(name,time,ngrow);
-#endif
 }
 
 void
@@ -2806,21 +1770,6 @@ Castro::derive (const std::string& name,
                 MultiFab&      mf,
                 int            dcomp)
 {
-#ifdef NEUTRINO
-  if (name.substr(0,4) == "Neut") {
-    // Extract neutrino energy group number from name string and
-    // pass to fortran so that derive will have access to it:
-    int is = atoi(name.c_str() + name.find('s') + 1);
-    int ig = atoi(name.c_str() + name.find('g') + 1);
-
-    BL_ASSERT(is < Radiation::nNeutrinoSpecies);
-    for (int n = 0; n < is; n++) {
-      ig += Radiation::nNeutrinoGroups[n];
-    }
-
-    ca_setgroup(ig);
-  }
-#endif
 
     AmrLevel::derive(name,time,mf,dcomp);
 }
@@ -2923,37 +1872,15 @@ Castro::computeTemp(MultiFab& State)
 
   reset_internal_energy(State);
 
-#ifdef RADIATION
-  FArrayBox temp;
-#endif
-
 #ifdef _OPENMP
 #pragma omp parallel
 #endif
   for (MFIter mfi(State,true); mfi.isValid(); ++mfi)
     {
       const Box& bx = mfi.growntilebox();
-      
-#ifdef RADIATION
-      if (Radiation::do_real_eos == 0) {
-	temp.resize(bx);
-	temp.copy(State[mfi],bx,Eint,bx,0,1);
-	
-	ca_compute_temp_given_cv
-	  (bx.loVect(), bx.hiVect(), 
-	   BL_TO_FORTRAN(temp), 
-	   BL_TO_FORTRAN(State[mfi]),
-	   &Radiation::const_c_v, &Radiation::c_v_exp_m, &Radiation::c_v_exp_n);
-	
-	State[mfi].copy(temp,bx,0,bx,Temp,1);
-      } else {
-#endif
 	const int idx = mfi.tileIndex();
 	ca_compute_temp(ARLIM_3D(bx.loVect()), ARLIM_3D(bx.hiVect()),
 			BL_TO_FORTRAN_3D(State[mfi]), &idx);
-#ifdef RADIATION
-      }
-#endif
     }
 }
 
@@ -2976,204 +1903,6 @@ Castro::set_special_tagging_flag(Real time)
    }
 }
 
-#ifdef SELF_GRAVITY
-int
-Castro::get_numpts ()
-{
-     int numpts_1d;
-
-     Box bx(geom.Domain());
-     long nx = bx.size()[0];
-
-#if (BL_SPACEDIM == 1)
-     numpts_1d = nx;
-#elif (BL_SPACEDIM == 2)
-     long ny = bx.size()[1];
-     Real ndiagsq = Real(nx*nx + ny*ny);
-     numpts_1d = int(sqrt(ndiagsq))+2*NUM_GROW;
-#elif (BL_SPACEDIM == 3)
-     long ny = bx.size()[1];
-     long nz = bx.size()[2];
-     Real ndiagsq = Real(nx*nx + ny*ny + nz*nz);
-     numpts_1d = int(sqrt(ndiagsq))+2*NUM_GROW;
-#endif
-
-     if (verbose && ParallelDescriptor::IOProcessor())
-         std::cout << "Castro::numpts_1d at level  " << level << " is " << numpts_1d << std::endl;
-
-     return numpts_1d;
-}
-
-void
-Castro::make_radial_data(int is_new)
-{
-#if (BL_SPACEDIM > 1)
-
- // We only call this for level = 0
-   BL_ASSERT(level == 0);
-
-   int numpts_1d = get_numpts();
-
-   Array<Real> radial_vol(numpts_1d,0);
-
-   const Real* dx = geom.CellSize();
-   Real  dr = dx[0];
-
-   if (is_new == 1) {
-      MultiFab& S = get_new_data(State_Type);
-      int nc = S.nComp();
-      Array<Real> radial_state(numpts_1d*nc,0);
-      for (MFIter mfi(S); mfi.isValid(); ++mfi)
-      {
-         Box bx(mfi.validbox());
-         ca_compute_avgstate(ARLIM_3D(bx.loVect()), ARLIM_3D(bx.hiVect()),ZFILL(dx),&dr,&nc,
-			     BL_TO_FORTRAN_3D(     S[mfi]),radial_state.dataPtr(),
-			     BL_TO_FORTRAN_3D(volume[mfi]),radial_vol.dataPtr(),
-			     ZFILL(geom.ProbLo()),&numpts_1d);
-      }
-
-      ParallelDescriptor::ReduceRealSum(radial_vol.dataPtr(),numpts_1d);
-      ParallelDescriptor::ReduceRealSum(radial_state.dataPtr(),numpts_1d*nc);
-
-      int first = 0;
-      int np_max = 0;
-      for (int i = 0; i < numpts_1d; i++) {
-         if (radial_vol[i] > 0.)
-         {
-            for (int j = 0; j < nc; j++) {
-              radial_state[nc*i+j] /= radial_vol[i];
-            }
-         } else if (first == 0) {
-            np_max = i;
-            first  = 1;
-         }
-      }
-
-      Array<Real> radial_state_short(np_max*nc,0);
-
-      for (int i = 0; i < np_max; i++) {
-         for (int j = 0; j < nc; j++) {
-           radial_state_short[nc*i+j] = radial_state[nc*i+j];
-         }
-      }
-
-      Real new_time = state[State_Type].curTime();
-      set_new_outflow_data(radial_state_short.dataPtr(),&new_time,&np_max,&nc);
-   }
-   else
-   {
-      MultiFab& S = get_old_data(State_Type);
-      int nc = S.nComp();
-      Array<Real> radial_state(numpts_1d*nc,0);
-      for (MFIter mfi(S); mfi.isValid(); ++mfi)
-      {
-         Box bx(mfi.validbox());
-         ca_compute_avgstate(ARLIM_3D(bx.loVect()), ARLIM_3D(bx.hiVect()),ZFILL(dx),&dr,&nc,
-			     BL_TO_FORTRAN_3D(     S[mfi]),radial_state.dataPtr(),
-			     BL_TO_FORTRAN_3D(volume[mfi]),radial_vol.dataPtr(),
-			     ZFILL(geom.ProbLo()),&numpts_1d);
-      }
-
-      ParallelDescriptor::ReduceRealSum(radial_vol.dataPtr(),numpts_1d);
-      ParallelDescriptor::ReduceRealSum(radial_state.dataPtr(),numpts_1d*nc);
-
-      int first = 0;
-      int np_max = 0;
-      for (int i = 0; i < numpts_1d; i++) {
-         if (radial_vol[i] > 0.)
-         {
-            for (int j = 0; j < nc; j++) {
-              radial_state[nc*i+j] /= radial_vol[i];
-            }
-         } else if (first == 0) {
-            np_max = i;
-            first  = 1;
-         }
-      }
-
-      Array<Real> radial_state_short(np_max*nc,0);
-
-      for (int i = 0; i < np_max; i++) {
-         for (int j = 0; j < nc; j++) {
-           radial_state_short[nc*i+j] = radial_state[nc*i+j];
-         }
-      }
-
-      Real old_time = state[State_Type].prevTime();
-      set_old_outflow_data(radial_state_short.dataPtr(),&old_time,&np_max,&nc);
-   }
-
-#endif
-}
-
-void
-Castro::define_new_center(MultiFab& S, Real time)
-{
-    Real center[3];
-    const Real* dx = geom.CellSize();
-
-    IntVect max_index = S.maxIndex(Density,0);
-    Box bx(max_index,max_index);
-    bx.grow(1);
-    BoxArray ba(bx);
-    int owner = ParallelDescriptor::IOProcessorNumber();
-    DistributionMapping dm { Array<int>(1,owner) };
-    MultiFab mf(ba,dm,1,0);
-
-    // Define a cube 3-on-a-side around the point with the maximum density
-    FillPatch(*this,mf,0,time,State_Type,Density,1);
-
-    int mi[BL_SPACEDIM];
-    for (int i = 0; i < BL_SPACEDIM; i++) mi[i] = max_index[i];
-
-    // Find the position of the "center" by interpolating from data at cell centers
-    for (MFIter mfi(mf); mfi.isValid(); ++mfi)
-    {
-        ca_find_center(mf[mfi].dataPtr(),&center[0],ARLIM_3D(mi),ZFILL(dx),ZFILL(geom.ProbLo()));
-    }
-    // Now broadcast to everyone else.
-    ParallelDescriptor::Bcast(&center[0], BL_SPACEDIM, owner);
-
-    // Make sure if R-Z that center stays exactly on axis
-    if ( Geometry::IsRZ() ) center[0] = 0;
-
-    ca_set_center(ZFILL(center));
-}
-
-void
-Castro::write_center ()
-{
-    int ndatalogs = parent->NumDataLogs();
-
-    if ( (moving_center==1) && (ndatalogs > 0) && ParallelDescriptor::IOProcessor())
-    {
-       std::ostream& data_logc = parent->DataLog(0);
-
-       int nstep = parent->levelSteps(0);
-       Real time = state[State_Type].curTime();
-
-       Real center[3];
-       ca_get_center(center);
-
-       if (time == 0.0) {
-           data_logc << std::setw( 8) <<  "   nstep";
-           data_logc << std::setw(14) <<  "         time  ";
-           data_logc << std::setw(14) <<  "         center" << std::endl;;
-       }
-
-           data_logc << std::setw( 8) <<  nstep;
-           data_logc << std::setw(14) <<  std::setprecision(6) <<  time;
-           data_logc << std::setw(14) <<  std::setprecision(6) << center[0];
-#if (BL_SPACEDIM >= 2)
-           data_logc << std::setw(14) <<  std::setprecision(6) << center[1];
-#endif
-#if (BL_SPACEDIM == 3)
-           data_logc << std::setw(14) <<  std::setprecision(6) << center[2];
-#endif
-           data_logc << std::endl;
-    }
-}
-#endif
 
 Real
 Castro::getCPUTime()
@@ -3270,7 +1999,7 @@ Castro::check_for_nan(MultiFab& state, int check_ghost)
   if (check_ghost == 1) {
     ng = state.nComp();
   }
-  
+
   if (state.contains_nan(Density,state.nComp(),ng,true))
     {
       for (int i = 0; i < state.nComp(); i++)
@@ -3283,36 +2012,6 @@ Castro::check_for_nan(MultiFab& state, int check_ghost)
         }
     }
 }
-
-// Convert a MultiFab with conservative state data u to a primitive MultiFab q.
-#ifdef SDC
-void
-Castro::cons_to_prim(MultiFab& u, MultiFab& q, MultiFab& qaux)
-{
-
-    BL_ASSERT(u.nComp() == NUM_STATE);
-    BL_ASSERT(q.nComp() == QVAR);
-    BL_ASSERT(u.nGrow() >= q.nGrow());
-
-    int ng = q.nGrow();
-
-#ifdef _OPENMP
-#pragma omp parallel
-#endif
-    for (MFIter mfi(u, true); mfi.isValid(); ++mfi) {
-
-        const Box& bx = mfi.growntilebox(ng);
-	const int idx = mfi.tileIndex();
-
-	ca_ctoprim(ARLIM_3D(bx.loVect()), ARLIM_3D(bx.hiVect()),
-		   u[mfi].dataPtr(), ARLIM_3D(u[mfi].loVect()), ARLIM_3D(u[mfi].hiVect()),
-		   q[mfi].dataPtr(), ARLIM_3D(q[mfi].loVect()), ARLIM_3D(q[mfi].hiVect()),
-		   qaux[mfi].dataPtr(), ARLIM_3D(qaux[mfi].loVect()), ARLIM_3D(qaux[mfi].hiVect()), &idx);
-
-    }
-
-}
-#endif
 
 
 // Given State_Type state data, perform a number of cleaning steps to make
@@ -3333,12 +2032,6 @@ Castro::clean_state(MultiFab& state) {
     // Ensure all species are normalized.
 
     normalize_species(state);
-
-    // Sync the linear and hybrid momenta.
-
-#ifdef HYBRID_MOMENTUM
-    hybrid_sync(state);
-#endif
 
     // Compute the temperature (note that this will also reset
     // the internal energy for consistency with the total energy).
@@ -3361,12 +2054,6 @@ Castro::clean_state(MultiFab& state, MultiFab& state_old) {
     // Ensure all species are normalized.
 
     normalize_species(state);
-
-    // Sync the linear and hybrid momenta.
-
-#ifdef HYBRID_MOMENTUM
-    hybrid_sync(state);
-#endif
 
     // Compute the temperature (note that this will also reset
     // the internal energy for consistency with the total energy).
