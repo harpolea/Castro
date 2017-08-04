@@ -499,7 +499,7 @@ Castro::initMFs()
 
     }
 
-    post_step_regrid = 0;
+    use_post_step_regrid = 0;
 
 }
 
@@ -728,7 +728,7 @@ Castro::init ()
     // If we just triggered a regrid, we need to account for the fact that
     // the data on the coarse level has already been advanced.
 
-    if (getLevel(level-1).post_step_regrid)
+    if (getLevel(level-1).use_post_step_regrid)
 	time = prev_time;
 
     setTimeLevel(time,dt_old,dt);
@@ -1622,13 +1622,13 @@ Castro::errorEst (TagBoxArray& tags,
     // note that we need to use the new time here,
     // not the old time.
 
-    if (post_step_regrid)
-	t = get_state_data(State_Type).curTime();
+    if (use_post_step_regrid)
+	   t = get_state_data(State_Type).curTime();
 
     // Apply each of the built-in tagging functions.
 
     for (int j = 0; j < err_list.size(); j++)
-	apply_tagging_func(tags, clearval, tagval, t, j);
+	   apply_tagging_func(tags, clearval, tagval, t, j);
 
     // Now we'll tag any user-specified zones using the full state array.
 

@@ -64,8 +64,6 @@ Castro::do_old_sources(Real time, Real dt, int amr_iteration, int amr_ncycle)
 
     for (int n = 0; n < num_src; ++n)
 	construct_old_source(n, time, dt, amr_iteration, amr_ncycle);
-
-
     // Apply the old-time sources directly to the new-time state,
     // S_new -- note that this addition is for full dt, since we
     // will do a predictor-corrector on the sources to allow for
@@ -78,7 +76,7 @@ Castro::do_old_sources(Real time, Real dt, int amr_iteration, int amr_ncycle)
 
     for (int n = 0; n < num_src; ++n)
       if (source_flag(n))
-	apply_source_to_state(S_new, *old_sources[n], dt);
+	     apply_source_to_state(S_new, *old_sources[n], dt);
 
     // Optionally print out diagnostic information about how much
     // these source terms changed the state.
@@ -103,28 +101,28 @@ Castro::do_new_sources(Real time, Real dt, int amr_iteration, int amr_ncycle)
 
     if (update_state_between_sources) {
 
-	for (int n = 0; n < num_src; ++n) {
-	    construct_new_source(n, time, dt, amr_iteration, amr_ncycle);
-	    if (source_flag(n)) {
-		apply_source_to_state(S_new, *new_sources[n], dt);
-		clean_state(S_new);
-	    }
-	}
+    	for (int n = 0; n < num_src; ++n) {
+    	    construct_new_source(n, time, dt, amr_iteration, amr_ncycle);
+    	    if (source_flag(n)) {
+        		apply_source_to_state(S_new, *new_sources[n], dt);
+        		clean_state(S_new);
+    	    }
+    	}
 
     } else {
 
-	// Construct the new-time source terms.
+    	// Construct the new-time source terms.
 
-	for (int n = 0; n < num_src; ++n)
-	    construct_new_source(n, time, dt, amr_iteration, amr_ncycle);
+    	for (int n = 0; n < num_src; ++n)
+    	    construct_new_source(n, time, dt, amr_iteration, amr_ncycle);
 
-	// Apply the new-time sources to the state.
+    	// Apply the new-time sources to the state.
 
-	for (int n = 0; n < num_src; ++n)
-	    if (source_flag(n))
-		apply_source_to_state(S_new, *new_sources[n], dt);
+    	for (int n = 0; n < num_src; ++n)
+    	    if (source_flag(n))
+    		      apply_source_to_state(S_new, *new_sources[n], dt);
 
-	clean_state(S_new);
+    	clean_state(S_new);
 
     }
 
@@ -146,24 +144,24 @@ Castro::construct_old_source(int src, Real time, Real dt, int amr_iteration, int
 
     switch(src) {
 
-    case ext_src:
-	construct_old_ext_source(time, dt);
-	break;
+        case ext_src:
+    	construct_old_ext_source(time, dt);
+    	break;
 
 #ifdef GRAVITY
-    case grav_src:
-	construct_old_gravity_source(time, dt);
-	break;
+        case grav_src:
+    	construct_old_gravity_source(time, dt);
+    	break;
 #endif
 
 #ifdef ROTATION
-    case rot_src:
-	construct_old_rotation_source(time, dt);
-	break;
+        case rot_src:
+    	construct_old_rotation_source(time, dt);
+    	break;
 #endif
 
-    default:
-	break;
+        default:
+    	break;
 
     } // end switch
 }
@@ -175,24 +173,24 @@ Castro::construct_new_source(int src, Real time, Real dt, int amr_iteration, int
 
     switch(src) {
 
-    case ext_src:
-	construct_new_ext_source(time, dt);
-	break;
+        case ext_src:
+    	construct_new_ext_source(time, dt);
+    	break;
 
 #ifdef GRAVITY
-    case grav_src:
-	construct_new_gravity_source(time, dt);
-	break;
+        case grav_src:
+    	construct_new_gravity_source(time, dt);
+    	break;
 #endif
 
 #ifdef ROTATION
-    case rot_src:
-	construct_new_rotation_source(time, dt);
-	break;
+        case rot_src:
+    	construct_new_rotation_source(time, dt);
+    	break;
 #endif
 
-    default:
-	break;
+        default:
+    	break;
 
     } // end switch
 }
@@ -245,18 +243,18 @@ Castro::print_source_change(Array<Real> update)
 
   if (ParallelDescriptor::IOProcessor()) {
 
-    std::cout << "       mass added: " << update[Density] << std::endl;
-    std::cout << "       xmom added: " << update[Xmom] << std::endl;
+        std::cout << "       mass added: " << update[Density] << std::endl;
+        std::cout << "       xmom added: " << update[Xmom] << std::endl;
 #if (BL_SPACEDIM >= 2)
-    std::cout << "       ymom added: " << update[Ymom] << std::endl;
+        std::cout << "       ymom added: " << update[Ymom] << std::endl;
 #endif
 #if (BL_SPACEDIM == 3)
-    std::cout << "       zmom added: " << update[Zmom] << std::endl;
+        std::cout << "       zmom added: " << update[Zmom] << std::endl;
 #endif
-    std::cout << "       eint added: " << update[Eint] << std::endl;
-    std::cout << "       ener added: " << update[Eden] << std::endl;
+        std::cout << "       eint added: " << update[Eint] << std::endl;
+        std::cout << "       ener added: " << update[Eden] << std::endl;
 
-    std::cout << std::endl;
+        std::cout << std::endl;
 
   }
 
@@ -297,7 +295,7 @@ Castro::print_all_source_changes(Real dt, bool is_new)
 	      if (!source_flag(n)) continue;
 
 	      for (int s = 0; s < NUM_STATE; ++s) {
-		  coalesced_update[s] += summed_updates[n][s];
+		            coalesced_update[s] += summed_updates[n][s];
 	      }
 	  }
 
@@ -321,7 +319,7 @@ Castro::print_all_source_changes(Real dt, bool is_new)
 	      std::string time = is_new ? "new" : "old";
 
 	      if (ParallelDescriptor::IOProcessor())
-		  std::cout << std::endl << "  Contributions to the state from the " << time << "-time " << source_names[n] << " source:" << std::endl;
+		        std::cout << std::endl << "  Contributions to the state from the " << time << "-time " << source_names[n] << " source:" << std::endl;
 
 	      print_source_change(summed_updates[n]);
 

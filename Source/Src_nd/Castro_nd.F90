@@ -1,15 +1,8 @@
 subroutine ca_network_init() bind(C, name="ca_network_init")
 
   use network, only: network_init
-#ifdef REACTIONS
-  use actual_rhs_module, only: actual_rhs_init
-#endif
 
   call network_init()
-
-#ifdef REACTIONS
-  call actual_rhs_init()
-#endif
 
 end subroutine ca_network_init
 
@@ -156,21 +149,6 @@ subroutine ca_get_qvar(qvar_in) bind(C, name="ca_get_qvar")
   qvar_in = QVAR
 
 end subroutine ca_get_qvar
-
-#ifdef RADIATION
-subroutine ca_get_qradvar(qradvar_in) bind(C, name="ca_get_qradvar")
-
-  use meth_params_module, only: QRADVAR
-  use amrex_fort_module, only: rt => amrex_real
-
-  implicit none
-
-  integer, intent(inout) :: qradvar_in
-
-  qradvar_in = QRADVAR
-
-end subroutine ca_get_qradvar
-#endif
 
 
 ! :::
@@ -377,9 +355,6 @@ subroutine ca_set_method_params(dm,Density,Xmom,Eden,Eint,Temp, &
   use eos_module, only: eos_init
   use eos_type_module, only: eos_get_small_dens, eos_get_small_temp
   use bl_constants_module, only : ZERO, ONE
-#ifdef RADIATION
-  use rad_params_module, only: ngroups
-#endif
   use amrex_fort_module, only: rt => amrex_real
 
   implicit none
@@ -409,13 +384,6 @@ subroutine ca_set_method_params(dm,Density,Xmom,Eden,Eint,Temp, &
   ! NTHERM: number of thermodynamic variables (rho, 3 momenta, rho*e, rho*E, T)
   ! NVAR  : number of total variables in initial system
   NTHERM = 7
-
-#ifdef HYBRID_MOMENTUM
-  ! Include the hybrid momenta in here as well if we're using them.
-
-  NTHERM = NTHERM + 3
-#endif
-
   NVAR = NTHERM + nspec + naux + numadv
 
   nadv = numadv
@@ -425,11 +393,6 @@ subroutine ca_set_method_params(dm,Density,Xmom,Eden,Eint,Temp, &
   UMX   = Xmom      + 1
   UMY   = Xmom      + 2
   UMZ   = Xmom      + 3
-#ifdef HYBRID_MOMENTUM
-  UMR   = Xmom      + 4
-  UML   = Xmom      + 5
-  UMP   = Xmom      + 6
-#endif
   UEDEN = Eden      + 1
   UEINT = Eint      + 1
   UTEMP = Temp      + 1
@@ -459,21 +422,13 @@ subroutine ca_set_method_params(dm,Density,Xmom,Eden,Eint,Temp, &
   ! primitive state components
   !---------------------------------------------------------------------
 
-  ! QTHERM: number of primitive variables: rho, p, (rho e), T + 3 velocity components 
+  ! QTHERM: number of primitive variables: rho, p, (rho e), T + 3 velocity components
   ! QVAR  : number of total variables in primitive form
 
   QTHERM = NTHERM + 1 ! the + 1 is for QGAME which is always defined in primitive mode
 
-#ifdef HYBRID_MOMENTUM
-  ! There is no primitive variable analogue of the hybrid momenta;
-  ! all of the hydro reconstructions are done using the linear momenta,
-  ! which are always intended to be in sync with the hybrid momenta.
-
-  QTHERM = QTHERM - 3
-#endif
-
   QVAR = QTHERM + nspec + naux + numadv
-  
+
   ! NQ will be the number of hydro + radiation variables in the primitive
   ! state.  Initialize it just for hydro here
   NQ = QVAR
@@ -518,23 +473,13 @@ subroutine ca_set_method_params(dm,Density,Xmom,Eden,Eint,Temp, &
   ! Note: radiation adds cg, gamcg, lambda (ngroups components), but we don't
   ! yet know the number of radiation groups, so we'll add that lambda count
   ! to it later
-   
-#ifdef RADIATION
-  NQAUX = 7 !+ ngroups to be added later
-#else
   NQAUX = 5
-#endif        
 
   QGAMC   = 1
   QC      = 2
   QCSML   = 3
   QDPDR   = 4
   QDPDE   = 5
-#ifdef RADIATION
-  QGAMCG  = 6
-  QCG     = 7
-  QLAMS   = 8
-#endif
 
   ! easy indexing for the passively advected quantities.  This
   ! lets us loop over all groups (advected, species, aux)
@@ -640,9 +585,6 @@ subroutine ca_set_method_params(dm,Density,Xmom,Eden,Eint,Temp, &
   !$acc device(QRHO, QU, QV, QW, QPRES, QREINT, QTEMP, QGAME) &
   !$acc device(QFA, QFS, QFX) &
   !$acc device(NQAUX, QGAMC, QC, QCSML, QDPDR, QDPDE) &
-#ifdef RADIATION
-  !$acc device(QGAMCG, QCG, QLAMS) &
-#endif
   !$acc device(small_dens, small_temp)
 
 end subroutine ca_set_method_params
@@ -931,99 +873,3 @@ subroutine ca_get_tagging_params(name, namlen) &
   close (unit=un)
 
 end subroutine ca_get_tagging_params
-
-#ifdef SPONGE
-! :::
-! ::: ----------------------------------------------------------------
-! :::
-
-subroutine ca_get_sponge_params(name, namlen) bind(C, name="ca_get_sponge_params")
-
-  ! Initialize the sponge parameters
-
-  use sponge_module
-  use amrex_fort_module, only: rt => amrex_real
-
-  integer :: namlen
-  integer :: name(namlen)
-
-  integer :: un, i, status
-
-  integer, parameter :: maxlen = 256
-  character (len=maxlen) :: probin
-
-  namelist /sponge/ &
-       sponge_lower_factor, sponge_upper_factor, &
-       sponge_lower_radius, sponge_upper_radius, &
-       sponge_lower_density, sponge_upper_density, &
-       sponge_timescale
-
-  ! Set namelist defaults
-
-  sponge_lower_factor = 0.e0_rt
-  sponge_upper_factor = 1.e0_rt
-
-  sponge_lower_radius = -1.e0_rt
-  sponge_upper_radius = -1.e0_rt
-
-  sponge_lower_density = -1.e0_rt
-  sponge_upper_density = -1.e0_rt
-
-  sponge_timescale    = -1.e0_rt
-
-  ! create the filename
-  if (namlen > maxlen) then
-     call bl_error('probin file name too long')
-  endif
-
-  do i = 1, namlen
-     probin(i:i) = char(name(i))
-  end do
-
-  ! read in the namelist
-  un = 9
-  open (unit=un, file=probin(1:namlen), form='formatted', status='old')
-  read (unit=un, nml=sponge, iostat=status)
-
-  if (status < 0) then
-     ! the namelist does not exist, so we just go with the defaults
-     continue
-
-  else if (status > 0) then
-     ! some problem in the namelist
-     call bl_error('ERROR: problem in the sponge namelist')
-  endif
-
-  close (unit=un)
-
-  ! Sanity check
-
-  if (sponge_lower_factor < 0.e0_rt .or. sponge_lower_factor > 1.e0_rt) then
-     call bl_error('ERROR: sponge_lower_factor cannot be outside of [0, 1].')
-  endif
-
-  if (sponge_upper_factor < 0.e0_rt .or. sponge_upper_factor > 1.e0_rt) then
-     call bl_error('ERROR: sponge_upper_factor cannot be outside of [0, 1].')
-  endif
-
-end subroutine ca_get_sponge_params
-#endif
-
-#ifdef POINTMASS
-! :::
-! ::: ----------------------------------------------------------------
-! :::
-
-subroutine set_pointmass(pointmass_in) bind(C, name='set_pointmass')
-
-  use meth_params_module, only: point_mass
-  use amrex_fort_module, only: rt => amrex_real
-
-  implicit none
-
-  real(rt), intent(in) :: pointmass_in
-
-  point_mass = pointmass_in
-
-end subroutine set_pointmass
-#endif

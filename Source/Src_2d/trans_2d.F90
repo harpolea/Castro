@@ -7,21 +7,12 @@ module transverse_module
                                  URHO, UMX, UMY, UEDEN, UEINT, QFS, QFX, &
                                  GDU, GDV, GDPRES, GDGAME, &
                                  NGDNV, QGAMC, &
-#ifdef RADIATION
-                                 qrad, qradhi, qptot, qreitot, &
-                                 GDERADS, QGAMCG, QLAMS, &
-                                 fspace_type, comoving, &
-#endif
                                  small_pres, small_temp, &
                                  npassive, qpass_map, upass_map, &
                                  transverse_use_eos, ppm_type, ppm_trace_sources, &
                                  transverse_reset_density, transverse_reset_rhoe, &
                                  ppm_predict_gammae
   use prob_params_module, only : mom_flux_has_p
-#ifdef RADIATION
-  use rad_params_module, only : ngroups
-  use fluxlimiter_module, only : Edd_factor
-#endif
   use eos_module, only: eos
   use eos_type_module, only: eos_input_rt, eos_input_re, eos_t
   use amrex_fort_module, only : rt => amrex_real
@@ -37,9 +28,6 @@ contains
   subroutine transx(qm, qmo, qp, qpo, qd_lo, qd_hi, &
                     qaux, qa_lo, qa_hi, &
                     fx, fx_lo, fx_hi, &
-#ifdef RADIATION
-                    rfx, rfx_lo, rfx_hi, &
-#endif
                     qgdx, qgdx_lo, qgdx_hi, &
                     srcQ, src_lo, src_hi, &
                     hdt, cdtdx,  &
@@ -57,10 +45,6 @@ contains
     integer vol_lo(3), vol_hi(3)
     integer ilo, ihi, jlo, jhi
 
-#ifdef RADIATION
-    integer rfx_lo(3), rfx_hi(3)
-    real(rt)         rfx(rfx_lo(1):rfx_hi(1),rfx_lo(2):rfx_hi(2),0:ngroups-1)
-#endif
 
     real(rt)         qm(qd_lo(1):qd_hi(1),qd_lo(2):qd_hi(2),NQ)
     real(rt)         qmo(qd_lo(1):qd_hi(1),qd_lo(2):qd_hi(2),NQ)
@@ -90,13 +74,6 @@ contains
     real(rt)         :: pggp, pggm, ugp, ugm, dAup, pav, uav, dAu, pnewl,pnewr
     real(rt)         :: geav, dge, gegp, gegm, gamc
     real(rt)         :: rhotmp
-
-#ifdef RADIATION
-    real(rt)         dre, dmom
-    real(rt)        , dimension(0:ngroups-1) :: lambda, ergp, ergm, err, erl, lamge, luge, &
-         der, ernewr, ernewl
-    real(rt)         eddf, f1, ugc, divu
-#endif
 
     type (eos_t) :: eos_state
 
@@ -149,14 +126,6 @@ contains
           ugm = qgdx(i,  j,GDU)
           gegp = qgdx(i+1,j,GDGAME)
           gegm = qgdx(i,  j,GDGAME)
-
-#ifdef RADIATION
-          lambda(:) = qaux(i,j,QLAMS:QLAMS+ngroups-1)
-          ugc = 0.5e0_rt*(ugp+ugm)
-          ergp(:) = qgdx(i+1,j,GDERADS:GDERADS-1+ngroups)
-          ergm(:) = qgdx(i  ,j,GDERADS:GDERADS-1+ngroups)
-#endif
-
           ! we need to augment our conserved system with either a p
           ! equation or gammae (if we have ppm_predict_gammae = 1) to
           ! be able to deal with the general EOS
@@ -169,34 +138,7 @@ contains
           dge = gegp-gegm
 
           ! this is the gas gamma_1
-#ifdef RADIATION
-          gamc = qaux(i,j,QGAMCG)
-#else
           gamc = qaux(i,j,QGAMC)
-#endif
-
-#ifdef RADIATION
-          lamge(:) = lambda(:) * (ergp(:)-ergm(:))
-          luge(:) = ugc * lamge(:)
-          dre = -cdtdx*sum(luge)
-
-          if (fspace_type .eq. 1 .and. comoving) then
-             do g=0, ngroups-1
-                eddf = Edd_factor(lambda(g))
-                f1 = 0.5e0_rt*(1.e0_rt-eddf)
-                der(g) = cdtdx * ugc * f1 * (ergp(g) - ergm(g))
-             end do
-          else if (fspace_type .eq. 2) then
-             divu = (area1(i+1,j)*ugp-area1(i,j)*ugm)/vol(i,j)
-             do g=0, ngroups-1
-                eddf = Edd_factor(lambda(g))
-                f1 = 0.5e0_rt*(1.e0_rt-eddf)
-                der(g) = -hdt * f1 * 0.5e0_rt*(ergp(g)+ergm(g)) * divu
-             end do
-          else ! mixed frame
-             der(:) = cdtdx * luge(:)
-          end if
-#endif
 
           !-------------------------------------------------------------------
           ! qp state
@@ -211,15 +153,12 @@ contains
              rvr = rrr*qp(i,j,QV)
              ekinr = HALF*rrr*sum(qp(i,j,QU:QW)**2)
              rer = qp(i,j,QREINT) + ekinr
-#ifdef RADIATION
-             err(:) = qp(i,j,qrad:qradhi)
-#endif
 
              ! Add transverse predictor
              rrnewr = rrr - hdt*(area1(i+1,j)*fx(i+1,j,URHO) -  &
                                  area1(i,j)*fx(i,j,URHO))/vol(i,j)
 
-             ! Note that pressure may be treated specially here, depending on 
+             ! Note that pressure may be treated specially here, depending on
              ! the geometry.  Our y-interface equation for (rho u) is:
              !
              !  d(rho u)/dt + d(rho u v)/dy = - 1/r d(r rho u u)/dr - dp/dr
@@ -238,23 +177,12 @@ contains
              renewr = rer - hdt*(area1(i+1,j)*fx(i+1,j,UEDEN)-  &
                                  area1(i,j)*fx(i,j,UEDEN))/vol(i,j)
 
-#ifdef RADIATION
-             runewr = runewr - HALF*hdt*(area1(i+1,j)+area1(i,j))*sum(lamge)/vol(i,j)
-             renewr = renewr + dre
-             ernewr(:) = err(:) - hdt*(area1(i+1,j)*rfx(i+1,j,:)-  &
-                  area1(i,j)*rfx(i,j,:))/vol(i,j) &
-                  + der(:)
-#endif
-
              reset_state = .false.
              if (transverse_reset_density == 1 .and. rrnewr < ZERO) then
                 rrnewr = rrr
                 runewr = rur
                 rvnewr = rvr
                 renewr = rer
-#ifdef RADIATION
-                ernewr(:) = err(:)
-#endif
                 reset_state = .true.
              endif
 
@@ -339,12 +267,6 @@ contains
                 qpo(i,j,QGAME) = qp(i,j,QGAME)
              endif
 
-#ifdef RADIATION
-             qpo(i,j,qrad:qradhi) = ernewr(:)
-             qpo(i,j,qptot)   = sum(lambda*ernewr) + qpo(i,j,QPRES)
-             qpo(i,j,qreitot) = sum(qpo(i,j,qrad:qradhi)) + qpo(i,j,QREINT)
-#endif
-
           end if
 
           !-------------------------------------------------------------------
@@ -359,14 +281,11 @@ contains
              rvl = rrl*qm(i,j+1,QV)
              ekinl = HALF*rrl*sum(qm(i,j+1,QU:QW)**2)
              rel = qm(i,j+1,QREINT) + ekinl
-#ifdef RADIATION
-             erl(:) = qm(i,j+1,qrad:qradhi)
-#endif
 
              rrnewl = rrl - hdt*(area1(i+1,j)*fx(i+1,j,URHO) -  &
                                  area1(i,j)*fx(i,j,URHO))/vol(i,j)
              runewl = rul - hdt*(area1(i+1,j)*fx(i+1,j,UMX)  -  &
-                                 area1(i,j)*fx(i,j,UMX))/vol(i,j) 
+                                 area1(i,j)*fx(i,j,UMX))/vol(i,j)
              if (.not. mom_flux_has_p(1)%comp(UMX)) then
                 runewl = runewl -cdtdx *(pggp-pggm)
              endif
@@ -376,22 +295,12 @@ contains
                                  area1(i,j)*fx(i,j,UEDEN))/vol(i,j)
 
 
-#ifdef RADIATION
-             runewl = runewl - HALF*hdt*(area1(i+1,j)+area1(i,j))*sum(lamge)/vol(i,j)
-             renewl = renewl + dre
-             ernewl(:) = erl(:) - hdt*(area1(i+1,j)*rfx(i+1,j,:)-  &
-                  area1(i,j)*rfx(i,j,:))/vol(i,j) &
-                  + der(:)
-#endif
              reset_state = .false.
              if (transverse_reset_density == 1 .and. rrnewl < ZERO) then
                 rrnewl = rrl
                 runewl = rul
                 rvnewl = rvl
                 renewl = rel
-#ifdef RADIATION
-                ernewl(:) = erl(:)
-#endif
                 reset_state = .true.
              endif
 
@@ -476,12 +385,6 @@ contains
                 qmo(i,j+1,QGAME) = qm(i,j+1,QGAME)
              endif
 
-#ifdef RADIATION
-             qmo(i,j+1,qrad:qradhi) = ernewl(:)
-             qmo(i,j+1,qptot)   = sum(lambda*ernewl) + qmo(i,j+1,QPRES)
-             qmo(i,j+1,qreitot) = sum(qmo(i,j+1,qrad:qradhi)) + qmo(i,j+1,QREINT)
-#endif
-
           end if
 
        enddo
@@ -493,9 +396,6 @@ contains
   subroutine transy(qm, qmo, qp, qpo, qd_lo, qd_hi, &
                     qaux, qa_lo, qa_hi, &
                     fy, fy_lo, fy_hi, &
-#ifdef RADIATION
-                    rfy, rfy_lo, rfy_hi, &
-#endif
                     qgdy, qgdy_lo, qgdy_hi, &
                     srcQ, src_lo, src_hi, &
                     hdt, cdtdy, ilo, ihi, jlo, jhi)
@@ -507,11 +407,6 @@ contains
     integer qgdy_lo(3), qgdy_hi(3)
     integer src_lo(3), src_hi(3)
     integer ilo, ihi, jlo, jhi
-
-#ifdef RADIATION
-    integer rfy_lo(3), rfy_hi(3)
-    real(rt)         rfy(rfy_lo(1):rfy_hi(1),rfy_lo(2):rfy_hi(2),0:ngroups-1)
-#endif
 
     real(rt)         qm(qd_lo(1):qd_hi(1),qd_lo(2):qd_hi(2),NQ)
     real(rt)         qmo(qd_lo(1):qd_hi(1),qd_lo(2):qd_hi(2),NQ)
@@ -538,13 +433,6 @@ contains
     real(rt)         :: rrnewl, runewl, rvnewl, renewl
     real(rt)         :: rhotmp
     real(rt)         :: compo, compn
-
-#ifdef RADIATION
-    real(rt)         :: dre, dmom
-    real(rt)        , dimension(0:ngroups-1) :: lambda, ergp, ergm, err, erl, lamge, luge, &
-         der, ernewr, ernewl
-    real(rt)         :: eddf, f1, ugc
-#endif
 
     type (eos_t) :: eos_state
 
@@ -593,12 +481,6 @@ contains
           gegp = qgdy(i,j+1,GDGAME)
           gegm = qgdy(i,j  ,GDGAME)
 
-#ifdef RADIATION
-          lambda(:) = qaux(i,j,QLAMS:QLAMS+ngroups-1)
-          ugc = 0.5e0_rt*(ugp+ugm)
-          ergp(:) = qgdy(i,j+1,GDERADS:GDERADS-1+ngroups)
-          ergm(:) = qgdy(i,j  ,GDERADS:GDERADS-1+ngroups)
-#endif
           ! we need to augment our conserved system with either a p
           ! equation or gammae (if we have ppm_predict_gammae = 1) to
           ! be able to deal with the general EOS
@@ -611,34 +493,7 @@ contains
           dge = gegp-gegm
 
           ! this is the gas gamma_1
-#ifdef RADIATION
-          gamc = qaux(i,j,QGAMCG)
-#else
           gamc = qaux(i,j,QGAMC)
-#endif
-
-
-#ifdef RADIATION
-          lamge(:) = lambda(:) * (ergp(:)-ergm(:))
-          luge(:) = ugc * lamge(:)
-          dre = -cdtdy*sum(luge)
-
-          if (fspace_type .eq. 1 .and. comoving) then
-             do g=0, ngroups-1
-                eddf = Edd_factor(lambda(g))
-                f1 = 0.5e0_rt*(1.e0_rt-eddf)
-                der(g) = cdtdy * ugc * f1 * (ergp(g) - ergm(g))
-             end do
-          else if (fspace_type .eq. 2) then
-             do g=0, ngroups-1
-                eddf = Edd_factor(lambda(g))
-                f1 = 0.5e0_rt*(1.e0_rt-eddf)
-                der(g) = cdtdy * f1 * 0.5e0_rt*(ergp(g)+ergm(g)) * (ugm-ugp)
-             end do
-          else ! mixed frame
-             der(:) = cdtdy * luge
-          end if
-#endif
 
           !-------------------------------------------------------------------
           ! qp state
@@ -653,25 +508,14 @@ contains
              rvr = rrr*qp(i,j,QV)
              ekinr = HALF*rrr*sum(qp(i,j,QU:QW)**2)
              rer = qp(i,j,QREINT) + ekinr
-#ifdef RADIATION
-             err(:) = qp(i,j,qrad:qradhi)
-#endif
-
              ! Add transverse predictor
              rrnewr = rrr - cdtdy*(fy(i,j+1,URHO) - fy(i,j,URHO))
 
              runewr = rur - cdtdy*(fy(i,j+1,UMX)  - fy(i,j,UMX))
              ! note: we are always Cartesian in the y-direction, so the
              ! pressure term is already accounted for in the flux
-             rvnewr = rvr - cdtdy*(fy(i,j+1,UMY)  - fy(i,j,UMY)) 
+             rvnewr = rvr - cdtdy*(fy(i,j+1,UMY)  - fy(i,j,UMY))
              renewr = rer - cdtdy*(fy(i,j+1,UEDEN)- fy(i,j,UEDEN))
-
-#ifdef RADIATION
-             rvnewr = rvnewr - cdtdy*sum(lamge)
-             renewr = renewr + dre
-             ernewr(:) = err(:) - cdtdy*(rfy(i,j+1,:) - rfy(i,j,:)) &
-                  + der(:)
-#endif
 
              reset_state = .false.
              if (transverse_reset_density == 1 .and. rrnewr <= ZERO) then
@@ -679,9 +523,6 @@ contains
                 runewr = rur
                 rvnewr = rvr
                 renewr = rer
-#ifdef RADIATION
-                ernewr(:) = err(:)
-#endif
                 reset_state = .true.
              end if
 
@@ -758,12 +599,6 @@ contains
                 qpo(i,j,QGAME) = qp(i,j,QGAME)
              endif
 
-#ifdef RADIATION
-             qpo(i,j,qrad:qradhi) = ernewr(:)
-             qpo(i,j,qptot  ) = sum(lambda*ernewr) + qpo(i,j,QPRES)
-             qpo(i,j,qreitot) = sum(qpo(i,j,qrad:qradhi)) + qpo(i,j,QREINT)
-#endif
-
           end if
 
           !-------------------------------------------------------------------
@@ -778,21 +613,11 @@ contains
              rvl = rrl*qm(i+1,j,QV)
              ekinl = HALF*rrl*sum(qm(i+1,j,QU:QW)**2)
              rel = qm(i+1,j,QREINT) + ekinl
-#ifdef RADIATION
-             erl(:) = qm(i+1,j,qrad:qradhi)
-#endif
 
              rrnewl = rrl - cdtdy*(fy(i,j+1,URHO) - fy(i,j,URHO))
              runewl = rul - cdtdy*(fy(i,j+1,UMX)  - fy(i,j,UMX))
-             rvnewl = rvl - cdtdy*(fy(i,j+1,UMY)  - fy(i,j,UMY)) 
+             rvnewl = rvl - cdtdy*(fy(i,j+1,UMY)  - fy(i,j,UMY))
              renewl = rel - cdtdy*(fy(i,j+1,UEDEN)- fy(i,j,UEDEN))
-
-#ifdef RADIATION
-             rvnewl = rvnewl - cdtdy*sum(lamge)
-             renewl = renewl + dre
-             ernewl(:) = erl(:) - cdtdy*(rfy(i,j+1,:) - rfy(i,j,:)) &
-                  + der(:)
-#endif
 
              reset_state = .false.
              if (transverse_reset_density == 1 .and. rrnewl <= ZERO) then
@@ -800,9 +625,6 @@ contains
                 runewl = rul
                 rvnewl = rvl
                 renewl = rel
-#ifdef RADIATION
-                ernewl(:) = erl(:)
-#endif
                 reset_state = .true.
              endif
 
@@ -880,12 +702,6 @@ contains
                 qmo(i+1,j,QPRES) = qm(i+1,j,QPRES) + hdt*srcQ(i,j,QPRES)
                 qmo(i+1,j,QGAME) = qm(i+1,j,QGAME)
              endif
-
-#ifdef RADIATION
-             qmo(i+1,j,qrad:qradhi) = ernewl(:)
-             qmo(i+1,j,qptot  ) = sum(lambda*ernewl) + qmo(i+1,j,QPRES)
-             qmo(i+1,j,qreitot) = sum(qmo(i+1,j,qrad:qradhi)) + qmo(i+1,j,QREINT)
-#endif
 
           end if
 

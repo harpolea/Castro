@@ -132,7 +132,6 @@ contains
 
     f_lo = ustar_l - ustar_r
 
-
     ! hi bounds
     call wsqge(pl, taul, gamel, gdot,  &
                gamstar, pstar_hi, wlsq, clsql, gmin, gmax)
@@ -248,21 +247,17 @@ contains
 
     rhod = ONE/(rhol_sqrt + rhor_sqrt)
 
-
-
     ! compute the average sound speed. This uses an approximation from
     ! E88, eq. 5.6, 5.7 that assumes gamma falls between 1
     ! and 5/3
     cavg = sqrt( (rhol_sqrt*cl**2 + rhor_sqrt*cr**2)*rhod + &
          HALF*rhol_sqrt*rhor_sqrt*rhod**2*(qr(ivel) - ql(ivel))**2 )
 
-
     ! Roe eigenvalues (E91, eq. 5.3b)
     uavg = (rhol_sqrt*ql(ivel) + rhor_sqrt*qr(ivel))*rhod
 
     a1 = uavg - cavg
     a4 = uavg + cavg
-
 
     ! signal speeds (E91, eq. 4.5)
     bl = min(a1, ql(ivel) - cl)
@@ -276,7 +271,6 @@ contains
     if (abs(bd) < small*max(abs(bm),abs(bp))) return
 
     bd = ONE/bd
-
 
     ! compute the fluxes according to E91, eq. 4.4b -- note that the
     ! min/max above picks the correct flux if we are not in the star

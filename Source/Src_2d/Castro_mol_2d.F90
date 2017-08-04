@@ -32,9 +32,6 @@ subroutine ca_mol_single_stage(time, &
   use riemann_module, only: cmpflx, shock
   use ppm_module, only : ppm_reconstruct
   use amrex_fort_module, only : rt => amrex_real
-#ifdef RADIATION  
-  use rad_params_module, only : ngroups
-#endif
   implicit none
 
   integer, intent(in) :: lo(2), hi(2), verbose
@@ -81,12 +78,6 @@ subroutine ca_mol_single_stage(time, &
   real(rt)        , allocatable :: q1(:,:,:)
   real(rt)        , allocatable :: q2(:,:,:)
 
-  ! radiation fluxes (need these to get things to compile)
-#ifdef RADIATION
-  real(rt)        , allocatable :: rflx(:,:,:)
-  real(rt)        , allocatable :: rfly(:,:,:)
-#endif
-
   real(rt)        , allocatable :: shk(:,:)
 
   ! temporary interface values of the parabola
@@ -117,12 +108,6 @@ subroutine ca_mol_single_stage(time, &
   allocate(q1(flux1_lo(1):flux1_hi(1), flux1_lo(2):flux1_hi(2), NGDNV))
   allocate(q2(flux2_lo(1):flux2_hi(1), flux2_lo(2):flux2_hi(2), NGDNV))
 
-#ifdef RADIATION
-  ! when we do radiation, these would be passed out
-  allocate(rflx(flux1_lo(1):flux1_hi(1), flux1_lo(2):flux1_hi(2), ngroups))
-  allocate(rfly(flux2_lo(1):flux2_hi(1), flux2_lo(2):flux2_hi(2), ngroups))
-#endif
-
   allocate(shk(lo(1)-1:hi(1)+1, lo(2)-1:hi(2)+1))
   allocate(pdivu(lo(1):hi(1), lo(2):hi(2)))
 
@@ -152,15 +137,8 @@ subroutine ca_mol_single_stage(time, &
 #else
     ! multidimensional shock detection -- this will be used to do the
     ! hybrid Riemann solver
-    if (hybrid_riemann == 1) then
-       call shock(q, q_lo, q_hi, &
-                  shk, lo_3D-1, hi_3D+1, &
-                  lo, hi, dx, dy)
-    else
-       shk(:,:) = ZERO
-    endif
+     shk(:,:) = ZERO
 #endif
-
 
   ! Check if we have violated the CFL criterion.
   call compute_cfl(q, q_lo, q_hi, &
@@ -235,9 +213,6 @@ subroutine ca_mol_single_stage(time, &
   call cmpflx(qxm, qxp, lo_3D-1, hi_3D+2, &
               flux1, flux1_lo, flux1_hi, &
               q1, flux1_lo, flux1_hi, &
-#ifdef RADIATION
-              rflx, flux1_lo, flux1_hi, &
-#endif
               qaux, qa_lo, qa_hi, &
               shk, lo_3D-1, hi_3D+1, &
               1, lo(1), hi(1), lo(2), hi(2), domlo, domhi)
@@ -246,15 +221,11 @@ subroutine ca_mol_single_stage(time, &
   call cmpflx(qym, qyp, lo_3D-1, hi_3D+2, &
               flux2, flux2_lo, flux2_hi, &
               q2, flux2_lo, flux2_hi, &
-#ifdef RADIATION
-              rfly, flux2_lo, flux2_hi, &
-#endif
               qaux, qa_lo, qa_hi, &
               shk, lo_3D-1, hi_3D+1, &
               2, lo(1), hi(1), lo(2), hi(2), domlo, domhi)
 
   deallocate(qxm, qxp, qym, qyp)
-
 
   ! construct p div{U}
   do j = lo(2), hi(2)
@@ -335,7 +306,7 @@ subroutine ca_mol_single_stage(time, &
               update(i,j,n) = update(i,j,n) - pdivu(i,j)
 
            else if (n == UMX) then
-              ! add the pressure source term for axisummetry 
+              ! add the pressure source term for axisummetry
               if (coord_type == 1) then
                  update(i,j,n) = update(i,j,n) - (q1(i+1,j,GDPRES) - q1(i,j,GDPRES))/ dx
               endif
@@ -359,7 +330,7 @@ subroutine ca_mol_single_stage(time, &
         enddo
      enddo
   enddo
-  
+
   do n = 1, NVAR
      do j = lo(2), hi(2)+1
         do i = lo(1), hi(1)
@@ -374,9 +345,5 @@ subroutine ca_mol_single_stage(time, &
   end if
 
   deallocate(flatn,div,q1,q2,pdivu)
-
-#ifdef RADIATION
-  deallocate(rflx, rfly)
-#endif
 
 end subroutine ca_mol_single_stage

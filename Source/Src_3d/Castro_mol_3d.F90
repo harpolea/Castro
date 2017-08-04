@@ -33,12 +33,6 @@ subroutine ca_mol_single_stage(time, &
   use riemann_module, only: cmpflx, shock
   use ppm_module, only : ppm_reconstruct
   use amrex_fort_module, only : rt => amrex_real
-#ifdef RADIATION  
-  use rad_params_module, only : ngroups
-#endif
-#ifdef HYBRID_MOMENTUM
-    use hybrid_advection_module, only : add_hybrid_advection_source
-#endif
 
   implicit none
 
@@ -88,13 +82,6 @@ subroutine ca_mol_single_stage(time, &
   real(rt)        , pointer:: q3(:,:,:,:)
   real(rt)        , pointer:: qint(:,:,:,:)
 
-#ifdef RADIATION
-  ! radiation fluxes (need these to get things to compile)
-  real(rt)        , pointer:: rflx(:,:,:,:)
-  real(rt)        , pointer:: rfly(:,:,:,:)
-  real(rt)        , pointer:: rflz(:,:,:,:)
-#endif
-
   real(rt)        , pointer:: shk(:,:,:)
 
   ! temporary interface values of the parabola
@@ -131,13 +118,6 @@ subroutine ca_mol_single_stage(time, &
   call bl_allocate(q2, flux2_lo, flux2_hi, NGDNV)
   call bl_allocate(q3, flux3_lo, flux3_hi, NGDNV)
 
-#ifdef RADIATION
-  ! when we do radiation, these would be passed out
-  call bl_allocate(rflx, flux1_lo, flux1_hi, ngroups)
-  call bl_allocate(rfly, flux2_lo, flux2_hi, ngroups)
-  call bl_allocate(rflz, flux3_lo, flux3_hi, ngroups)
-#endif
-
   call bl_allocate(sxm, st_lo, st_hi, NQ)
   call bl_allocate(sxp, st_lo, st_hi, NQ)
   call bl_allocate(sym, st_lo, st_hi, NQ)
@@ -161,7 +141,7 @@ subroutine ca_mol_single_stage(time, &
   if (ppm_type == 0) then
      call bl_error("ERROR: method of lines integration does not support ppm_type = 0")
   endif
-  
+
 #ifdef SHOCK_VAR
     uout(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),USHK) = ZERO
 
@@ -282,9 +262,6 @@ subroutine ca_mol_single_stage(time, &
            call cmpflx(qxm, qxp, It_lo, It_hi, &
                        flux1, flux1_lo, flux1_hi, &
                        qint, It_lo, It_hi, &  ! temporary
-#ifdef RADIATION
-                       rflx, flux1_lo, flux1_hi, &
-#endif
                        qaux, qa_lo, qa_hi, &
                        shk, shk_lo, shk_hi, &
                        1, lo(1), hi(1)+1, lo(2), hi(2), kc, k3d, k3d, domlo, domhi)
@@ -299,9 +276,6 @@ subroutine ca_mol_single_stage(time, &
            call cmpflx(qym, qyp, It_lo, It_hi, &
                        flux2, flux2_lo, flux2_hi, &
                        qint, It_lo, It_hi, &  ! temporary
-#ifdef RADIATION
-                       rfly, flux2_lo, flux2_hi, &
-#endif
                        qaux, qa_lo, qa_hi, &
                        shk, shk_lo, shk_hi, &
                        2, lo(1), hi(1), lo(2), hi(2)+1, kc, k3d, k3d, domlo, domhi)
@@ -318,9 +292,6 @@ subroutine ca_mol_single_stage(time, &
         call cmpflx(qzm, qzp, It_lo, It_hi, &
                     flux3, flux3_lo, flux3_hi, &
                     qint, It_lo, It_hi, &
-#ifdef RADIATION
-                    rflz, flux3_lo, flux3_hi, &
-#endif
                     qaux, qa_lo, qa_hi, &
                     shk, shk_lo, shk_hi, &
                     3, lo(1), hi(1), lo(2), hi(2), kc, k3d, k3d, domlo, domhi)
@@ -332,7 +303,7 @@ subroutine ca_mol_single_stage(time, &
         enddo
 
      endif
-     
+
 
   enddo
 
@@ -459,7 +430,7 @@ subroutine ca_mol_single_stage(time, &
      do k = lo(3), hi(3)
         do j = lo(2), hi(2)
            do i = lo(1), hi(1)
-              
+
               update(i,j,k,n) = update(i,j,k,n) + &
                    (flux1(i,j,k,n) * area1(i,j,k) - flux1(i+1,j,k,n) * area1(i+1,j,k) + &
                     flux2(i,j,k,n) * area2(i,j,k) - flux2(i,j+1,k,n) * area2(i,j+1,k) + &
@@ -480,14 +451,6 @@ subroutine ca_mol_single_stage(time, &
         enddo
      enddo
   enddo
-
-#ifdef HYBRID_MOMENTUM
-  call add_hybrid_advection_source(lo, hi, dt, &
-                                   update, uout_lo, uout_hi, &
-                                   q1, flux1_lo, flux1_hi, &
-                                   q2, flux2_lo, flux2_hi, &
-                                   q3, flux3_lo, flux3_hi)
-#endif
 
   ! Scale the fluxes for the form we expect later in refluxing.
 
@@ -528,11 +491,5 @@ subroutine ca_mol_single_stage(time, &
   call bl_deallocate(    q1)
   call bl_deallocate(    q2)
   call bl_deallocate(    q3)
-
-#ifdef RADIATION
-  call bl_deallocate(rflx)
-  call bl_deallocate(rfly)
-  call bl_deallocate(rflz)
-#endif
 
 end subroutine ca_mol_single_stage

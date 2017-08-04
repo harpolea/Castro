@@ -28,7 +28,6 @@ Castro::construct_hydro_source(Real time, Real dt)
 
     sources_for_hydro.FillBoundary(geom.periodicity());
 
-#ifndef SDC
     // Optionally we can predict the source terms to t + dt/2,
     // which is the time-level n+1/2 value, To do this we use a
     // lagged predictor estimate: dS/dt_n = (S_n - S_{n-1}) / dt, so
@@ -43,18 +42,6 @@ Castro::construct_hydro_source(Real time, Real dt)
       MultiFab::Saxpy(sources_for_hydro, 0.5 * dt, dSdt_new, 0, 0, NUM_STATE, NUM_GROW);
 
     }
-#else
-    // If we're doing SDC, time-center the source term (using the
-    // current iteration's old sources and the last iteration's new
-    // sources).
-
-    MultiFab& SDC_source = get_new_data(SDC_Source_Type);
-
-    MultiFab::Add(sources_for_hydro, SDC_source, 0, 0, NUM_STATE, 0);
-
-    sources_for_hydro.FillBoundary(geom.periodicity());
-
-#endif
 
     int finest_level = parent->finestLevel();
 
@@ -62,7 +49,6 @@ Castro::construct_hydro_source(Real time, Real dt)
     Real courno    = -1.0e+200;
 
     MultiFab& S_new = get_new_data(State_Type);
-
 
     // note: the radiation consup currently does not fill these
     Real mass_lost       = 0.;
@@ -95,112 +81,100 @@ Castro::construct_hydro_source(Real time, Real dt)
       const int*  domain_lo = geom.Domain().loVect();
       const int*  domain_hi = geom.Domain().hiVect();
 
-      for (MFIter mfi(S_new,hydro_tile_size); mfi.isValid(); ++mfi)
-      {
-	  const Box& bx    = mfi.tilebox();
-	  const Box& qbx = amrex::grow(bx, NUM_GROW);
+      for (MFIter mfi(S_new,hydro_tile_size); mfi.isValid(); ++mfi) {
+    	  const Box& bx    = mfi.tilebox();
+    	  const Box& qbx = amrex::grow(bx, NUM_GROW);
 
-	  const int* lo = bx.loVect();
-	  const int* hi = bx.hiVect();
+    	  const int* lo = bx.loVect();
+    	  const int* hi = bx.hiVect();
 
-	  FArrayBox &statein  = Sborder[mfi];
-	  FArrayBox &stateout = S_new[mfi];
+    	  FArrayBox &statein  = Sborder[mfi];
+    	  FArrayBox &stateout = S_new[mfi];
 
-	  FArrayBox &source_in  = sources_for_hydro[mfi];
-	  FArrayBox &source_out = hydro_source[mfi];
+    	  FArrayBox &source_in  = sources_for_hydro[mfi];
+    	  FArrayBox &source_out = hydro_source[mfi];
 
-	  q.resize(qbx, QVAR);
-	  qaux.resize(qbx, NQAUX);
-	  src_q.resize(qbx, QVAR);
+    	  q.resize(qbx, QVAR);
+    	  qaux.resize(qbx, NQAUX);
+    	  src_q.resize(qbx, QVAR);
 
-	  // convert the conservative state to the primitive variable state.
-	  // this fills both q and qaux.
+    	  // convert the conservative state to the primitive variable state.
+    	  // this fills both q and qaux.
 
-	  const int idx = mfi.tileIndex();
+    	  const int idx = mfi.tileIndex();
 
-	  ca_ctoprim(ARLIM_3D(qbx.loVect()), ARLIM_3D(qbx.hiVect()),
-		     statein.dataPtr(), ARLIM_3D(statein.loVect()), ARLIM_3D(statein.hiVect()),
-		     q.dataPtr(), ARLIM_3D(q.loVect()), ARLIM_3D(q.hiVect()),
-		     qaux.dataPtr(), ARLIM_3D(qaux.loVect()), ARLIM_3D(qaux.hiVect()), &idx);
+    	  ca_ctoprim(ARLIM_3D(qbx.loVect()), ARLIM_3D(qbx.hiVect()),
+    		     statein.dataPtr(), ARLIM_3D(statein.loVect()), ARLIM_3D(statein.hiVect()),
+    		     q.dataPtr(), ARLIM_3D(q.loVect()), ARLIM_3D(q.hiVect()),
+    		     qaux.dataPtr(), ARLIM_3D(qaux.loVect()), ARLIM_3D(qaux.hiVect()), &idx);
 
-	  // convert the source terms expressed as sources to the conserved state to those
-	  // expressed as sources for the primitive state.
+    	  // convert the source terms expressed as sources to the conserved state to those
+    	  // expressed as sources for the primitive state.
 
-	  ca_srctoprim(ARLIM_3D(qbx.loVect()), ARLIM_3D(qbx.hiVect()),
-		       q.dataPtr(), ARLIM_3D(q.loVect()), ARLIM_3D(q.hiVect()),
-		       qaux.dataPtr(), ARLIM_3D(qaux.loVect()), ARLIM_3D(qaux.hiVect()),
-		       source_in.dataPtr(), ARLIM_3D(source_in.loVect()), ARLIM_3D(source_in.hiVect()),
-		       src_q.dataPtr(), ARLIM_3D(src_q.loVect()), ARLIM_3D(src_q.hiVect()), &idx);
+    	  ca_srctoprim(ARLIM_3D(qbx.loVect()), ARLIM_3D(qbx.hiVect()),
+    		       q.dataPtr(), ARLIM_3D(q.loVect()), ARLIM_3D(q.hiVect()),
+    		       qaux.dataPtr(), ARLIM_3D(qaux.loVect()), ARLIM_3D(qaux.hiVect()),
+    		       source_in.dataPtr(), ARLIM_3D(source_in.loVect()), ARLIM_3D(source_in.hiVect()),
+    		       src_q.dataPtr(), ARLIM_3D(src_q.loVect()), ARLIM_3D(src_q.hiVect()), &idx);
 
-#ifndef RADIATION
+    	  // Allocate fabs for fluxes
+    	  for (int i = 0; i < BL_SPACEDIM ; i++)  {
+    	    const Box& bxtmp = amrex::surroundingNodes(bx,i);
+    	    flux[i].resize(bxtmp,NUM_STATE);
 
-	  // Add in the reactions source term; only done in SDC.
-
-#endif
-	  // Allocate fabs for fluxes
-	  for (int i = 0; i < BL_SPACEDIM ; i++)  {
-	    const Box& bxtmp = amrex::surroundingNodes(bx,i);
-	    flux[i].resize(bxtmp,NUM_STATE);
-
-	  }
+    	  }
 
 #if (BL_SPACEDIM <= 2)
-	  if (!Geometry::IsCartesian()) {
-	    pradial.resize(amrex::surroundingNodes(bx,0),1);
-	  }
+    	  if (!Geometry::IsCartesian()) {
+    	    pradial.resize(amrex::surroundingNodes(bx,0),1);
+    	  }
 #endif
 
-	  ca_ctu_update
-	    (&is_finest_level, &time,
-	     lo, hi, domain_lo, domain_hi,
-	     BL_TO_FORTRAN_3D(statein),
-	     BL_TO_FORTRAN_3D(stateout),
+    	  ca_ctu_update
+    	    (&is_finest_level, &time,
+    	     lo, hi, domain_lo, domain_hi,
+    	     BL_TO_FORTRAN_3D(statein),
+    	     BL_TO_FORTRAN_3D(stateout),
 
-	     BL_TO_FORTRAN_3D(q),
-	     BL_TO_FORTRAN_3D(qaux),
-	     BL_TO_FORTRAN_3D(src_q),
-	     BL_TO_FORTRAN_3D(source_out),
-	     dx, &dt,
-	     D_DECL(BL_TO_FORTRAN_3D(flux[0]),
-		    BL_TO_FORTRAN_3D(flux[1]),
-		    BL_TO_FORTRAN_3D(flux[2])),
+    	     BL_TO_FORTRAN_3D(q),
+    	     BL_TO_FORTRAN_3D(qaux),
+    	     BL_TO_FORTRAN_3D(src_q),
+    	     BL_TO_FORTRAN_3D(source_out),
+    	     dx, &dt,
+    	     D_DECL(BL_TO_FORTRAN_3D(flux[0]),
+    		    BL_TO_FORTRAN_3D(flux[1]),
+    		    BL_TO_FORTRAN_3D(flux[2])),
 
 #if (BL_SPACEDIM < 3)
-	     BL_TO_FORTRAN_3D(pradial),
+	       BL_TO_FORTRAN_3D(pradial),
 #endif
-	     D_DECL(BL_TO_FORTRAN_3D(area[0][mfi]),
-		    BL_TO_FORTRAN_3D(area[1][mfi]),
-		    BL_TO_FORTRAN_3D(area[2][mfi])),
+    	     D_DECL(BL_TO_FORTRAN_3D(area[0][mfi]),
+    		    BL_TO_FORTRAN_3D(area[1][mfi]),
+    		    BL_TO_FORTRAN_3D(area[2][mfi])),
 #if (BL_SPACEDIM < 3)
-	     BL_TO_FORTRAN_3D(dLogArea[0][mfi]),
+    	     BL_TO_FORTRAN_3D(dLogArea[0][mfi]),
 #endif
-	     BL_TO_FORTRAN_3D(volume[mfi]),
-	     &cflLoc, verbose,
-	     mass_lost, xmom_lost, ymom_lost, zmom_lost,
-	     eden_lost, xang_lost, yang_lost, zang_lost);
+    	     BL_TO_FORTRAN_3D(volume[mfi]),
+    	     &cflLoc, verbose,
+    	     mass_lost, xmom_lost, ymom_lost, zmom_lost,
+    	     eden_lost, xang_lost, yang_lost, zang_lost);
 
-	  // Store the fluxes from this advance.
-	  // For normal integration we want to add the fluxes from this advance
-	  // since we may be subcycling the timestep. But for SDC integration
-	  // we want to copy the fluxes since we expect that there will not be
-	  // subcycling and we only want the last iteration's fluxes.
+    	  // Store the fluxes from this advance.
+    	  // For normal integration we want to add the fluxes from this advance
+    	  // since we may be subcycling the timestep. But for SDC integration
+    	  // we want to copy the fluxes since we expect that there will not be
+    	  // subcycling and we only want the last iteration's fluxes.
 
-	  for (int i = 0; i < BL_SPACEDIM ; i++) {
-#ifndef SDC
-	    (*fluxes    [i])[mfi].plus(    flux[i],mfi.nodaltilebox(i),0,0,NUM_STATE);
-#else
-	    (*fluxes    [i])[mfi].copy(    flux[i],mfi.nodaltilebox(i),0,mfi.nodaltilebox(i),0,NUM_STATE);
-#endif
-	  }
+    	  for (int i = 0; i < BL_SPACEDIM ; i++) {
+    	       (*fluxes    [i])[mfi].plus(    flux[i],mfi.nodaltilebox(i),0,0,NUM_STATE);
+
+	       }
 
 #if (BL_SPACEDIM <= 2)
-	  if (!Geometry::IsCartesian()) {
-#ifndef SDC
-	    P_radial[mfi].plus(pradial,mfi.nodaltilebox(0),0,0,1);
-#else
-	    P_radial[mfi].copy(pradial,mfi.nodaltilebox(0),0,mfi.nodaltilebox(0),0,1);
-#endif
-	  }
+        	  if (!Geometry::IsCartesian()) {
+        	    P_radial[mfi].plus(pradial,mfi.nodaltilebox(0),0,0,1);
+
+        	  }
 #endif
       } // MFIter loop
 
@@ -208,59 +182,36 @@ Castro::construct_hydro_source(Real time, Real dt)
 #pragma omp critical (hydro_courno)
 #endif
       {
-	courno = std::max(courno,cflLoc);
+	         courno = std::max(courno,cflLoc);
 
       }
     }  // end of omp parallel region
 
     BL_PROFILE_VAR_STOP(CA_UMDRV);
 
-#ifdef RADIATION
-    if (radiation->verbose>=1) {
-#ifdef BL_LAZY
-      Lazy::QueueReduction( [=] () mutable {
-#endif
-	  ParallelDescriptor::ReduceIntMax(nstep_fsp, ParallelDescriptor::IOProcessorNumber());
-	  if (ParallelDescriptor::IOProcessor() && nstep_fsp > 0) {
-	    std::cout << "Radiation f-space advection on level " << level
-		      << " takes as many as " << nstep_fsp;
-	    if (nstep_fsp == 1) {
-	      std::cout<< " substep.\n";
-	    }
-	    else {
-	      std::cout<< " substeps.\n";
-	    }
-	  }
-#ifdef BL_LAZY
-	});
-#endif
-    }
-#else
     // Flush Fortran output
 
     if (verbose)
       flush_output();
 
-    if (track_grid_losses)
-    {
-	material_lost_through_boundary_temp[0] += mass_lost;
-	material_lost_through_boundary_temp[1] += xmom_lost;
-	material_lost_through_boundary_temp[2] += ymom_lost;
-	material_lost_through_boundary_temp[3] += zmom_lost;
-	material_lost_through_boundary_temp[4] += eden_lost;
-	material_lost_through_boundary_temp[5] += xang_lost;
-	material_lost_through_boundary_temp[6] += yang_lost;
-	material_lost_through_boundary_temp[7] += zang_lost;
+    if (track_grid_losses) {
+    	material_lost_through_boundary_temp[0] += mass_lost;
+    	material_lost_through_boundary_temp[1] += xmom_lost;
+    	material_lost_through_boundary_temp[2] += ymom_lost;
+    	material_lost_through_boundary_temp[3] += zmom_lost;
+    	material_lost_through_boundary_temp[4] += eden_lost;
+    	material_lost_through_boundary_temp[5] += xang_lost;
+    	material_lost_through_boundary_temp[6] += yang_lost;
+    	material_lost_through_boundary_temp[7] += zang_lost;
     }
 
-    if (print_update_diagnostics)
-    {
+    if (print_update_diagnostics) {
 
-	bool local = true;
-	Array<Real> hydro_update = evaluate_source_change(hydro_source, dt, local);
+    	bool local = true;
+    	Array<Real> hydro_update = evaluate_source_change(hydro_source, dt, local);
 
 #ifdef BL_LAZY
-	Lazy::QueueReduction( [=] () mutable {
+	   Lazy::QueueReduction( [=] () mutable {
 #endif
 	    ParallelDescriptor::ReduceRealSum(hydro_update.dataPtr(), hydro_update.size(), ParallelDescriptor::IOProcessorNumber());
 
@@ -273,19 +224,17 @@ Castro::construct_hydro_source(Real time, Real dt)
 	});
 #endif
       }
-#endif
 
     if (courno > 1.0) {
-	std::cout << "WARNING -- EFFECTIVE CFL AT THIS LEVEL " << level << " IS " << courno << '\n';
-	if (hard_cfl_limit == 1)
-	  amrex::Abort("CFL is too high at this level -- go back to a checkpoint and restart with lower cfl number");
+	       std::cout << "WARNING -- EFFECTIVE CFL AT THIS LEVEL " << level << " IS " << courno << '\n';
+    	if (hard_cfl_limit == 1)
+    	  amrex::Abort("CFL is too high at this level -- go back to a checkpoint and restart with lower cfl number");
     }
 
     if (verbose && ParallelDescriptor::IOProcessor())
         std::cout << std::endl << "... Leaving hydro advance" << std::endl << std::endl;
 
 }
-
 
 
 void
@@ -329,11 +278,11 @@ Castro::construct_mol_hydro_source(Real time, Real dt)
 #ifdef _OPENMP
 #pragma omp parallel
 #endif
-  {
+    {
 
-    FArrayBox flux[BL_SPACEDIM];
+      FArrayBox flux[BL_SPACEDIM];
 #if (BL_SPACEDIM <= 2)
-    FArrayBox pradial(Box::TheUnitBox(),1);
+        FArrayBox pradial(Box::TheUnitBox(),1);
 #endif
     FArrayBox q, qaux;
 
@@ -344,90 +293,87 @@ Castro::construct_mol_hydro_source(Real time, Real dt)
     const int*  domain_lo = geom.Domain().loVect();
     const int*  domain_hi = geom.Domain().hiVect();
 
-    for (MFIter mfi(S_new, hydro_tile_size); mfi.isValid(); ++mfi)
-      {
-	const Box& bx  = mfi.tilebox();
-	const Box& qbx = amrex::grow(bx, NUM_GROW);
+    for (MFIter mfi(S_new, hydro_tile_size); mfi.isValid(); ++mfi) {
+    	const Box& bx  = mfi.tilebox();
+    	const Box& qbx = amrex::grow(bx, NUM_GROW);
 
-	const int* lo = bx.loVect();
-	const int* hi = bx.hiVect();
+    	const int* lo = bx.loVect();
+    	const int* hi = bx.hiVect();
 
-	FArrayBox &statein  = Sborder[mfi];
-	FArrayBox &stateout = S_new[mfi];
+    	FArrayBox &statein  = Sborder[mfi];
+    	FArrayBox &stateout = S_new[mfi];
 
-	FArrayBox &source_in  = sources_for_hydro[mfi];
+    	FArrayBox &source_in  = sources_for_hydro[mfi];
 
-	// the output of this will be stored in the correct stage MF
-	FArrayBox &source_out = k_stage[mfi];
-	FArrayBox &source_hydro_only = hydro_source[mfi];
+    	// the output of this will be stored in the correct stage MF
+    	FArrayBox &source_out = k_stage[mfi];
+    	FArrayBox &source_hydro_only = hydro_source[mfi];
 
+    	FArrayBox& vol = volume[mfi];
 
-	FArrayBox& vol = volume[mfi];
+    	q.resize(qbx, QVAR);
+    	qaux.resize(qbx, NQAUX);
 
-	q.resize(qbx, QVAR);
-	qaux.resize(qbx, NQAUX);
+    	// convert the conservative state to the primitive variable state.
+    	// this fills both q and qaux.
 
-	// convert the conservative state to the primitive variable state.
-	// this fills both q and qaux.
+    	const int idx = mfi.tileIndex();
 
-	const int idx = mfi.tileIndex();
+    	ca_ctoprim(ARLIM_3D(qbx.loVect()), ARLIM_3D(qbx.hiVect()),
+    		   statein.dataPtr(), ARLIM_3D(statein.loVect()), ARLIM_3D(statein.hiVect()),
+    		   q.dataPtr(), ARLIM_3D(q.loVect()), ARLIM_3D(q.hiVect()),
+    		   qaux.dataPtr(), ARLIM_3D(qaux.loVect()), ARLIM_3D(qaux.hiVect()), &idx);
 
-	ca_ctoprim(ARLIM_3D(qbx.loVect()), ARLIM_3D(qbx.hiVect()),
-		   statein.dataPtr(), ARLIM_3D(statein.loVect()), ARLIM_3D(statein.hiVect()),
-		   q.dataPtr(), ARLIM_3D(q.loVect()), ARLIM_3D(q.hiVect()),
-		   qaux.dataPtr(), ARLIM_3D(qaux.loVect()), ARLIM_3D(qaux.hiVect()), &idx);
-
-
-	// Allocate fabs for fluxes
-	for (int i = 0; i < BL_SPACEDIM ; i++)  {
-	  const Box& bxtmp = amrex::surroundingNodes(bx,i);
-	  flux[i].resize(bxtmp,NUM_STATE);
-	}
+    	// Allocate fabs for fluxes
+    	for (int i = 0; i < BL_SPACEDIM ; i++)  {
+    	  const Box& bxtmp = amrex::surroundingNodes(bx,i);
+    	  flux[i].resize(bxtmp,NUM_STATE);
+    	}
 
 #if (BL_SPACEDIM <= 2)
-	if (!Geometry::IsCartesian()) {
-	  pradial.resize(amrex::surroundingNodes(bx,0),1);
-	}
+    	if (!Geometry::IsCartesian()) {
+    	  pradial.resize(amrex::surroundingNodes(bx,0),1);
+    	}
 #endif
 
-	ca_mol_single_stage
-	  (&time,
-	   lo, hi, domain_lo, domain_hi,
-	   &(b_mol[mol_iteration]),
-	   BL_TO_FORTRAN_3D(statein),
-	   BL_TO_FORTRAN_3D(stateout),
-	   BL_TO_FORTRAN_3D(q),
-	   BL_TO_FORTRAN_3D(qaux),
-	   BL_TO_FORTRAN_3D(source_in),
-	   BL_TO_FORTRAN_3D(source_out),
-	   BL_TO_FORTRAN_3D(source_hydro_only),
-	   dx, &dt,
-	   D_DECL(BL_TO_FORTRAN_3D(flux[0]),
-		  BL_TO_FORTRAN_3D(flux[1]),
-		  BL_TO_FORTRAN_3D(flux[2])),
+    	ca_mol_single_stage
+    	  (&time,
+    	   lo, hi, domain_lo, domain_hi,
+    	   &(b_mol[mol_iteration]),
+    	   BL_TO_FORTRAN_3D(statein),
+    	   BL_TO_FORTRAN_3D(stateout),
+    	   BL_TO_FORTRAN_3D(q),
+    	   BL_TO_FORTRAN_3D(qaux),
+    	   BL_TO_FORTRAN_3D(source_in),
+    	   BL_TO_FORTRAN_3D(source_out),
+    	   BL_TO_FORTRAN_3D(source_hydro_only),
+    	   dx, &dt,
+    	   D_DECL(BL_TO_FORTRAN_3D(flux[0]),
+    		  BL_TO_FORTRAN_3D(flux[1]),
+    		  BL_TO_FORTRAN_3D(flux[2])),
 #if (BL_SPACEDIM < 3)
-	   BL_TO_FORTRAN_3D(pradial),
+	       BL_TO_FORTRAN_3D(pradial),
 #endif
-	   D_DECL(BL_TO_FORTRAN_3D(area[0][mfi]),
-		  BL_TO_FORTRAN_3D(area[1][mfi]),
-		  BL_TO_FORTRAN_3D(area[2][mfi])),
+    	   D_DECL(BL_TO_FORTRAN_3D(area[0][mfi]),
+    		  BL_TO_FORTRAN_3D(area[1][mfi]),
+    		  BL_TO_FORTRAN_3D(area[2][mfi])),
 #if (BL_SPACEDIM < 3)
-	   BL_TO_FORTRAN_3D(dLogArea[0][mfi]),
+	       BL_TO_FORTRAN_3D(dLogArea[0][mfi]),
 #endif
-	   BL_TO_FORTRAN_3D(volume[mfi]),
-	   &cflLoc, verbose);
+    	   BL_TO_FORTRAN_3D(volume[mfi]),
+    	   &cflLoc, verbose);
 
-	// Store the fluxes from this advance -- we weight them by the
-	// integrator weight for this stage
-	for (int i = 0; i < BL_SPACEDIM ; i++) {
-	  (*fluxes    [i])[mfi].saxpy(b_mol[mol_iteration], flux[i],
-				      mfi.nodaltilebox(i), mfi.nodaltilebox(i), 0, 0, NUM_STATE);
-	}
+    	// Store the fluxes from this advance -- we weight them by the
+    	// integrator weight for this stage
+    	for (int i = 0; i < BL_SPACEDIM ; i++) {
+    	  (*fluxes    [i])[mfi].saxpy(b_mol[mol_iteration], flux[i],
+    				      mfi.nodaltilebox(i), mfi.nodaltilebox(i), 0, 0, NUM_STATE);
+    	}
 
 #if (BL_SPACEDIM <= 2)
-	if (!Geometry::IsCartesian()) {
-	  P_radial[mfi].plus(pradial,mfi.nodaltilebox(0),0,0,1);
-	}
+    	if (!Geometry::IsCartesian()) {
+    	  P_radial[mfi].plus(pradial,mfi.nodaltilebox(0),0,0,1);
+    	}
 #endif
       } // MFIter loop
 
@@ -467,7 +413,6 @@ Castro::construct_mol_hydro_source(Real time, Real dt)
 	});
 #endif
     }
-
 
   if (courno > 1.0) {
     std::cout << "WARNING -- EFFECTIVE CFL AT THIS LEVEL " << level << " IS " << courno << '\n';

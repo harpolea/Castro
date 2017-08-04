@@ -86,23 +86,19 @@ Castro::do_advance (Real time,
     MultiFab& S_new = get_new_data(State_Type);
 
     // Perform initialization steps.
-
     initialize_do_advance(time, dt, amr_iteration, amr_ncycle);
 
     // Check for NaN's.
-
     check_for_nan(S_old);
 
     // Since we are Strang splitting the reactions, do them now (only
     // for first stage of MOL)
-
     if (mol_iteration == 0) {
 
       // Initialize the new-time data. This copy needs to come after the
       // reactions.
 
       MultiFab::Copy(S_new, Sborder, 0, 0, NUM_STATE, S_new.nGrow());
-
 
       // Construct the old-time sources from Sborder.  For both CTU
       // and integration, this will already be applied to S_new (with
@@ -111,23 +107,15 @@ Castro::do_advance (Real time,
       // MOL integrator.  Also note -- this does not affect the
       // prediction of the interface state, an explict source will be
       // traced there as needed.
-
-
       do_old_sources(prev_time, dt, amr_iteration, amr_ncycle);
 
-    	// store the result of the burn and old-time sources in Sburn for later stages
-    	MultiFab::Copy(Sburn, S_new, 0, 0, NUM_STATE, S_new.nGrow());
-
+      // store the result of the burn and old-time sources in Sburn for later stages
+      MultiFab::Copy(Sburn, S_new, 0, 0, NUM_STATE, S_new.nGrow());
     }
 
     // Do the hydro update.  We build directly off of Sborder, which
     // is the state that has already seen the burn
-
-    if (do_hydro)
-    {
-
-        construct_mol_hydro_source(time, dt);
-    }
+    construct_mol_hydro_source(time, dt);
 
     // For MOL integration, we are done with this stage, unless it is
     // the last stage
@@ -151,10 +139,7 @@ Castro::do_advance (Real time,
 
     if (mol_iteration == MOL_STAGES-1) {
 
-
       // Construct and apply new-time source terms.
-
-
       do_new_sources(cur_time, dt, amr_iteration, amr_ncycle);
 
     }
@@ -162,7 +147,6 @@ Castro::do_advance (Real time,
     finalize_do_advance(time, dt, amr_iteration, amr_ncycle);
 
     return dt;
-
 }
 
 
@@ -181,7 +165,7 @@ Castro::initialize_do_advance(Real time, Real dt, int amr_iteration, int amr_ncy
 
     if (track_grid_losses)
       for (int i = 0; i < n_lost; i++)
-	material_lost_through_boundary_temp[i] = 0.0;
+	     material_lost_through_boundary_temp[i] = 0.0;
 
 
     // For the hydrodynamics update we need to have NUM_GROW ghost zones available,
@@ -217,7 +201,6 @@ Castro::initialize_do_advance(Real time, Real dt, int amr_iteration, int amr_ncy
     	Sborder.define(grids, dmap, NUM_STATE, NUM_GROW);
     	const Real new_time = state[State_Type].curTime();
     	expand_state(Sborder, new_time, NUM_GROW);
-
       }
 }
 
@@ -246,7 +229,6 @@ Castro::finalize_do_advance(Real time, Real dt, int amr_iteration, int amr_ncycl
     	}
 
     	dSdt_new.mult(2.0 / dt);
-
     }
 
     Sborder.clear();
@@ -258,11 +240,9 @@ void
 Castro::initialize_advance(Real time, Real dt, int amr_iteration, int amr_ncycle)
 {
     // Pass some information about the state of the simulation to a Fortran module.
-
     ca_set_amr_info(level, amr_iteration, amr_ncycle, time, dt);
 
     // Save the current iteration.
-
     iteration = amr_iteration;
 
     // If the level below this just triggered a special regrid,
@@ -271,8 +251,8 @@ Castro::initialize_advance(Real time, Real dt, int amr_iteration, int amr_ncycle
     // Zero it out, and add them back using the saved copy of the fluxes.
 
     if (use_post_step_regrid && level > 0)
-	if (getLevel(level-1).post_step_regrid && amr_iteration == 1)
-	    getLevel(level-1).FluxRegCrseInit();
+	   if (getLevel(level-1).post_step_regrid && amr_iteration == 1)
+	      getLevel(level-1).FluxRegCrseInit();
 
     // The option of whether to do a multilevel initialization is
     // controlled within the radiation class.  This step belongs
@@ -316,9 +296,7 @@ Castro::initialize_advance(Real time, Real dt, int amr_iteration, int amr_ncycle
     	prev_state[k].reset(new StateData());
 
     	StateData::Initialize(*prev_state[k], state[k]);
-
       }
-
     }
 
     if (!(keep_sources_until_end || (do_reflux && update_sources_after_reflux))) {
@@ -348,7 +326,6 @@ Castro::initialize_advance(Real time, Real dt, int amr_iteration, int amr_ncycle
     // derivative of the source terms.
 
     sources_for_hydro.define(grids,dmap,NUM_STATE,NUM_GROW);
-
 
       // if we are not doing CTU advection, then we are doing a method
       // of lines, and need storage for hte intermediate stages
@@ -380,7 +357,6 @@ Castro::finalize_advance(Real time, Real dt, int amr_iteration, int amr_ncycle)
 {
 
     // Add the material lost in this timestep to the cumulative losses.
-
     if (track_grid_losses) {
 
       ParallelDescriptor::ReduceRealSum(material_lost_through_boundary_temp, n_lost);
@@ -403,7 +379,6 @@ Castro::finalize_advance(Real time, Real dt, int amr_iteration, int amr_ncycle)
     	amrex::FillNull(old_sources);
     	amrex::FillNull(new_sources);
     	hydro_source.clear();
-
     }
 
     sources_for_hydro.clear();
@@ -570,7 +545,6 @@ Castro::retry_advance(Real time, Real dt, int amr_iteration, int amr_ncycle)
     		          state[k].swapTimeLevels(0.0);
 
     		    state[k].swapTimeLevels(dt_advance);
-
     	    }
 
     	    do_advance(subcycle_time,dt_advance,amr_iteration,amr_ncycle);
@@ -583,7 +557,6 @@ Castro::retry_advance(Real time, Real dt, int amr_iteration, int amr_ncycle)
 
     	  subcycle_time += dt_advance;
     	  sub_iteration += 1;
-
     	}
 
     	// We want to return this subcycled timestep as a suggestion,
@@ -604,11 +577,8 @@ Castro::retry_advance(Real time, Real dt, int amr_iteration, int amr_ncycle)
     	          state[k].copyOld(*prev_state[k]);
 
     	   state[k].setTimeLevel(time + dt, dt, 0.0);
-
     	}
-
     }
 
     return dt_new;
-
 }

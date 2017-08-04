@@ -91,16 +91,16 @@ contains
     real(rt)         :: grav(grav_l1:grav_h1,grav_l2:grav_h2)
 
     integer :: bc_temp(2,2)
-    
-    ! handle an external BC via extrapolation here 
+
+    ! handle an external BC via extrapolation here
     bc_temp(:,:) = bc(:,:,1)
-    
+
     if (bc(2,1,1) == EXT_DIR .and. grav_l2 < domlo(2)) then
        bc_temp(2,1) = FOEXTRAP
     endif
-    
+
    call filcc(grav,grav_l1,grav_l2,grav_h1,grav_h2,domlo,domhi,delta,xlo,bc)
-   
+
   end subroutine ca_gravxfill
 
 
@@ -118,7 +118,7 @@ contains
 
     integer :: bc_temp(2,2)
 
-    ! handle an external BC via extrapolation here 
+    ! handle an external BC via extrapolation here
     bc_temp(:,:) = bc(:,:,1)
 
     if ( bc(2,1,1) == EXT_DIR .and. grav_l2 < domlo(2)) then
@@ -144,7 +144,7 @@ contains
 
     integer :: bc_temp(2,2)
 
-    ! handle an external BC via extrapolation here 
+    ! handle an external BC via extrapolation here
     bc_temp(:,:) = bc(:,:,1)
 
     if ( bc(2,1,1) == EXT_DIR .and. grav_l2 < domlo(2)) then
@@ -172,7 +172,7 @@ contains
 
     integer :: bc_temp(2,2)
 
-    ! handle an external BC via extrapolation here 
+    ! handle an external BC via extrapolation here
     bc_temp(:,:) = bc(:,:,1)
 
     if ( bc(2,1,1) == EXT_DIR .and. phi_l2 < domlo(2)) then
@@ -199,7 +199,7 @@ contains
 
     integer :: bc_temp(2,2)
 
-    ! handle an external BC via extrapolation here 
+    ! handle an external BC via extrapolation here
     bc_temp(:,:) = bc(:,:,1)
 
     if ( bc(2,1,1) == EXT_DIR .and. rot_l2 < domlo(2)) then
@@ -225,7 +225,7 @@ contains
 
     integer :: bc_temp(2,2)
 
-    ! handle an external BC via extrapolation here 
+    ! handle an external BC via extrapolation here
     bc_temp(:,:) = bc(:,:,1)
 
     if ( bc(2,1,1) == EXT_DIR .and. rot_l2 < domlo(2)) then
@@ -251,7 +251,7 @@ contains
 
     integer :: bc_temp(2,2)
 
-    ! handle an external BC via extrapolation here 
+    ! handle an external BC via extrapolation here
     bc_temp(:,:) = bc(:,:,1)
 
     if ( bc(2,1,1) == EXT_DIR .and. rot_l2 < domlo(2)) then
@@ -263,60 +263,5 @@ contains
   end subroutine ca_rotzfill
 #endif
 
-
-
-#ifdef REACTIONS
-  subroutine ca_reactfill(react,react_l1,react_l2, &
-                          react_h1,react_h2,domlo,domhi,delta,xlo,time,bc) &
-                          bind(C, name="ca_reactfill")
-
-    use amrex_fort_module, only : rt => amrex_real
-    integer          :: react_l1,react_l2,react_h1,react_h2
-    integer          :: bc(2,2,*)
-    integer          :: domlo(2), domhi(2)
-    real(rt)         :: delta(2), xlo(2), time
-    real(rt)         :: react(react_l1:react_h1,react_l2:react_h2)
-
-    integer :: bc_temp(2,2)
-
-    ! handle an external BC via extrapolation here 
-    bc_temp(:,:) = bc(:,:,1)
-
-    if ( bc(2,1,1) == EXT_DIR .and. react_l2 < domlo(2)) then
-       bc_temp(2,1) = FOEXTRAP
-    endif
-
-    call filcc(react,react_l1,react_l2,react_h1,react_h2, &
-               domlo,domhi,delta,xlo,bc)
-
-  end subroutine ca_reactfill
-#endif
-
-
-
-#ifdef RADIATION
-  subroutine ca_radfill(rad,rad_l1,rad_l2, &
-       rad_h1,rad_h2,domlo,domhi,delta,xlo,time,bc) bind(C, name="ca_radfill")
-
-    use amrex_fort_module, only : rt => amrex_real
-    integer :: rad_l1,rad_l2,rad_h1,rad_h2
-    integer :: bc(2,2,*)
-    integer :: domlo(2), domhi(2)
-    real(rt)         delta(2), xlo(2), time
-    real(rt)         rad(rad_l1:rad_h1,rad_l2:rad_h2)
-
-    integer :: bc_temp(2,2)
-
-    ! handle an external BC via extrapolation here 
-    bc_temp(:,:) = bc(:,:,1)
-
-    if ( bc(2,1,1) == EXT_DIR .and. rad_l2 < domlo(2)) then
-       bc_temp(2,1) = FOEXTRAP
-    endif
-
-    call filcc(rad,rad_l1,rad_l2,rad_h1,rad_h2,domlo,domhi,delta,xlo,bc)
-
-  end subroutine ca_radfill
-#endif
 
 end module bc_fill_module

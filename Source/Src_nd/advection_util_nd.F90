@@ -202,11 +202,6 @@ contains
     use eos_type_module, only: eos_t, eos_input_rt
     use eos_module, only: eos
     use castro_util_module, only: position
-#ifdef HYBRID_MOMENTUM
-    use hybrid_advection_module, only: linear_to_hybrid
-    use meth_params_module, only: UMR, UMP
-#endif
-
     use amrex_fort_module, only : rt => amrex_real
     implicit none
 
@@ -215,10 +210,6 @@ contains
 
     integer          :: n, ipassive
     type (eos_t)     :: eos_state
-
-#ifdef HYBRID_MOMENTUM
-    real(rt)         :: loc(3)
-#endif
 
     ! If no neighboring zones are above small_dens, our only recourse
     ! is to set the density equal to small_dens, and the temperature
@@ -259,12 +250,6 @@ contains
 
     new_state(UEINT) = eos_state % rho * eos_state % e
     new_state(UEDEN) = new_state(UEINT)
-
-#ifdef HYBRID_MOMENTUM
-    loc = position(idx(1),idx(2),idx(3))
-    new_state(UMR:UMP) = linear_to_hybrid(loc, new_state(UMX:UMZ))
-#endif
-
   end subroutine reset_to_small_state
 
 
@@ -370,7 +355,7 @@ contains
                    print *,'>>> ... u, c                ', q(i,j,k,QU), qaux(i,j,k,QC)
                    print *,'>>> ... density             ', q(i,j,k,QRHO)
                 end if
-                
+
                 if (coury .gt. ONE) then
                    print *,'   '
                    call bl_warning("Warning:: advection_util_nd.F90 :: CFL violation in compute_cfl")
@@ -398,7 +383,7 @@ contains
                 if (dim == 3) then
                    courtmp = courtmp + courz
                 endif
-                
+
                 ! note: it might not be 1 for all RK integrators
                 if (courtmp > ONE) then
                    print *,'   '
@@ -407,7 +392,7 @@ contains
                    print *,'>>> ... u,v,w, c            ', q(i,j,k,QU), q(i,j,k,QV), q(i,j,k,QW), qaux(i,j,k,QC)
                    print *,'>>> ... density             ', q(i,j,k,QRHO)
                 endif
-                
+
                 courno = max(courno, courtmp)
              endif
           enddo
@@ -424,10 +409,6 @@ contains
 
   subroutine ctoprim(lo, hi, &
                      uin, uin_lo, uin_hi, &
-#ifdef RADIATION
-                     Erin, Erin_lo, Erin_hi, &
-                     lam, lam_lo, lam_hi, &
-#endif
                      q,     q_lo,   q_hi, &
                      qaux, qa_lo,  qa_hi)
 
@@ -440,10 +421,6 @@ contains
                                    QRHO, QU, QV, QW, &
                                    QREINT, QPRES, QTEMP, QGAME, QFS, QFX, &
                                    NQ, QC, QCSML, QGAMC, QDPDR, QDPDE, NQAUX, &
-#ifdef RADIATION
-                                   QCG, QGAMCG, QLAMS, &
-                                   QPTOT, QRAD, QRADHI, QREITOT, &
-#endif
                                    npassive, upass_map, qpass_map, dual_energy_eta1, &
                                    small_dens
     use bl_constants_module, only: ZERO, HALF, ONE
@@ -453,28 +430,16 @@ contains
     use rotation_module, only: inertial_to_rotational_velocity
     use amrinfo_module, only: amr_time
 #endif
-#ifdef RADIATION
-    use rad_params_module, only : ngroups
-    use rad_util_module, only : compute_ptot_ctot
-#endif
 
     use amrex_fort_module, only : rt => amrex_real
     implicit none
 
     integer, intent(in) :: lo(3), hi(3)
     integer, intent(in) :: uin_lo(3), uin_hi(3)
-#ifdef RADIATION
-    integer, intent(in) :: Erin_lo(3), Erin_hi(3)
-    integer, intent(in) :: lam_lo(3), lam_hi(3)
-#endif
     integer, intent(in) :: q_lo(3), q_hi(3)
     integer, intent(in) :: qa_lo(3), qa_hi(3)
 
     real(rt)        , intent(in   ) :: uin(uin_lo(1):uin_hi(1),uin_lo(2):uin_hi(2),uin_lo(3):uin_hi(3),NVAR)
-#ifdef RADIATION
-    real(rt)        , intent(in   ) :: Erin(Erin_lo(1):Erin_hi(1),Erin_lo(2):Erin_hi(2),Erin_lo(3):Erin_hi(3),0:ngroups-1)
-    real(rt)        , intent(in   ) :: lam(lam_lo(1):lam_hi(1),lam_lo(2):lam_hi(2),lam_lo(3):lam_hi(3),0:ngroups-1)
-#endif
 
     real(rt)        , intent(inout) :: q(q_lo(1):q_hi(1),q_lo(2):q_hi(2),q_lo(3):q_hi(3),NQ)
     real(rt)        , intent(inout) :: qaux(qa_lo(1):qa_hi(1),qa_lo(2):qa_hi(2),qa_lo(3):qa_hi(3),NQAUX)
@@ -487,10 +452,6 @@ contains
     real(rt)         :: vel(3)
 
     type (eos_t) :: eos_state
-
-#ifdef RADIATION
-    real(rt)         :: ptot, ctot, gamc_tot
-#endif
 
     do k = lo(3), hi(3)
        do j = lo(2), hi(2)
@@ -544,9 +505,6 @@ contains
 #endif
 
              q(i,j,k,QTEMP) = uin(i,j,k,UTEMP)
-#ifdef RADIATION
-             q(i,j,k,qrad:qradhi) = Erin(i,j,k,:)
-#endif
 
           enddo
        enddo
@@ -585,28 +543,8 @@ contains
 
              qaux(i,j,k,QDPDR)  = eos_state % dpdr_e
              qaux(i,j,k,QDPDE)  = eos_state % dpde
-
-#ifdef RADIATION
-             qaux(i,j,k,QGAMCG)   = eos_state % gam1
-             qaux(i,j,k,QCG)      = eos_state % cs
-
-             call compute_ptot_ctot(lam(i,j,k,:), q(i,j,k,:), qaux(i,j,k,QCG), &
-                                    ptot, ctot, gamc_tot)
-
-             q(i,j,k,QPTOT) = ptot
-
-             qaux(i,j,k,QC)    = ctot
-             qaux(i,j,k,QGAMC) = gamc_tot
-
-             do g = 0, ngroups-1
-                qaux(i,j,k,QLAMS+g) = lam(i,j,k,g)
-             enddo
-
-             q(i,j,k,qreitot) = q(i,j,k,QREINT) + sum(q(i,j,k,qrad:qradhi))
-#else
              qaux(i,j,k,QGAMC)  = eos_state % gam1
              qaux(i,j,k,QC   )  = eos_state % cs
-#endif
 
              qaux(i,j,k,QCSML)  = max(small, small * qaux(i,j,k,QC))
           enddo
@@ -690,7 +628,7 @@ contains
     enddo
 
   end subroutine srctoprim
-  
+
 
 
   ! Given a conservative state and its corresponding primitive state, calculate the
@@ -702,10 +640,6 @@ contains
     use meth_params_module, only: NVAR, URHO, UMX, UMZ, UEDEN, UEINT, &
                                   NQ, QU, QPRES, &
                                   npassive, upass_map
-#ifdef HYBRID_MOMENTUM
-    use hybrid_advection_module, only: compute_hybrid_flux
-    use meth_params_module, only: NGDNV, GDRHO, GDU, GDW, GDPRES, QRHO, QW
-#endif
     use prob_params_module, only: mom_flux_has_p
     use amrex_fort_module, only : rt => amrex_real
     implicit none
@@ -715,10 +649,6 @@ contains
 
     real(rt)         :: v_adv
     integer :: ipassive, n
-#ifdef HYBRID_MOMENTUM
-    real(rt)         :: qgdnv(NGDNV)
-    logical :: cell_centered
-#endif
 
     ! Set everything to zero; this default matters because some
     ! quantities like temperature are not updated through fluxes.
@@ -743,18 +673,6 @@ contains
     if (mom_flux_has_p(dir)%comp(UMX+dir-1)) then
        flux(UMX + dir - 1) = flux(UMX + dir - 1) + q(QPRES)
     endif
-
-    ! Hybrid flux.
-
-#ifdef HYBRID_MOMENTUM
-    ! Create a temporary edge-based q for this routine.
-    qgdnv(:) = ZERO
-    qgdnv(GDRHO) = q(QRHO)
-    qgdnv(GDU:GDW) = q(QU:QW)
-    qgdnv(GDPRES) = q(QPRES)
-    cell_centered = .true.
-    call compute_hybrid_flux(qgdnv, flux, dir, idx, cell_centered)
-#endif
 
     ! Passively advected quantities.
 

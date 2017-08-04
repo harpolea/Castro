@@ -58,7 +58,7 @@ contains
 
 
 
-#ifdef GRAVITY  
+#ifdef GRAVITY
   subroutine ca_phigravfill(phi,phi_l1,phi_l2,phi_l3, &
                             phi_h1,phi_h2,phi_h3,domlo,domhi,delta,xlo,time,bc) &
                             bind(C, name="ca_phigravfill")
@@ -78,7 +78,7 @@ contains
                domlo,domhi,delta,xlo,bc)
 
   end subroutine ca_phigravfill
-  
+
 
 
   subroutine ca_gravxfill(grav,grav_l1,grav_l2,grav_l3,grav_h1,grav_h2,grav_h3, &
@@ -168,7 +168,7 @@ contains
                domlo,domhi,delta,xlo,bc)
 
   end subroutine ca_phirotfill
-  
+
 
 
   subroutine ca_rotxfill(rot,rot_l1,rot_l2,rot_l3,rot_h1,rot_h2,rot_h3, &
@@ -236,52 +236,5 @@ contains
   end subroutine ca_rotzfill
 #endif
 
-  
-
-#ifdef REACTIONS  
-  subroutine ca_reactfill(react,react_l1,react_l2,react_l3, &
-       react_h1,react_h2,react_h3,domlo,domhi,delta,xlo,time,bc) &
-       bind(C, name="ca_reactfill")
-
-    use amrex_fort_module, only : rt => amrex_real
-    implicit none
-
-    include 'AMReX_bc_types.fi'
-
-    integer          :: react_l1,react_l2,react_l3,react_h1,react_h2,react_h3
-    integer          :: bc(3,2,*)
-    integer          :: domlo(3), domhi(3)
-    real(rt)         :: delta(3), xlo(3), time
-    real(rt)         :: react(react_l1:react_h1,react_l2:react_h2,react_l3:react_h3)
-
-    call filcc(react,react_l1,react_l2,react_l3,react_h1,react_h2,react_h3, &
-               domlo,domhi,delta,xlo,bc)
-
-  end subroutine ca_reactfill
-#endif
-
-
-  
-#ifdef RADIATION
-  subroutine ca_radfill(rad,rad_l1,rad_l2,rad_l3, &
-                        rad_h1,rad_h2,rad_h3,domlo,domhi,delta,xlo,time,bc) &
-                        bind(C, name="ca_radfill")
-
-    use amrex_fort_module, only : rt => amrex_real
-    implicit none
-
-    include 'AMReX_bc_types.fi'
-
-    integer          :: rad_l1,rad_l2,rad_l3,rad_h1,rad_h2,rad_h3
-    integer          :: bc(3,2,*)
-    integer          :: domlo(3), domhi(3)
-    real(rt)         :: delta(3), xlo(3), time
-    real(rt)         :: rad(rad_l1:rad_h1,rad_l2:rad_h2,rad_l3:rad_h3)
-
-    call filcc(rad,rad_l1,rad_l2,rad_l3,rad_h1,rad_h2,rad_h3, &
-               domlo,domhi,delta,xlo,bc)
-
-  end subroutine ca_radfill
-#endif
-  
+ 
 end module bc_fill_module

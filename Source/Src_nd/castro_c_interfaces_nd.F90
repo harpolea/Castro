@@ -1,7 +1,7 @@
 module c_interface_modules
 
   use meth_params_module, only: NVAR, NQAUX, NQ, QVAR
-  use amrex_fort_module, only: rt => amrex_real  
+  use amrex_fort_module, only: rt => amrex_real
 
 #ifdef CUDA
     use cudafor, only: cudaMemcpyAsync, cudaMemcpyHostToDevice, &
@@ -130,7 +130,7 @@ contains
     call enforce_minimum_density(uin, uin_lo, uin_hi, &
                                  uout, uout_lo, uout_hi, &
                                  vol, vol_lo, vol_hi, &
-                                 lo, hi, frac_change, verbose)                
+                                 lo, hi, frac_change, verbose)
 
   end subroutine ca_enforce_minimum_density
 
@@ -154,35 +154,19 @@ contains
 
   subroutine ca_ctoprim(lo, hi, &
                         uin, uin_lo, uin_hi, &
-#ifdef RADIATION
-                        Erin, Erin_lo, Erin_hi, &
-                        lam, lam_lo, lam_hi, &
-#endif
                         q,     q_lo,   q_hi, &
                         qaux, qa_lo,  qa_hi, idx) bind(C, name = "ca_ctoprim")
 
     use advection_util_module, only: ctoprim
 
-#ifdef RADIATION
-    use rad_params_module, only : ngroups
-#endif
-
     implicit none
 
     integer, intent(in) :: lo(3), hi(3)
     integer, intent(in) :: uin_lo(3), uin_hi(3)
-#ifdef RADIATION
-    integer, intent(in) :: Erin_lo(3), Erin_hi(3)
-    integer, intent(in) :: lam_lo(3), lam_hi(3)
-#endif
     integer, intent(in) :: q_lo(3), q_hi(3)
     integer, intent(in) :: qa_lo(3), qa_hi(3)
 
     real(rt)        , intent(in   ) :: uin(uin_lo(1):uin_hi(1),uin_lo(2):uin_hi(2),uin_lo(3):uin_hi(3),NVAR)
-#ifdef RADIATION
-    real(rt)        , intent(in   ) :: Erin(Erin_lo(1):Erin_hi(1),Erin_lo(2):Erin_hi(2),Erin_lo(3):Erin_hi(3),0:ngroups-1)
-    real(rt)        , intent(in   ) :: lam(lam_lo(1):lam_hi(1),lam_lo(2):lam_hi(2),lam_lo(3):lam_hi(3),0:ngroups-1)
-#endif
 
     real(rt)        , intent(inout) :: q(q_lo(1):q_hi(1),q_lo(2):q_hi(2),q_lo(3):q_hi(3),NQ)
     real(rt)        , intent(inout) :: qaux(qa_lo(1):qa_hi(1),qa_lo(2):qa_hi(2),qa_lo(3):qa_hi(3),NQAUX)
@@ -190,10 +174,6 @@ contains
 
     call ctoprim(lo, hi, &
                  uin, uin_lo, uin_hi, &
-#ifdef RADIATION
-                 Erin, Erin_lo, Erin_hi, &
-                 lam, lam_lo, lam_hi, &
-#endif
                  q,     q_lo,   q_hi, &
                  qaux, qa_lo,  qa_hi)
 
