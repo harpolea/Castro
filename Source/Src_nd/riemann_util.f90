@@ -102,7 +102,7 @@ contains
     ! f(p*) = u*_l(p*) - u*_r(p*)
     ! we'll do bisection
     !
-    ! this version is for the approximate Colella & Glaz 
+    ! this version is for the approximate Colella & Glaz
     ! version
 
     use meth_params_module, only : cg_maxiter, cg_tol
@@ -379,6 +379,48 @@ contains
   end subroutine cons_state
 
 
+  pure subroutine gr_cons_state(q, U)
+
+    use meth_params_module, only: QVAR, QRHO, QU, QV, QW, QREINT, &
+         NVAR, URHO, UMX, UMY, UMZ, UEDEN, UEINT, UTEMP, &
+         npassive, upass_map, qpass_map
+
+    real(rt)        , intent(in)  :: q(QVAR)
+    real(rt)        , intent(out) :: U(NVAR)
+
+    integer  :: ipassive, n, nq
+    real(rt) :: W, rhoh, gamma, p
+
+    gamma = 5.0d0/3.0d0
+
+    W = 1.0d0 / sqrt(1.0d0 - sum(q(QU:QW)**2))
+
+    U(URHO) = q(QRHO) * W
+    rhoh = U(URHO) * (1.0d0 + gamma * q(QREINT))
+    p = (gamma - 1.0d0) * q(QRHO) * q(QREINT)
+
+    ! since we advect all 3 velocity components regardless of dimension, this
+    ! will be general
+    U(UMX)  = rhoh * q(QU) * W**2
+    U(UMY)  = rhoh * q(QV) * W**2
+    U(UMZ)  = rhoh * q(QW) * W**2
+
+    U(UEDEN) = rhoh * W**2 - p - q(QRHO) * W !q(QREINT) + HALF*q(QRHO)*(q(QU)**2 + q(QV)**2 + q(QW)**2)
+    U(UEINT) = q(QREINT)
+
+    ! we don't care about T here, but initialize it to make NaN
+    ! checking happy
+    U(UTEMP) = ZERO
+
+    do ipassive = 1, npassive
+       n  = upass_map(ipassive)
+       nq = qpass_map(ipassive)
+       U(n) = q(QRHO)*W*q(nq)
+    enddo
+
+  end subroutine gr_cons_state
+
+
   pure subroutine HLLC_state(idir, S_k, S_c, q, U)
 
     use meth_params_module, only: QVAR, QRHO, QU, QV, QW, QREINT, QPRES, &
@@ -483,26 +525,28 @@ contains
 
   end subroutine compute_flux
 
-  pure subroutine compute_flux2(idir, bnd_fac, U, p, F)
+  pure subroutine gr_compute_flux(idir, bnd_fac, q, U, p, beta, alpha, F)
 
-    use meth_params_module, only: NVAR, URHO, UMX, UMY, UMZ, UEDEN, UEINT, UTEMP, &
+    use meth_params_module, only: QVAR, QRHO, QU, QV, QW, QREINT, &
+        NVAR, URHO, UMX, UMY, UMZ, UEDEN, UEINT, UTEMP, &
          npassive, upass_map
     use prob_params_module, only : mom_flux_has_p
 
     integer, intent(in) :: idir, bnd_fac
+    real(rt)        , intent(in)  :: q(QVAR)
     real(rt)        , intent(in) :: U(NVAR)
-    real(rt)        , intent(in) :: p
+    real(rt)        , intent(in) :: p, beta(3), alpha
     real(rt)        , intent(out) :: F(NVAR)
 
     integer :: ipassive, n
     real(rt)         :: u_flx
 
     if (idir == 1) then
-       u_flx = U(UMX)/U(URHO)
+       u_flx = q(QU) - beta(1) / alpha !U(UMX)/U(URHO)
     elseif (idir == 2) then
-       u_flx = U(UMY)/U(URHO)
+       u_flx = q(QV) - beta(2) / alpha !U(UMY)/U(URHO)
     elseif (idir == 3) then
-       u_flx = U(UMZ)/U(URHO)
+       u_flx = q(QW) - beta(3) / alpha !U(UMZ)/U(URHO)
     endif
 
     if (bnd_fac == 0) then
@@ -522,7 +566,7 @@ contains
     endif
 
     F(UEINT) = U(UEINT)*u_flx
-    F(UEDEN) = (U(UEDEN) + p)*u_flx
+    F(UEDEN) = (U(UEDEN) + p)*u_flx + p*beta(idir)/alpha
 
     F(UTEMP) = ZERO
 
@@ -531,6 +575,6 @@ contains
        F(n) = U(n)*u_flx
     enddo
 
-end subroutine compute_flux2
+end subroutine gr_compute_flux
 
 end module riemann_util_module

@@ -5,7 +5,8 @@ module advection_util_module
 
   private
 
-  public enforce_minimum_density, compute_cfl, ctoprim, srctoprim, dflux, &
+  public enforce_minimum_density, compute_cfl, ctoprim, grctoprim, &
+         srctoprim, dflux, &
          limit_hydro_fluxes_on_small_dens, shock
 
 contains
@@ -556,13 +557,15 @@ contains
   subroutine grctoprim(lo, hi, &
                      uin, uin_lo, uin_hi, &
                      q,     q_lo,   q_hi, &
-                     qaux, qa_lo,  qa_hi)
+                     qaux, qa_lo,  qa_hi, &
+                     gamma_up, g_lo, g_hi, &
+                     alpha, a_lo, a_hi)
 
     use mempool_module, only : bl_allocate, bl_deallocate
     use actual_network, only : nspec, naux
     use eos_module, only : eos
     use eos_type_module, only : eos_t, eos_input_re
-    use meth_params_module, only : NVAR, URHO, UMX, UMZ, &
+    use meth_params_module, only : NVAR, URHO, UMX, UMY, UMZ, &
                                    UEDEN, UEINT, UTEMP, &
                                    QRHO, QU, QV, QW, &
                                    QREINT, QPRES, QTEMP, QGAME, QFS, QFX, &
@@ -578,24 +581,32 @@ contains
 #endif
 
     use amrex_fort_module, only : rt => amrex_real
+    use compute_flux_module, only : f_of_p
+    use gr_utils_module, only : zbrent
     implicit none
 
     integer, intent(in) :: lo(3), hi(3)
     integer, intent(in) :: uin_lo(3), uin_hi(3)
     integer, intent(in) :: q_lo(3), q_hi(3)
     integer, intent(in) :: qa_lo(3), qa_hi(3)
+    integer, intent(in) :: g_lo(3), g_hi(3)
+    integer, intent(in) :: a_lo(3), a_hi(3)
 
     real(rt)        , intent(in   ) :: uin(uin_lo(1):uin_hi(1),uin_lo(2):uin_hi(2),uin_lo(3):uin_hi(3),NVAR)
 
     real(rt)        , intent(inout) :: q(q_lo(1):q_hi(1),q_lo(2):q_hi(2),q_lo(3):q_hi(3),NQ)
     real(rt)        , intent(inout) :: qaux(qa_lo(1):qa_hi(1),qa_lo(2):qa_hi(2),qa_lo(3):qa_hi(3),NQAUX)
+    real(rt)        , intent(in   ) :: gamma_up(g_lo(1):g_hi(1),g_lo(2):g_hi(2),g_lo(3):g_hi(3),9)
+    real(rt)        , intent(in   ) :: alpha(a_lo(1):a_hi(1),a_lo(2):a_hi(2),a_lo(3):a_hi(3))
 
-    real(rt)        , parameter :: small = 1.e-8_rt
+    real(rt)        , parameter :: small = 1.e-8_rt, gamma = 5.0d0 / 3.0d0
 
     integer          :: i, j, k, g
     integer          :: n, iq, ipassive
     real(rt)         :: kineng, rhoinv
     real(rt)         :: vel(3)
+    real(rt)         :: gamma_down(9)
+    real(rt)         :: pmin, pmax, ssq, p, fmin, fmax, sq, h, W2
 
     type (eos_t) :: eos_state
 
@@ -618,12 +629,86 @@ contains
 
           do i = lo(1), hi(1)
 
-             q(i,j,k,QRHO) = uin(i,j,k,URHO)
+              ! calculate gamma_down. Assume for now that it's diagonal.
+
+              gamma_down(:) = 0.0d0
+              gamma_down(1) = 1.0d0
+              gamma_down(5) = 1.0d0
+              gamma_down(9) = 1.0d0 / gamma_up(i,j,k,9)
+
+              ssq = uin(i,j,k,UMX)**2 * gamma_up(i,j,k,1) + &
+                  2.0d0 * uin(i,j,k,UMX) * uin(i,j,k,UMY) * gamma_up(i,j,k,2) + &
+                  2.0d0 * uin(i,j,k,UMX) * uin(i,j,k,UMZ) * gamma_up(i,j,k,3) + &
+                  uin(i,j,k,UMY)**2 * gamma_up(i,j,k,5) + &
+                  2.0d0 * uin(i,j,k,UMY) * uin(i,j,k,UMZ) * gamma_up(i,j,k,6) + &
+                  uin(i,j,k,UMZ)**2 * gamma_up(i,j,k,9)
+              pmin = (1.0d0 - ssq)**2 * uin(i,j,k,UEDEN) * (gamma - 1.0d0)
+              pmax = (gamma - 1.0d0) * (uin(i,j,k,UEDEN) + uin(i,j,k,URHO)) / (2.0d0 - gamma)
+
+              if (pmin < 0.0d0) then
+                  pmin = 0.d0
+              end if
+
+              if (pmax > 1.d0 .or. pmax < pmin) then
+                  pmax = 1.0d0
+              end if
+
+              call f_of_p(fmin, pmin, uin, NVAR, gamma, gamma_up(i,j,k,:))
+              call f_of_p(fmax, pmax, uin, NVAR, gamma, gamma_up(i,j,k,:))
+
+              if (fmin * fmax > 0.0d0) then
+                  pmin = 0.d0
+              end if
+
+              call f_of_p(fmin, pmin, uin, NVAR, gamma, gamma_up(i,j,k,:))
+
+              if (fmin * fmax > 0.0d0) then
+                  pmax = pmax * 10.d0
+              end if
+
+              call zbrent(p, pmin, pmax, uin, NVAR, gamma, gamma_up(i,j,k,:))
+
+              if (p /= p .or. p < 0.0d0 .or. p > 1.0d0) then
+                  p = abs((gamma - 1.0d0) * (uin(i,j,k,UEDEN) + uin(i,j,k,URHO)) / (2.0d0 - gamma))
+
+                  if (p > 1.0d0) then
+                      p = 1.0d0
+                  end if
+              end if
+
+              sq = sqrt((uin(i,j,k,UEDEN) + p + uin(i,j,k,URHO))**2 - ssq)
+
+              if (sq /= sq) then
+                  sq = uin(i,j,k,UEDEN) + p + uin(i,j,k,URHO)
+              end if
+
+              h = 1.0d0 + gamma * (sq - p * (uin(i,j,k,UEDEN) + p + uin(i,j,k,URHO)) / sq - uin(i,j,k,URHO)) / uin(i,j,k,URHO)
+              W2 = 1.0d0 + ssq / (uin(i,j,k,URHO) * h)**2
+
+              !write(*,*) "p, sq", p(i,j), sq
+
+              q(i,j,k,QRHO) = uin(i,j,k,URHO) * sq / (uin(i,j,k,UEDEN) + p + uin(i,j,k,URHO))
+              vel(1) = (gamma_up(i,j,k,1) * uin(i,j,k,UMX) + &
+                  gamma_up(i,j,k,2) * uin(i,j,k,UMY) + gamma_up(i,j,k,3) * uin(i,j,k,UMZ)) /&
+                  (W2 * h * q(i,j,k,QRHO))
+              vel(2) = (gamma_up(i,j,k,2) * uin(i,j,k,UMX) + &
+                  gamma_up(i,j,k,5) * uin(i,j,k,UMY) + gamma_up(i,j,k,6) * uin(i,j,k,UMZ)) /&
+                  (W2 * h * q(i,j,k,QRHO))
+              vel(3) = (gamma_up(i,j,k,3) * uin(i,j,k,UMX) + &
+                  gamma_up(i,j,k,6) * uin(i,j,k,UMY) + gamma_up(i,j,k,9) * uin(i,j,k,UMZ)) /&
+                  (W2 * h * q(i,j,k,QRHO))
+
+              q(i,j,k,QU) = gamma_down(1) * vel(1) + gamma_down(2) * vel(2) + gamma_down(3) * vel(3)
+              q(i,j,k,QV) = gamma_down(2) * vel(1) + gamma_down(5) * vel(2) + gamma_down(6) * vel(3)
+              q(i,j,k,QW) = gamma_down(3) * vel(1) + gamma_down(6) * vel(2) + gamma_down(9) * vel(3)
+              q(i,j,k,QREINT) = q(i,j,k,QRHO) * (h - 1.0d0) / gamma
+
+             !q(i,j,k,QRHO) = uin(i,j,k,URHO)
              rhoinv = ONE/q(i,j,k,QRHO)
 
-             vel = uin(i,j,k,UMX:UMZ) * rhoinv
+             !vel = uin(i,j,k,UMX:UMZ) * rhoinv
 
-             q(i,j,k,QU:QW) = vel
+             !q(i,j,k,QU:QW) = vel
 
              ! Get the internal energy, which we'll use for
              ! determining the pressure.  We use a dual energy
@@ -635,11 +720,11 @@ contains
 
              kineng = HALF * q(i,j,k,QRHO) * (q(i,j,k,QU)**2 + q(i,j,k,QV)**2 + q(i,j,k,QW)**2)
 
-             if ( (uin(i,j,k,UEDEN) - kineng) / uin(i,j,k,UEDEN) .gt. dual_energy_eta1) then
-                q(i,j,k,QREINT) = (uin(i,j,k,UEDEN) - kineng) * rhoinv
-             else
-                q(i,j,k,QREINT) = uin(i,j,k,UEINT) * rhoinv
-             endif
+             !if ( (uin(i,j,k,UEDEN) - kineng) / uin(i,j,k,UEDEN) .gt. dual_energy_eta1) then
+                !q(i,j,k,QREINT) = (uin(i,j,k,UEDEN) - kineng) * rhoinv
+             !else
+            !    q(i,j,k,QREINT) = uin(i,j,k,UEINT) * rhoinv
+             !endif
 
              ! If we're advecting in the rotating reference frame,
              ! then subtract off the rotation component here.
