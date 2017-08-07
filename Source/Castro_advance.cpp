@@ -452,7 +452,7 @@ Castro::retry_advance(Real time, Real dt, int amr_iteration, int amr_ncycle)
     	  amrex::Abort("Error: integer overflow in retry.");
     	}
 
-            int sub_ncycle = ceil(dt / dt_subcycle);
+        int sub_ncycle = ceil(dt / dt_subcycle);
 
     	// Abort if we would take more subcycled timesteps than the user has permitted.
 
@@ -471,7 +471,7 @@ Castro::retry_advance(Real time, Real dt, int amr_iteration, int amr_ncycle)
 
     	// Abort if our subcycled timestep would be shorter than the minimum permitted timestep.
 
-    	if (dt_subcycle < dt_cutoff) {
+        if (dt_subcycle < dt_cutoff) {
     	  if (ParallelDescriptor::IOProcessor()) {
     	    std::cout << std::endl;
     	    std::cout << "  Timestep " << dt << " rejected at level " << level << "." << std::endl;
@@ -482,62 +482,62 @@ Castro::retry_advance(Real time, Real dt, int amr_iteration, int amr_ncycle)
     	  amrex::Abort("Error: retry timesteps too short.");
     	}
 
-    	if (verbose && ParallelDescriptor::IOProcessor()) {
-    	  std::cout << std::endl;
-    	  std::cout << "  Timestep " << dt << " rejected at level " << level << "." << std::endl;
-    	  std::cout << "  Performing a retry, with " << sub_ncycle
-    		    << " subcycled timesteps of maximum length dt = " << dt_subcycle << std::endl;
-    	  std::cout << std::endl;
-    	}
+	if (verbose && ParallelDescriptor::IOProcessor()) {
+	  std::cout << std::endl;
+	  std::cout << "  Timestep " << dt << " rejected at level " << level << "." << std::endl;
+	  std::cout << "  Performing a retry, with " << sub_ncycle
+		    << " subcycled timesteps of maximum length dt = " << dt_subcycle << std::endl;
+	  std::cout << std::endl;
+	}
 
-    	Real subcycle_time = time;
-    	int sub_iteration = 1;
-    	Real dt_advance = dt / sub_ncycle;
+	Real subcycle_time = time;
+	int sub_iteration = 1;
+	Real dt_advance = dt / sub_ncycle;
 
-    	// Restore the original values of the state data.
+	// Restore the original values of the state data.
 
-    	for (int k = 0; k < num_state_type; k++) {
+	for (int k = 0; k < num_state_type; k++) {
 
-    	  if (prev_state[k]->hasOldData())
-    	      state[k].copyOld(*prev_state[k]);
+	  if (prev_state[k]->hasOldData())
+	      state[k].copyOld(*prev_state[k]);
 
-    	  if (prev_state[k]->hasNewData())
-    	      state[k].copyNew(*prev_state[k]);
+	  if (prev_state[k]->hasNewData())
+	      state[k].copyNew(*prev_state[k]);
 
-    	  // Anticipate the swapTimeLevels to come.
+	  // Anticipate the swapTimeLevels to come.
 
-    	  if (k == Source_Type)
-    	      state[k].swapTimeLevels(0.0);
+	  if (k == Source_Type)
+	      state[k].swapTimeLevels(0.0);
 
-    	  state[k].swapTimeLevels(0.0);
+	  state[k].swapTimeLevels(0.0);
 
-    	  state[k].setTimeLevel(time, 0.0, 0.0);
+	  state[k].setTimeLevel(time, 0.0, 0.0);
 
-    	}
+	}
 
-    	if (track_grid_losses)
-    	  for (int i = 0; i < n_lost; i++)
-    	    material_lost_through_boundary_temp[i] = 0.0;
+	if (track_grid_losses)
+	  for (int i = 0; i < n_lost; i++)
+	    material_lost_through_boundary_temp[i] = 0.0;
 
-    	// Subcycle until we've reached the target time.
+	// Subcycle until we've reached the target time.
+        // Compare against a slightly number to avoid
+        // roundoff concerns.
 
-    	while (subcycle_time < time + dt) {
+        Real eps = 1.0e-10;
 
-    	    // Shorten the last timestep so that we don't overshoot
-    	    // the ending time. We want to protect against taking
-    	    // a very small last timestep due to precision issues,
-    	    // so subtract a small number from that time.
+	while (subcycle_time < time + (1.0 - eps) * dt) {
 
-    	    Real eps = 1.0e-10 * dt;
+	    // Shorten the last timestep so that we don't overshoot
+	    // the ending time.
 
-    	    if (subcycle_time + dt_advance > time + dt - eps)
-    	        dt_advance = (time + dt) - subcycle_time;
+	    if (subcycle_time + dt_advance > time + dt)
+	        dt_advance = (time + dt) - subcycle_time;
 
-    	    if (verbose && ParallelDescriptor::IOProcessor()) {
-    	        std::cout << "  Beginning retry subcycle " << sub_iteration << " of " << sub_ncycle
-    		          << ", starting at time " << subcycle_time
-    		         << " with dt = " << dt_advance << std::endl << std::endl;
-    	    }
+        if (verbose && ParallelDescriptor::IOProcessor()) {
+	        std::cout << "  Beginning retry subcycle " << sub_iteration << " of " << sub_ncycle
+		          << ", starting at time " << subcycle_time
+		         << " with dt = " << dt_advance << std::endl << std::endl;
+	    }
 
     	    for (int k = 0; k < num_state_type; k++) {
 
@@ -557,7 +557,7 @@ Castro::retry_advance(Real time, Real dt, int amr_iteration, int amr_ncycle)
 
     	  subcycle_time += dt_advance;
     	  sub_iteration += 1;
-    	}
+    }
 
     	// We want to return this subcycled timestep as a suggestion,
     	// if it is smaller than what the hydro estimates.

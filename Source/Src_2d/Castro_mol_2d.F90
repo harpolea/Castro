@@ -23,15 +23,20 @@ subroutine ca_mol_single_stage(time, &
   use meth_params_module, only : NQ, QVAR, NVAR, NGDNV, GDPRES, &
                                  UTEMP, UEINT, USHK, UMX, GDU, GDV, &
                                  use_flattening, QPRES, NQAUX, &
-                                 first_order_hydro, difmag, hybrid_riemann
+                                 QTEMP, QFS, QFX, QREINT, QRHO, &
+                                 first_order_hydro, difmag, hybrid_riemann, ppm_temp_fix
   use advection_util_2d_module, only : divu, normalize_species_fluxes
-  use advection_util_module, only : compute_cfl
+  use advection_util_module, only : compute_cfl, shock
   use bl_constants_module, only : ZERO, HALF, ONE
   use flatten_module, only : uflatten
   use prob_params_module, only : coord_type
-  use riemann_module, only: cmpflx, shock
+  use riemann_module, only: cmpflx
   use ppm_module, only : ppm_reconstruct
   use amrex_fort_module, only : rt => amrex_real
+  use eos_type_module, only : eos_t, eos_input_rt
+  use eos_module, only : eos
+  use network, only : nspec, naux
+
   implicit none
 
   integer, intent(in) :: lo(2), hi(2), verbose
@@ -90,25 +95,35 @@ subroutine ca_mol_single_stage(time, &
   real(rt) :: dx, dy
 
   integer :: lo_3D(3), hi_3D(3)
+  integer :: shk_lo(3), shk_hi(3)
+  integer :: qs_lo(3), qs_hi(3)
   real(rt) :: dx_3D(3)
 
   real(rt) :: div1
 
   integer :: i, j, n
 
+  type (eos_t) :: eos_state
+
   ngf = 1
 
-  lo_3D   = [lo(1), lo(2), 0]
-  hi_3D   = [hi(1), hi(2), 0]
+  lo_3D  = [lo(1), lo(2), 0]
+  hi_3D  = [hi(1), hi(2), 0]
 
-  dx_3D   = [delta(1), delta(2), ZERO]
+  dx_3D  = [delta(1), delta(2), ZERO]
+
+  shk_lo = [lo(1)-1, lo(2)-1, 0]
+  shk_hi = [hi(1)+1, hi(2)+1, 0]
+
+  qs_lo = [lo(1)-1, lo(2)-1, 0]
+  qs_hi = [hi(1)+2, hi(2)+2, 0]
 
   allocate(flatn(q_lo(1):q_hi(1), q_lo(2):q_hi(2)))
 
   allocate(q1(flux1_lo(1):flux1_hi(1), flux1_lo(2):flux1_hi(2), NGDNV))
   allocate(q2(flux2_lo(1):flux2_hi(1), flux2_lo(2):flux2_hi(2), NGDNV))
 
-  allocate(shk(lo(1)-1:hi(1)+1, lo(2)-1:hi(2)+1))
+  allocate(shk(shk_lo(1):shk_hi(1), shk_lo(2):shk_hi(2)))
   allocate(pdivu(lo(1):hi(1), lo(2):hi(2)))
 
   dx = delta(1)
@@ -119,8 +134,8 @@ subroutine ca_mol_single_stage(time, &
     uout(lo(1):hi(1),lo(2):hi(2),USHK) = ZERO
 
     call shock(q, q_lo, q_hi, &
-               shk, lo_3D-1, hi_3D+1, &
-               lo, hi, dx, dy)
+               shk, shk_lo, shk_hi, &
+               lo_3D, hi_3D, dx_3D)
 
     ! Store the shock data for future use in the burning step.
     do j = lo(2), hi(2)
@@ -168,17 +183,17 @@ subroutine ca_mol_single_stage(time, &
   ! qm and qp are the left and right states for an interface -- they
   ! are defined for a particular interface, with the convention that
   ! qm(i) and qp(i) correspond to the i-1/2 interface
-  allocate ( qxm(lo(1)-1:hi(1)+2,lo(2)-1:hi(2)+2,NQ) )
-  allocate ( qxp(lo(1)-1:hi(1)+2,lo(2)-1:hi(2)+2,NQ) )
-  allocate ( qym(lo(1)-1:hi(1)+2,lo(2)-1:hi(2)+2,NQ) )
-  allocate ( qyp(lo(1)-1:hi(1)+2,lo(2)-1:hi(2)+2,NQ) )
+  allocate ( qxm(qs_lo(1):qs_hi(1),qs_lo(2):qs_hi(2),NQ) )
+  allocate ( qxp(qs_lo(1):qs_hi(1),qs_lo(2):qs_hi(2),NQ) )
+  allocate ( qym(qs_lo(1):qs_hi(1),qs_lo(2):qs_hi(2),NQ) )
+  allocate ( qyp(qs_lo(1):qs_hi(1),qs_lo(2):qs_hi(2),NQ) )
 
   ! Do PPM reconstruction
   do n = 1, QVAR
      call ppm_reconstruct(q(:,:,n), q_lo, q_hi, &
                           flatn, q_lo, q_hi, &
-                          sxm, sxp, sym, syp, &
-                          lo(1), lo(2), hi(1), hi(2), dx, dy)
+                          sxm, sxp, sym, syp, sxm, sxp, q_lo, q_hi, &   ! extra sxm, sxp are dummy
+                          lo(1), lo(2), hi(1), hi(2), [dx, dy, ZERO], 0, 0)
 
      ! Construct the interface states -- this is essentially just a
      ! reshuffling of interface states from zone-center indexing to
@@ -208,21 +223,76 @@ subroutine ca_mol_single_stage(time, &
 
   deallocate(sxm, sxp, sym, syp)
 
+  ! use T to define p
+  if (ppm_temp_fix == 1) then
+     do j = lo(2)-1, hi(2)+1
+        do i = lo(1)-1, hi(1)+1
+
+           eos_state%rho    = qxp(i,j,QRHO)
+           eos_state%T      = qxp(i,j,QTEMP)
+           eos_state%xn(:)  = qxp(i,j,QFS:QFS-1+nspec)
+           eos_state%aux(:) = qxp(i,j,QFX:QFX-1+naux)
+
+           call eos(eos_input_rt, eos_state)
+
+           qxp(i,j,QPRES) = eos_state%p
+           qxp(i,j,QREINT) = qxp(i,j,QRHO)*eos_state%e
+           ! should we try to do something about Gamma_! on interface?
+
+           eos_state%rho    = qxm(i,j,QRHO)
+           eos_state%T      = qxm(i,j,QTEMP)
+           eos_state%xn(:)  = qxm(i,j,QFS:QFS-1+nspec)
+           eos_state%aux(:) = qxm(i,j,QFX:QFX-1+naux)
+
+           call eos(eos_input_rt, eos_state)
+
+           qxm(i,j,QPRES) = eos_state%p
+           qxm(i,j,QREINT) = qxm(i,j,QRHO)*eos_state%e
+           ! should we try to do something about Gamma_! on interface?
+
+
+           eos_state%rho    = qyp(i,j,QRHO)
+           eos_state%T      = qyp(i,j,QTEMP)
+           eos_state%xn(:)  = qyp(i,j,QFS:QFS-1+nspec)
+           eos_state%aux(:) = qyp(i,j,QFX:QFX-1+naux)
+
+           call eos(eos_input_rt, eos_state)
+
+           qyp(i,j,QPRES) = eos_state%p
+           qyp(i,j,QREINT) = qyp(i,j,QRHO)*eos_state%e
+           ! should we try to do something about Gamma_! on interface?
+
+           eos_state%rho    = qym(i,j,QRHO)
+           eos_state%T      = qym(i,j,QTEMP)
+           eos_state%xn(:)  = qym(i,j,QFS:QFS-1+nspec)
+           eos_state%aux(:) = qym(i,j,QFX:QFX-1+naux)
+
+           call eos(eos_input_rt, eos_state)
+
+           qym(i,j,QPRES) = eos_state%p
+           qym(i,j,QREINT) = qym(i,j,QRHO)*eos_state%e
+           ! should we try to do something about Gamma_! on interface?
+
+        enddo
+     enddo
+  endif
+
+
 
   ! Get the fluxes from the Riemann solver
-  call cmpflx(qxm, qxp, lo_3D-1, hi_3D+2, &
+  call cmpflx(qxm, qxp, qs_lo, qs_hi, &
               flux1, flux1_lo, flux1_hi, &
               q1, flux1_lo, flux1_hi, &
               qaux, qa_lo, qa_hi, &
-              shk, lo_3D-1, hi_3D+1, &
+              shk, shk_lo, shk_hi, &
               1, lo(1), hi(1), lo(2), hi(2), domlo, domhi)
 
 
-  call cmpflx(qym, qyp, lo_3D-1, hi_3D+2, &
+  call cmpflx(qym, qyp, qs_lo, qs_hi, &
               flux2, flux2_lo, flux2_hi, &
               q2, flux2_lo, flux2_hi, &
               qaux, qa_lo, qa_hi, &
-              shk, lo_3D-1, hi_3D+1, &
+              shk, shk_lo, shk_hi, &
               2, lo(1), hi(1), lo(2), hi(2), domlo, domhi)
 
   deallocate(qxm, qxp, qym, qyp)

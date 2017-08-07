@@ -48,7 +48,7 @@ contains
 
       integer, intent(in) :: lo(2), hi(2), Ncomp, glo(2), ghi(2)
       double precision, intent(in) :: q(glo(1):ghi(1), glo(2):ghi(2), Ncomp)
-      double precision, intent(in) :: gamma_up(glo(1):ghi(1), glo(2):ghi(2), 9)
+      double precision, intent(in) :: gamma_up(glo(1):ghi(1), glo(2):ghi(2), 4)
       double precision, intent(out) :: W(glo(1):ghi(1), glo(2):ghi(2))
 
       integer i, j, k
@@ -57,7 +57,7 @@ contains
           do i = lo(1), hi(1)
               W(i,j) = sqrt((q(i,j,2)**2 * gamma_up(i,j,1)+ &
                     2.0d0 * q(i,j,2) * q(i,j,3) * gamma_up(i,j,2) + &
-                    q(i,j,3)**2 * gamma_up(i,j,5)) / q(i,j,1)**2 + 1.0d0)
+                    q(i,j,3)**2 * gamma_up(i,j,4)) / q(i,j,1)**2 + 1.0d0)
               ! nan check
               if (W(i,j) /= W(i,j)) then
                   W(i,j) = 1.0d0
@@ -80,14 +80,14 @@ contains
       integer :: i, j, k
       double precision :: v(2), W(glo(1):ghi(1),glo(2):ghi(2))
       double precision :: beta(glo(1):ghi(1),glo(2):ghi(2),2)
-      double precision :: gamma_up(glo(1):ghi(1),glo(2):ghi(2),9)
+      double precision :: gamma_up(glo(1):ghi(1),glo(2):ghi(2),4)
 
       alpha = exp(-U(:,:,1))
       beta = 0.0d0
 
       gamma_up = 0.0d0
       gamma_up(:,:,1) = 1.0d0
-      gamma_up(:,:,5) = 1.0d0
+      gamma_up(:,:,4) = 1.0d0
 
       call W_swe(U, lo-1, hi+1, Ncomp, gamma_up, glo, ghi, W)
 
@@ -129,13 +129,13 @@ contains
                  end if
 
                 f(i,j,1) = U(i,j,1) * &
-                      (v(1)*gamma_up(i,j,2) + v(2)*gamma_up(i,j,5) -&
+                      (v(1)*gamma_up(i,j,2) + v(2)*gamma_up(i,j,4) -&
                        beta(i,j,2) / alpha(i,j))
                 f(i,j,2) = U(i,j,2) * &
-                      (v(1)*gamma_up(i,j,2) + v(2)*gamma_up(i,j,5) -&
+                      (v(1)*gamma_up(i,j,2) + v(2)*gamma_up(i,j,4) -&
                        beta(i,j,2) / alpha(i,j))
                 f(i,j,3) =  U(i,j,3) * &
-                      (v(1)*gamma_up(i,j,2) + v(2)*gamma_up(i,j,5) -&
+                      (v(1)*gamma_up(i,j,2) + v(2)*gamma_up(i,j,4) -&
                        beta(i,j,2) / alpha(i,j)) +  0.5d0 * U(i,j,1)**2 / W(i,j)**2
 
                 !f(i,j,:) = f(i,j,:)
@@ -186,14 +186,14 @@ contains
       implicit none
 
       integer, intent(in) :: Ncomp
-      double precision, intent(in)  :: U(Ncomp), p, gamma, gamma_up(9)
+      double precision, intent(in)  :: U(Ncomp), p, gamma, gamma_up(4)
       double precision, intent(out) :: f
 
       double precision :: sq
 
       sq = sqrt((U(4) + p + U(1))**2 - U(2)**2*gamma_up(1)- &
           2.0d0 * U(2) * U(3) * gamma_up(2) - &
-          U(3)**2 * gamma_up(5))
+          U(3)**2 * gamma_up(4))
 
       f = (gamma - 1.0d0) * sq / (U(4) + p + U(1)) * &
           (sq - p * (U(4) + p + U(1)) / sq - U(1)) - p
@@ -214,8 +214,8 @@ contains
       double precision, intent(out) :: p(plo(1):phi(1), plo(2):phi(2))
       double precision, intent(in)  :: gamma, alpha0, M, R, dx(2), prob_lo(2)
 
-      double precision gamma_up(lo(1):hi(1), lo(2):hi(2), 9)
-      double precision gamma_down(lo(1):hi(1), lo(2):hi(2), 9)
+      double precision gamma_up(lo(1):hi(1), lo(2):hi(2), 4)
+      double precision gamma_down(lo(1):hi(1), lo(2):hi(2), 4)
       double precision :: pmin, pmax, ssq, q(Ncomp), fmin, fmax, sq, h, W2, v_up(2)
       integer :: i, j, k, l
 
@@ -246,7 +246,7 @@ contains
               end if
               ssq = q(2)**2 * gamma_up(i,j,1) + &
                   2.0d0 * q(2) * q(3) * gamma_up(i,j,2) + &
-                  q(3)**2 * gamma_up(i,j,5)
+                  q(3)**2 * gamma_up(i,j,4)
 
               if (ssq /= ssq) then
                   ssq = 0.d0
@@ -306,12 +306,12 @@ contains
               v_up(1) = (gamma_up(i,j,1) * q(2) + &
                   gamma_up(i,j,2) * q(3)) /&
                   (W2 * h * U_prim(i,j,1))
-              v_up(2) = (gamma_up(i,j,4) * q(2) + &
-                  gamma_up(i,j,5) * q(3)) /&
+              v_up(2) = (gamma_up(i,j,2) * q(2) + &
+                  gamma_up(i,j,4) * q(3)) /&
                   (W2 * h * U_prim(i,j,1))
 
               U_prim(i,j,2) = gamma_down(i,j,1) * v_up(1) + gamma_down(i,j,2) * v_up(2)
-              U_prim(i,j,3) = gamma_down(i,j,4) * v_up(1) + gamma_down(i,j,5) * v_up(2)
+              U_prim(i,j,3) = gamma_down(i,j,2) * v_up(1) + gamma_down(i,j,4) * v_up(2)
               U_prim(i,j,4) = (h - 1.0d0) / gamma
 
               if (U_prim(i,j,2) /= U_prim(i,j,2)) then

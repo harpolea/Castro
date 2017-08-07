@@ -19,7 +19,8 @@ contains
     use meth_params_module, only : plm_iorder, QVAR, QRHO, QU, QV, &
                                    QREINT, QPRES, QC, NQ, NQAUX, &
                                    npassive, qpass_map, small_dens, small_pres, ppm_type, use_pslope
-    use slope_module, only : uslope, pslope, multid_slope
+    use slope_module, only : uslope, pslope
+    use multid_slope_module, only : multid_slope
     use bl_constants_module
 
     use amrex_fort_module, only : rt => amrex_real
@@ -52,7 +53,7 @@ contains
     real(rt)         dtdx, dtdy
     real(rt)         cc, csq, rho, u, v, p, rhoe
     real(rt)         drho, du, dv, dp, drhoe
-    
+
     real(rt)         enth, alpham, alphap, alpha0r, alpha0e
     real(rt)         alpha0u, alpha0v
     real(rt)         spzero
@@ -62,7 +63,7 @@ contains
     real(rt)         azu1left, azv1left
     real(rt)         acmprght, acmpleft, acmpbot, acmptop
     real(rt)         sourcr,sourcp,source,courn,eta,dlogatmp
-    
+
     real(rt)         :: rho_ref, u_ref, v_ref, p_ref, rhoe_ref
     real(rt)         :: e(3)
 
@@ -70,7 +71,7 @@ contains
        print *,'Oops -- shouldnt be in trace with ppm_type != 0'
        call bl_error("Error:: trace_2d.f90")
     end if
-    
+
     dtdx = dt/dx
     dtdy = dt/dy
 
@@ -86,23 +87,15 @@ contains
        ! these are piecewise linear slopes.  The limiter is a 4th order
        ! limiter, but the overall method will be second order.
        call uslope(q, flatn, q_lo, q_hi, &
-                   dqx, qpd_lo, qpd_hi, &
-                   ilo1,ilo2,ihi1,ihi2,1)
+                   dqx, dqy, dqx, qpd_lo, qpd_hi, &  ! second dqx is dummy
+                   ilo1, ilo2, ihi1, ihi2, 0, 0, 1)
 
-       call uslope(q, flatn, q_lo, q_hi, &
-                   dqy, qpd_lo, qpd_hi, &
-                   ilo1,ilo2,ihi1,ihi2,2)
-
-       if (use_pslope .eq. 1) then
-          call pslope(q, flatn, q_lo, q_hi, &
-                      dqx(:,:,QPRES), qpd_lo, qpd_hi, &
+       if (use_pslope == 1) then
+          call pslope(q, q(:,:,1), flatn, q_lo, q_hi, &
+                      dqx, dqy, dqx, qpd_lo, qpd_hi, &  ! second dqx is dummy
                       src, src_lo, src_hi, &
-                      ilo1,ilo2,ihi1,ihi2,dx,dy,1)
+                      ilo1, ilo2, ihi1, ihi2, 0, 0, [dx, dy, ZERO])
 
-          call pslope(q, flatn, q_lo, q_hi, &
-                      dqy(:,:,QPRES), qpd_lo, qpd_hi, &
-                      src, src_lo, src_hi, &
-                      ilo1,ilo2,ihi1,ihi2,dx,dy,2)
        endif
 
     elseif (plm_iorder == -2) then
@@ -118,18 +111,18 @@ contains
 
     else
        call bl_error("ERROR: invalid value of islope")
-       
+
     endif
 
     !-------------------------------------------------------------------------
     ! x-direction
     !-------------------------------------------------------------------------
-      
+
     ! Compute left and right traced states
 
     do j = ilo2-1, ihi2+1
        do i = ilo1-1, ihi1+1
-               
+
           cc = qaux(i,j,QC)
           csq = cc**2
           rho = q(i,j,QRHO)
@@ -138,7 +131,7 @@ contains
           p = q(i,j,QPRES)
           rhoe = q(i,j,QREINT)
           enth = ( (rhoe+p)/rho )/csq
-          
+
           drho = dqx(i,j,QRHO)
           du = dqx(i,j,QU)
           dv = dqx(i,j,QV)
@@ -156,7 +149,7 @@ contains
           e(3) = u+cc
 
           ! construct the right state on the i-1/2 interface
-                    
+
           rho_ref = rho - HALF*(ONE + dtdx*min(e(1),ZERO))*drho
           u_ref = u - HALF*(ONE + dtdx*min(e(1),ZERO))*du
           v_ref = v - HALF*(ONE + dtdx*min(e(1),ZERO))*dv
@@ -166,11 +159,11 @@ contains
           ! this is -(1/2) ( 1 + dt/dx lambda) (l . dq) r
           apright = 0.25e0_rt*dtdx*(e(1) - e(3))*(ONE - sign(ONE,e(3)))*alphap
           amright = 0.25e0_rt*dtdx*(e(1) - e(1))*(ONE - sign(ONE,e(1)))*alpham
-          
+
           azrright = 0.25e0*dtdx*(e(1)-e(2))*(ONE - sign(ONE,e(2)))*alpha0r
           azeright = 0.25e0*dtdx*(e(1)-e(2))*(ONE - sign(ONE,e(2)))*alpha0e
           azv1rght = 0.25e0*dtdx*(e(1)-e(2))*(ONE - sign(ONE,e(2)))*alpha0v
-            
+
           if (i .ge. ilo1) then
              qxp(i,j,QRHO) = rho_ref + apright + amright + azrright
              qxp(i,j,QRHO) = max(small_dens,qxp(i,j,QRHO))
@@ -192,11 +185,11 @@ contains
 
           apleft = 0.25e0_rt*dtdx*(e(3) - e(3))*(ONE + sign(ONE,e(3)))*alphap
           amleft = 0.25e0_rt*dtdx*(e(3) - e(1))*(ONE + sign(ONE,e(1)))*alpham
-          
+
           azrleft = 0.25e0_rt*dtdx*(e(3) - e(2))*(ONE + sign(ONE,e(2)))*alpha0r
           azeleft = 0.25e0_rt*dtdx*(e(3) - e(2))*(ONE + sign(ONE,e(2)))*alpha0e
           azv1left = 0.25e0_rt*dtdx*(e(3) - e(2))*(ONE + sign(ONE,e(2)))*alpha0v
-          
+
           if (i .le. ihi1) then
              qxm(i+1,j,QRHO) = rho_ref + apleft + amleft + azrleft
              qxm(i+1,j,QRHO) = max(qxm(i+1,j,QRHO),small_dens)
@@ -206,7 +199,7 @@ contains
              qxm(i+1,j,QPRES) = max(qxm(i+1,j,QPRES), small_pres)
              qxm(i+1,j,QREINT) = rhoe_ref + (apleft + amleft)*enth*csq + azeleft
           end if
-          
+
 
           ! geometry source terms
           if(dloga(i,j).ne.0)then
@@ -229,7 +222,7 @@ contains
                 qxp(i,j,QREINT) = qxp(i,j,QREINT) + source
              end if
           endif
-          
+
        enddo
     enddo
 
@@ -249,7 +242,7 @@ contains
              acmprght = HALF*(-ONE - spzero )*dqx(i,j,n)
              qxp(i,j,n) = q(i,j,n) + acmprght
           enddo
-          
+
           ! Left state
           do i = ilo1-1, ihi1
              u = q(i,j,QU)
@@ -270,11 +263,11 @@ contains
     !-------------------------------------------------------------------------
     ! y-direction
     !-------------------------------------------------------------------------
-    
+
     ! Compute left and right traced states
     do j = ilo2-1, ihi2+1
        do i = ilo1-1, ihi1+1
-          
+
           cc = qaux(i,j,QC)
           csq = cc**2
           rho = q(i,j,QRHO)
@@ -283,19 +276,19 @@ contains
           p = q(i,j,QPRES)
           rhoe = q(i,j,QREINT)
           enth = ( (rhoe+p)/rho )/csq
-          
+
           drho = dqy(i,j,QRHO)
           du = dqy(i,j,QU)
           dv = dqy(i,j,QV)
           dp = dqy(i,j,QPRES)
           drhoe = dqy(i,j,QREINT)
-          
+
           alpham = HALF*(dp/(rho*cc) - dv)*rho/cc
           alphap = HALF*(dp/(rho*cc) + dv)*rho/cc
           alpha0r = drho - dp/csq
           alpha0e = drhoe - dp*enth
           alpha0u = du
-          
+
           e(1) = v-cc
           e(2) = v
           e(3) = v+cc
@@ -309,11 +302,11 @@ contains
 
           apright = 0.25e0_rt*dtdy*(e(1) - e(3))*(ONE - sign(ONE,e(3)))*alphap
           amright = 0.25e0_rt*dtdy*(e(1) - e(1))*(ONE - sign(ONE,e(1)))*alpham
-          
+
           azrright = 0.25e0*dtdy*(e(1)-e(2))*(ONE - sign(ONE,e(2)))*alpha0r
           azeright = 0.25e0*dtdy*(e(1)-e(2))*(ONE - sign(ONE,e(2)))*alpha0e
           azu1rght = 0.25e0*dtdy*(e(1)-e(2))*(ONE - sign(ONE,e(2)))*alpha0u
-          
+
           if (j .ge. ilo2) then
              qyp(i,j,QRHO) = rho_ref + apright + amright + azrright
              qyp(i,j,QRHO) = max(small_dens, qyp(i,j,QRHO))
@@ -339,7 +332,7 @@ contains
           azrleft = 0.25e0_rt*dtdy*(e(3) - e(2))*(ONE + sign(ONE,e(2)))*alpha0r
           azeleft = 0.25e0_rt*dtdy*(e(3) - e(2))*(ONE + sign(ONE,e(2)))*alpha0e
           azu1left = 0.25e0_rt*dtdy*(e(3) - e(2))*(ONE + sign(ONE,e(2)))*alpha0u
-          
+
           if (j .le. ihi2) then
              qym(i,j+1,QRHO) = rho_ref + apleft + amleft + azrleft
              qym(i,j+1,QRHO) = max(small_dens, qym(i,j+1,QRHO))
@@ -349,14 +342,14 @@ contains
              qym(i,j+1,QPRES) = max(qym(i,j+1,QPRES), small_pres)
              qym(i,j+1,QREINT) = rhoe_ref + (apleft + amleft)*enth*csq + azeleft
           end if
-          
+
        enddo
     enddo
 
     do ipassive = 1, npassive
        n = qpass_map(ipassive)
        do i = ilo1-1, ihi1+1
-          
+
           ! Top state
           do j = ilo2, ihi2+1
              v = q(i,j,QV)
@@ -368,7 +361,7 @@ contains
              acmptop = HALF*(-ONE - spzero )*dqy(i,j,n)
              qyp(i,j,n) = q(i,j,n) + acmptop
           enddo
-          
+
           ! Bottom state
           do j = ilo2-1, ihi2
              v = q(i,j,QV)
@@ -380,12 +373,12 @@ contains
              acmpbot = HALF*(ONE - spzero )*dqy(i,j,n)
              qym(i,j+1,n) = q(i,j,n) + acmpbot
           enddo
-          
+
        enddo
     enddo
 
     deallocate(dqx,dqy)
-    
+
   end subroutine trace
-  
+
 end module trace_module

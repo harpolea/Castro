@@ -5,6 +5,8 @@ module ppm_module
   ! integration under the characteristic domain of the parabola
 
   use bl_constants_module
+  use prob_params_module, only : dg
+
   use amrex_fort_module, only : rt => amrex_real
 
   implicit none
@@ -115,23 +117,21 @@ contains
     if (ppm_type .ne. 1) &
          call bl_error("Should have ppm_type = 1 in ppm_type1")
 
-    if (s_lo(1) .gt. ilo1-3 .or. s_lo(2) .gt. ilo2-3) then
-         print *,'Low bounds of array: ',s_lo(1), s_lo(2)
-         print *,'Low bounds of  loop: ',ilo1 , ilo2
+    if (s_lo(1) .gt. ilo1-3 .or. s_hi(1) .lt. ihi1+3) then 
          call bl_error("Need more ghost cells on array in ppm_type1")
     end if
 
-    if (s_hi(1) .lt. ihi1+3 .or. s_hi(2) .lt. ihi2+3) then
-         print *,'Hi  bounds of array: ',s_hi(1), s_hi(2)
-         print *,'Hi  bounds of  loop: ',ihi1 , ihi2
+#if (BL_SPACEDIM >= 2)
+    if (s_lo(2) .gt. ilo2-3 .or. s_hi(2) .lt. ihi2+3) then
          call bl_error("Need more ghost cells on array in ppm_type1")
     end if
+#endif
 
     ! cell-centered indexing w/extra ghost cell
-    call bl_allocate(dsvl,ilo1-2,ihi1+2,ilo2-2,ihi2+2)
+    call bl_allocate(dsvl, ilo1-2, ihi1+2, ilo2-2*dg(2), ihi2+2*dg(2))
 
     ! edge-centered indexing
-    call bl_allocate(sedge,ilo1-1,ihi1+2,ilo2-1,ihi2+2)
+    call bl_allocate(sedge, ilo1-1, ihi1+2, ilo2-dg(2), ihi2+2*dg(2))
 
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     ! x-direction
@@ -140,7 +140,7 @@ contains
     ! compute s at x-edges
 
     ! compute van Leer slopes in x-direction
-    do j=ilo2-1,ihi2+1
+    do j=ilo2-dg(2),ihi2+dg(2)
        do i=ilo1-2,ihi1+2
           dsc = HALF * (s(i+1,j,k3d) - s(i-1,j,k3d))
           dsl = TWO  * (s(i  ,j,k3d) - s(i-1,j,k3d))
@@ -154,7 +154,7 @@ contains
     end do
 
     ! interpolate s to x-edges
-    do j=ilo2-1,ihi2+1
+    do j=ilo2-dg(2),ihi2+dg(2)
        !dir$ ivdep
        do i=ilo1-1,ihi1+2
           sedge(i,j) = HALF*(s(i,j,k3d)+s(i-1,j,k3d)) &
@@ -165,7 +165,7 @@ contains
        end do
     end do
 
-    do j=ilo2-1,ihi2+1
+    do j=ilo2-dg(2),ihi2+dg(2)
        do i=ilo1-1,ihi1+1
 
           ! copy sedge into sp and sm
@@ -200,6 +200,7 @@ contains
        end do
     end do
 
+#if (BL_SPACEDIM >= 2)
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     ! y-direction
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -265,7 +266,9 @@ contains
 
        end do
     end do
+#endif
 
+#if (BL_SPACEDIM == 3)
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     ! z-direction
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -351,6 +354,7 @@ contains
 
        end do
     end do
+#endif
 
     call bl_deallocate(dsvl)
     call bl_deallocate(sedge)
@@ -416,21 +420,19 @@ contains
     if (ppm_type .ne. 2) &
          call bl_error("Should have ppm_type = 2 in ppm_type2")
 
-    if (s_lo(1) .gt. ilo1-3 .or. s_lo(2) .gt. ilo2-3) then
-         print *,'Low bounds of array: ',s_lo(1), s_lo(2)
-         print *,'Low bounds of  loop: ',ilo1 , ilo2
-         call bl_error("Need more ghost cells on array in ppm_type2")
+    if (s_lo(1) .gt. ilo1-3 .or. s_hi(1) .lt. ihi1+3) then 
+         call bl_error("Need more ghost cells on array in ppm_type1")
     end if
 
-    if (s_hi(1) .lt. ihi1+3 .or. s_hi(2) .lt. ihi2+3) then
-         print *,'Hi  bounds of array: ',s_hi(1), s_hi(2)
-         print *,'Hi  bounds of  loop: ',ihi1 , ihi2
-         call bl_error("Need more ghost cells on array in ppm_type2")
+#if (BL_SPACEDIM >= 2)
+    if (s_lo(2) .gt. ilo2-3 .or. s_hi(2) .lt. ihi2+3) then
+         call bl_error("Need more ghost cells on array in ppm_type1")
     end if
+#endif
 
     ! edge-centered indexing
-    call bl_allocate(sedge,ilo1-2,ihi1+3,ilo2-2,ihi2+3)
-    call bl_allocate(sedgez,ilo1-1,ihi1+1,ilo2-1,ihi2+1,k3d-1,k3d+2)
+    call bl_allocate(sedge, ilo1-2, ihi1+3, ilo2-2*dg(2), ihi2+3*dg(2))
+    call bl_allocate(sedgez,ilo1-1, ihi1+1, ilo2-dg(2), ihi2+dg(2), k3d-dg(2),k3d+2*dg(2))
 
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     ! x-direction
@@ -439,8 +441,8 @@ contains
     ! compute s at x-edges
 
     ! interpolate s to x-edges
-    do j=ilo2-1,ihi2+1
-       do i=ilo1-2,ihi1+3
+    do j=ilo2-dg(2), ihi2+dg(2)
+       do i=ilo1-2, ihi1+3
           sedge(i,j) = SEVEN12TH*(s(i-1,j,k3d)+s(i  ,j,k3d)) &
                - TWELFTH*(s(i-2,j,k3d)+s(i+1,j,k3d))
           !
@@ -461,7 +463,7 @@ contains
     !
     ! This is a new version of the algorithm to eliminate sensitivity to roundoff.
     !
-    do j=ilo2-1,ihi2+1
+    do j=ilo2-dg(2), ihi2+dg(2)
        do i=ilo1-1,ihi1+1
 
           alphap   = sedge(i+1,j)-s(i,j,k3d)
@@ -544,6 +546,8 @@ contains
        end do
     end do
 
+
+#if (BL_SPACEDIM >= 2)
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     ! y-direction
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -551,8 +555,8 @@ contains
     ! compute s at y-edges
 
     ! interpolate s to y-edges
-    do j=ilo2-2,ihi2+3
-       do i=ilo1-1,ihi1+1
+    do j=ilo2-2, ihi2+3
+       do i=ilo1-1, ihi1+1
           sedge(i,j) = SEVEN12TH*(s(i,j-1,k3d)+s(i,j,k3d)) &
                - TWELFTH*(s(i,j-2,k3d)+s(i,j+1,k3d))
           !
@@ -573,8 +577,8 @@ contains
     !
     ! This is a new version of the algorithm to eliminate sensitivity to roundoff.
     !
-    do j=ilo2-1,ihi2+1
-       do i=ilo1-1,ihi1+1
+    do j=ilo2-1, ihi2+1
+       do i=ilo1-1, ihi1+1
 
           alphap   = sedge(i,j+1)-s(i,j,k3d)
           alpham   = sedge(i,j  )-s(i,j,k3d)
@@ -655,7 +659,9 @@ contains
 
        end do
     end do
+#endif
 
+#if (BL_SPACEDIM == 3)
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     ! z-direction
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -663,10 +669,10 @@ contains
     ! compute s at z-edges
 
     ! interpolate s to z-edges
-    do k=k3d-1,k3d+2
-       do j=ilo2-1,ihi2+1
+    do k=k3d-1, k3d+2
+       do j=ilo2-1, ihi2+1
           !dir$ ivdep
-          do i=ilo1-1,ihi1+1
+          do i=ilo1-1, ihi1+1
              sedgez(i,j,k) = SEVEN12TH*(s(i,j,k-1)+s(i,j,k)) &
                   - TWELFTH*(s(i,j,k-2)+s(i,j,k+1))
              !
@@ -689,8 +695,8 @@ contains
     ! This is a new version of the algorithm to eliminate sensitivity to roundoff.
     !
     k = k3d
-    do j=ilo2-1,ihi2+1
-       do i=ilo1-1,ihi1+1
+    do j=ilo2-1, ihi2+1
+       do i=ilo1-1, ihi1+1
 
           alphap   = sedgez(i,j,k+1)-s(i,j,k)
           alpham   = sedgez(i,j,k  )-s(i,j,k)
@@ -771,6 +777,7 @@ contains
 
        end do
     end do
+#endif
 
     call bl_deallocate(sedge)
     call bl_deallocate(sedgez)
@@ -779,7 +786,8 @@ contains
 
 
   subroutine ppm_int_profile(s, s_lo, s_hi, &
-                             u, cspd, qd_lo, qd_hi, &
+                             u, qd_lo, qd_hi, &
+                             cspd, qa_lo, qa_hi, &
                              sxm, sxp, sym, syp, szm, szp, sd_lo, sd_hi, &
                              Ip, Im, I_lo, I_hi, &
                              ilo1, ilo2, ihi1, ihi2, dx, dt, k3d, kc)
@@ -788,6 +796,7 @@ contains
 
     integer, intent(in) ::  s_lo(3),  s_hi(3)
     integer, intent(in) :: qd_lo(3), qd_hi(3)
+    integer, intent(in) :: qa_lo(3), qa_hi(3)
     integer, intent(in) :: sd_lo(3), sd_hi(3)
     integer, intent(in) ::  I_lo(3),  I_hi(3)
     integer, intent(in) :: ilo1, ilo2, ihi1, ihi2
@@ -795,15 +804,15 @@ contains
 
     real(rt)        , intent(in) ::     s( s_lo(1): s_hi(1), s_lo(2): s_hi(2), s_lo(3): s_hi(3))
     real(rt)        , intent(in) ::     u(qd_lo(1):qd_hi(1),qd_lo(2):qd_hi(2),qd_lo(3):qd_hi(3),3)
-    real(rt)        , intent(in) ::  cspd(qd_lo(1):qd_hi(1),qd_lo(2):qd_hi(2),qd_lo(3):qd_hi(3))
+    real(rt)        , intent(in) ::  cspd(qa_lo(1):qa_hi(1),qa_lo(2):qa_hi(2),qa_lo(3):qa_hi(3))
     real(rt)        , intent(in) ::   sxm( sd_lo(1): sd_hi(1), sd_lo(2): sd_hi(2), sd_lo(3): sd_hi(3))
     real(rt)        , intent(in) ::   sxp( sd_lo(1): sd_hi(1), sd_lo(2): sd_hi(2), sd_lo(3): sd_hi(3))
     real(rt)        , intent(in) ::   sym( sd_lo(1): sd_hi(1), sd_lo(2): sd_hi(2), sd_lo(3): sd_hi(3))
     real(rt)        , intent(in) ::   syp( sd_lo(1): sd_hi(1), sd_lo(2): sd_hi(2), sd_lo(3): sd_hi(3))
     real(rt)        , intent(in) ::   szm( sd_lo(1): sd_hi(1), sd_lo(2): sd_hi(2), sd_lo(3): sd_hi(3))
     real(rt)        , intent(in) ::   szp( sd_lo(1): sd_hi(1), sd_lo(2): sd_hi(2), sd_lo(3): sd_hi(3))
-    real(rt)        , intent(inout) :: Ip(I_lo(1):I_hi(1),I_lo(2):I_hi(2),I_lo(3):I_hi(3),1:3,1:3)
-    real(rt)        , intent(inout) :: Im(I_lo(1):I_hi(1),I_lo(2):I_hi(2),I_lo(3):I_hi(3),1:3,1:3)
+    real(rt)        , intent(inout) :: Ip(I_lo(1):I_hi(1),I_lo(2):I_hi(2),I_lo(3):I_hi(3),1:BL_SPACEDIM,1:3)
+    real(rt)        , intent(inout) :: Im(I_lo(1):I_hi(1),I_lo(2):I_hi(2),I_lo(3):I_hi(3),1:BL_SPACEDIM,1:3)
 
     real(rt)        , intent(in) :: dx(3), dt
 
@@ -816,28 +825,19 @@ contains
     real(rt)         :: sm, sp
 
     dtdx = dt/dx(1)
+#if (BL_SPACEDIM >= 2)
     dtdy = dt/dx(2)
+#endif
+#if (BL_SPACEDIM == 3)
     dtdz = dt/dx(3)
-
-    if (s_lo(1) .gt. ilo1-3 .or. s_lo(2) .gt. ilo2-3) then
-         print *,'Low bounds of array: ',s_lo(1), s_lo(2)
-         print *,'Low bounds of  loop: ',ilo1 , ilo2
-         call bl_error("Need more ghost cells on array in ppm_type1")
-    end if
-
-    if (s_hi(1) .lt. ihi1+3 .or. s_hi(2) .lt. ihi2+3) then
-         print *,'Hi  bounds of array: ',s_hi(1), s_hi(2)
-         print *,'Hi  bounds of  loop: ',ihi1 , ihi2
-         call bl_error("Need more ghost cells on array in ppm_type1")
-    end if
-
+#endif
 
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     ! x-direction
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-    do j=ilo2-1,ihi2+1
-       do i=ilo1-1,ihi1+1
+    do j = ilo2-dg(2), ihi2+dg(2)
+       do i = ilo1-1, ihi1+1
 
           ! copy sedge into sp and sm
           sp = sxp(i,j,kc)
@@ -907,12 +907,13 @@ contains
        end do
     end do
 
+#if (BL_SPACEDIM >= 2)
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     ! y-direction
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-    do j=ilo2-1,ihi2+1
-       do i=ilo1-1,ihi1+1
+    do j = ilo2-dg(2), ihi2+dg(2)
+       do i = ilo1-1, ihi1+1
 
           ! copy sedge into sp and sm
           sp = syp(i,j,kc)
@@ -974,7 +975,9 @@ contains
 
        end do
     end do
+#endif
 
+#if (BL_SPACEDIM == 3)
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     ! z-direction
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -1041,6 +1044,7 @@ contains
 
        end do
     end do
+#endif
 
   end subroutine ppm_int_profile
 

@@ -66,7 +66,7 @@ contains
     use actual_network, only : nspec, naux
     use eos_module, only: eos
     use eos_type_module, only: eos_t, eos_input_rt
-    use riemann_module, only: cmpflx, shock
+    use riemann_module, only: cmpflx
     use bl_constants_module
 #ifdef RADIATION
     use rad_params_module, only : ngroups
@@ -77,7 +77,7 @@ contains
 #ifdef SHOCK_VAR
     use meth_params_module, only : USHK
 #endif
-
+    use advection_util_module, only : shock
     use amrex_fort_module, only : rt => amrex_real
     implicit none
 
@@ -384,7 +384,8 @@ contains
                                   lo(1), lo(2), hi(1), hi(2), dx, k3d, kc)
 
              call ppm_int_profile(q(:,:,:,n  ), qd_lo, qd_hi, &
-                                  q(:,:,:,QU:QW), qaux(:,:,:,QC), qd_lo, qd_hi, &
+                                  q(:,:,:,QU:QW), qd_lo, qd_hi, &
+                                  qaux(:,:,:,QC), qa_lo, qa_hi, &
                                   sxm, sxp, sym, syp, szm, szp, It_lo, It_hi, &
                                   Ip(:,:,:,:,:,n), Im(:,:,:,:,:,n), It_lo, It_hi, &
                                   lo(1), lo(2), hi(1), hi(2), dx, dt, k3d, kc)
@@ -398,7 +399,8 @@ contains
                                      lo(1), lo(2), hi(1), hi(2), dx, k3d, kc)
 
                 call ppm_int_profile(srcQ(:,:,:,n), src_lo, src_hi, &
-                                     q(:,:,:,QU:QW), qaux(:,:,:,QC), qd_lo, qd_hi, &
+                                     q(:,:,:,QU:QW), qd_lo, qd_hi, &
+                                     qaux(:,:,:,QC), qa_lo, qa_hi, &
                                      sxm, sxp, sym, syp, szm, szp, It_lo, It_hi, &
                                      Ip_src(:,:,:,:,:,n), Im_src(:,:,:,:,:,n), It_lo, It_hi, &
                                      lo(1), lo(2), hi(1), hi(2), dx, dt, k3d, kc)
@@ -407,13 +409,14 @@ contains
 
           ! this probably doesn't support radiation
           if (ppm_temp_fix /= 1) then
-             call ppm_reconstruct(qaux(:,:,:,QGAMC), qd_lo, qd_hi, &
+             call ppm_reconstruct(qaux(:,:,:,QGAMC), qa_lo, qa_hi, &
                                   flatn, qd_lo, qd_hi, &
                                   sxm, sxp, sym, syp, szm, szp, It_lo, It_hi, &
                                   lo(1), lo(2), hi(1), hi(2), dx, k3d, kc)
 
-             call ppm_int_profile(qaux(:,:,:,QGAMC), qd_lo, qd_hi, &
-                                  q(:,:,:,QU:QW), qaux(:,:,:,QC), qd_lo, qd_hi, &
+             call ppm_int_profile(qaux(:,:,:,QGAMC), qa_lo, qa_hi, &
+                                  q(:,:,:,QU:QW), qd_lo, qd_hi, &
+                                  qaux(:,:,:,QC), qa_lo, qa_hi, &
                                   sxm, sxp, sym, syp, szm, szp, It_lo, It_hi, &
                                   Ip_gc(:,:,:,:,:,1), Im_gc(:,:,:,:,:,1), It_lo, It_hi, &
                                   lo(1), lo(2), hi(1), hi(2), dx, dt, k3d, kc)
@@ -481,17 +484,15 @@ contains
 #endif
 
           ! Compute all slopes at kc (k3d)
-          call uslope(q,flatn,qd_lo,qd_hi, &
-                      dqx,dqy,dqz,qt_lo,qt_hi, &
-                      lo(1),lo(2),hi(1),hi(2),kc,k3d)
+          call uslope(q, flatn, qd_lo, qd_hi, &
+                      dqx, dqy, dqz, qt_lo, qt_hi, &
+                      lo(1), lo(2), hi(1), hi(2), kc, k3d)
 
           if (use_pslope .eq. 1) &
-               call pslope(q(:,:,:,QPRES),q(:,:,:,QRHO), &
-                           flatn,qd_lo,qd_hi, &
-                           dqx(:,:,:,QPRES),dqy(:,:,:,QPRES),dqz(:,:,:,QPRES), &
-                           qt_lo,qt_hi, &
-                           srcQ,src_lo,src_hi, &
-                           lo(1),lo(2),hi(1),hi(2),kc,k3d,dx)
+               call pslope(q, flatn, qd_lo, qd_hi, &
+                           dqx, dqy, dqz, qt_lo, qt_hi, &
+                           srcQ, src_lo, src_hi, &
+                           lo(1), lo(2), hi(1), hi(2), kc, k3d, dx)
 
           ! Compute U_x and U_y at kc (k3d)
           call tracexy(q,qaux(:,:,:,QC),qd_lo,qd_hi, &

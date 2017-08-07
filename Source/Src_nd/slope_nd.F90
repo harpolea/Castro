@@ -1,6 +1,8 @@
 module slope_module
 
   use amrex_fort_module, only : rt => amrex_real
+  use prob_params_module, only : dg
+
   implicit none
 
   private

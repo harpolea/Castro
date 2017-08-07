@@ -1,38 +1,35 @@
 ! These routines do the characteristic tracing under the parabolic
 ! profiles in each zone to the edge / half-time.
 
-module trace_ppm_module
+module trace_ppm_rad_module
 
   use amrex_fort_module, only : rt => amrex_real
   implicit none
 
   private
 
-  public trace_ppm
+  public trace_ppm_rad
 
 contains
 
-  subroutine trace_ppm(q, flatn, q_lo, q_hi, &
-                       qaux, qa_lo, qa_hi, &
-                       dloga, dloga_lo, dloga_hi, &
-                       srcQ, src_lo, src_hi, &
-                       qxm, qxp, qpd_lo, qpd_hi, &
-                       ilo, ihi, domlo, domhi, dx, dt)
+  subroutine trace_ppm_rad(q, flatn, q_lo, q_hi, &
+                           qaux, qa_lo, qa_hi, &
+                           dloga, dloga_lo, dloga_hi, &
+                           srcQ, src_lo, src_hi,&
+                           qxm, qxp, qpd_lo, qpd_hi, &
+                           ilo, ihi, domlo, domhi, dx, dt)
 
-    use network, only : nspec, naux
-    use eos_type_module
-    use eos_module
     use bl_constants_module
     use meth_params_module, only : QVAR, QRHO, QU, QREINT, QPRES, &
-         QTEMP, QFS, QFX, QGAME, QGAMC, QC, NQ, NQAUX, &
+         NQ, NQAUX, qrad, qradhi, qptot, qreitot, &
+         QGAME, QGAMC, QGAMCG, QC, QCG, QLAMS, &
          small_dens, small_pres, fix_mass_flux, &
          ppm_type, ppm_trace_sources, ppm_temp_fix, &
          ppm_predict_gammae, ppm_reference_eigenvectors, &
          npassive, qpass_map
     use prob_params_module, only : physbc_lo, physbc_hi, Outflow
+    use rad_params_module, only : ngroups
     use ppm_module, only : ppm_reconstruct, ppm_int_profile
-
-    use amrex_fort_module, only : rt => amrex_real
 
     implicit none
 
@@ -44,18 +41,17 @@ contains
     integer   qpd_lo(3), qpd_hi(3)
     integer   src_lo(3), src_hi(3)
     real(rt)         dx, dt
-
-    real(rt)             q( q_lo(1): q_hi(1),NQ)
-    real(rt)         qaux( qa_lo(1):qa_hi(1),NQAUX)
-    real(rt)          srcQ(src_lo(1):src_hi(1),QVAR)
+    real(rt)             q(q_lo(1):q_hi(1), NQ)
+    real(rt)         :: qaux(qa_lo(1):qa_hi(1), NQAUX)
     real(rt)         flatn(q_lo(1):q_hi(1))
+    real(rt)          srcQ(src_lo(1):src_hi(1),QVAR)
     real(rt)         dloga(dloga_lo(1):dloga_hi(1))
 
-    real(rt)          qxm( qpd_lo(1):qpd_hi(1),NQ)
-    real(rt)          qxp( qpd_lo(1):qpd_hi(1),NQ)
+    real(rt)          qxm( qpd_lo(1):qpd_hi(1), NQ)
+    real(rt)          qxp( qpd_lo(1):qpd_hi(1), NQ)
 
     ! Local variables
-    integer :: i, iwave
+    integer :: i, g
     integer :: n, ipassive
 
     real(rt)         :: hdt,dtdx
@@ -66,7 +62,7 @@ contains
     ! rho : mass density
     ! u, v, w : velocities
     ! p : gas (hydro) pressure
-    ! ptot : total pressure (note for pure hydro, this is
+    ! ptot : total pressure (note for pure hydro, this is 
     !        just the gas pressure)
     ! rhoe_g : gas specific internal energy
     ! cgas : sound speed for just the gas contribution
@@ -78,9 +74,9 @@ contains
     ! for pure hydro, we will only consider:
     !   rho, u, v, w, ptot, rhoe_g, cc, h_g
 
-    real(rt)         :: cc, csq, Clag
-    real(rt)         :: rho, u, p, rhoe_g, h_g
-    real(rt)         :: gam_g, game
+    real(rt)         :: cc, csq, cgassq, Clag
+    real(rt)         :: rho, u, p, rhoe_g, h_g, tau
+    real(rt)         :: ptot, gam_g, game
 
     real(rt)         :: drho, dptot, drhoe_g
     real(rt)         :: dge, dtau
@@ -88,10 +84,10 @@ contains
     real(rt)         :: dum, dptotm
 
     real(rt)         :: rho_ref, u_ref, p_ref, rhoe_g_ref, h_g_ref
+    real(rt)         :: ptot_ref
     real(rt)         :: tau_ref
 
-    real(rt)         :: cc_ref, csq_ref, Clag_ref, gam_g_ref, game_ref, gfactor
-    real(rt)         :: cc_ev, csq_ev, Clag_ev, rho_ev, p_ev, h_g_ev, tau_ev
+    real(rt)         :: gam_g_ref, game_ref, gfactor
 
     real(rt)         :: alpham, alphap, alpha0r, alpha0e_g
     real(rt)         :: sourcr, sourcp, source, courn, eta, dlogatmp
@@ -100,19 +96,20 @@ contains
 
     logical :: fix_mass_flux_lo, fix_mass_flux_hi
 
+    real(rt)        , dimension(0:ngroups-1) :: er, der, alphar, sourcer, qrtmp, hr
+    real(rt)        , dimension(0:ngroups-1) :: lam0, lamp, lamm
+
+    real(rt)        , dimension(0:ngroups-1) :: er_ref
+    real(rt)         :: er_foo
+
     real(rt)        , allocatable :: Ip(:,:,:)
     real(rt)        , allocatable :: Im(:,:,:)
 
     real(rt)        , allocatable :: Ip_src(:,:,:)
     real(rt)        , allocatable :: Im_src(:,:,:)
 
-    real(rt)        , allocatable :: Ip_gc(:,:,:)
-    real(rt)        , allocatable :: Im_gc(:,:,:)
-
     ! temporary interface values of the parabola
     real(rt), allocatable :: sxm(:), sxp(:)
-
-    type (eos_t) :: eos_state
 
     integer :: I_lo(3), I_hi(3)
 
@@ -123,8 +120,16 @@ contains
 
     if (ppm_type == 0) then
        print *,'Oops -- shouldnt be in trace_ppm with ppm_type = 0'
-       call bl_error("Error:: ppm_1d.f90 :: trace_ppm")
+       call bl_error("Error:: RadHydro_1d.f90 :: trace_ppm_rad")
     end if
+
+    if (ppm_temp_fix > 0) then
+       call bl_error("ERROR: ppm_temp_fix > 0 not implemented with radiation")
+    endif
+
+    if (ppm_reference_eigenvectors == 1) then
+       call bl_error("ERROR: ppm_reference_eigenvectors not implemented with radiation")
+    endif
 
     hdt = HALF * dt
     dtdx = dt/dx
@@ -135,16 +140,14 @@ contains
     allocate(Ip(I_lo(1):I_hi(1),3,NQ))
     allocate(Im(I_lo(1):I_hi(1),3,NQ))
 
-    allocate(Ip_gc(I_lo(1):I_hi(1),3,1))
-    allocate(Im_gc(I_lo(1):I_hi(1),3,1))
-
     if (ppm_trace_sources == 1) then
        allocate(Ip_src(I_lo(1):I_hi(1),3,QVAR))
        allocate(Im_src(I_lo(1):I_hi(1),3,QVAR))
     endif
-
+   
     allocate(sxm(q_lo(1):q_hi(1)))
     allocate(sxp(q_lo(1):q_hi(1)))
+
 
     !=========================================================================
     ! PPM CODE
@@ -176,7 +179,7 @@ contains
     ! Compute Ip and Im -- this does the parabolic reconstruction,
     ! limiting, and returns the integral of each profile under each
     ! wave to each interface
-    do n = 1, QVAR
+    do n = 1, NQ
        call ppm_reconstruct(q(:,n), q_lo, q_hi, &
                             flatn, q_lo, q_hi, &
                             sxm, sxp, sxm, sxp, sxm, sxp, q_lo, q_hi, &
@@ -188,55 +191,7 @@ contains
                             sxm, sxp, sxm, sxp, sxm, sxp, q_lo, q_hi, &
                             Ip(:,:,n), Im(:,:,n), I_lo, I_hi, &
                             ilo, 0, ihi, 0, [dx, ZERO, ZERO], dt, 0, 0)
-    enddo
-
-    ! temperature-based PPM -- if desired, take the Ip(T)/Im(T)
-    ! constructed above and use the EOS to overwrite Ip(p)/Im(p)
-    if (ppm_temp_fix == 1) then
-       do i = ilo-1, ihi+1
-          do iwave = 1, 3
-             eos_state%rho   = Ip(i,iwave,QRHO)
-             eos_state%T     = Ip(i,iwave,QTEMP)
-             eos_state%xn(:) = Ip(i,iwave,QFS:QFS-1+nspec)
-             eos_state%aux   = Ip(i,iwave,QFX:QFX-1+naux)
-
-             call eos(eos_input_rt, eos_state)
-
-             Ip(i,iwave,QPRES) = eos_state%p
-             Ip(i,iwave,QREINT) = Ip(i,iwave,QRHO)*eos_state%e
-             Ip_gc(i,iwave,1) = eos_state%gam1
-
-             eos_state%rho   = Im(i,iwave,QRHO)
-             eos_state%T     = Im(i,iwave,QTEMP)
-             eos_state%xn(:) = Im(i,iwave,QFS:QFS-1+nspec)
-             eos_state%aux   = Im(i,iwave,QFX:QFX-1+naux)
-
-             call eos(eos_input_rt, eos_state)
-
-             Im(i,iwave,QPRES) = eos_state%p
-             Im(i,iwave,QREINT) = Im(i,iwave,QRHO)*eos_state%e
-             Im_gc(i,iwave,1) = eos_state%gam1
-          enddo
-       enddo
-
-    endif
-
-
-    ! get an edge-based gam1 here if we didn't get it from the EOS
-    ! call above (for ppm_temp_fix = 1)
-    if (ppm_temp_fix /= 1) then
-       call ppm_reconstruct(qaux(:,QGAMC), qa_lo, qa_hi, &
-                            flatn, q_lo, q_hi, &
-                            sxm, sxp, sxm, sxp, sxm, sxp, q_lo, q_hi, &  ! extras are dummy
-                            ilo, 0, ihi, 0, [dx, ZERO, ZERO], 0, 0)
-
-       call ppm_int_profile(qaux(:,QGAMC), qa_lo, qa_hi, &
-                            q(:,QU), q_lo, q_hi, &
-                            qaux(:,QC), qa_lo, qa_hi, &
-                            sxm, sxp, sxm, sxp, sxm, sxp, q_lo, q_hi, &   ! extras are dummy
-                            Ip_gc(:,:,1), Im_gc(:,:,1), I_lo, I_hi, &
-                            ilo, 0, ihi, 0, [dx, ZERO, ZERO], dt, 0, 0)
-    endif
+    end do
 
     if (ppm_trace_sources == 1) then
        do n = 1, QVAR
@@ -263,19 +218,34 @@ contains
     ! Trace to left and right edges using upwind PPM
     do i = ilo-1, ihi+1
 
-       cc =  qaux(i,QC)
+       do g=0, ngroups-1
+          lam0(g) = qaux(i,QLAMS+g)
+          lamp(g) = qaux(i,QLAMS+g)
+          lamm(g) = qaux(i,QLAMS+g)
+       end do
+
+       ! cgassq is the gas soundspeed **2
+       ! cc is the total soundspeed **2 (gas + radiation)
+       cgassq = qaux(i,QCG)**2
+       cc = qaux(i,QC)
        csq = cc**2
 
        rho = q(i,QRHO)
-       u = q(i,QU)
+       tau = ONE/rho  ! should not be needed once reference ev is implemented
 
+       u = q(i,QU)
        p = q(i,QPRES)
        rhoe_g = q(i,QREINT)
        h_g = ( (p + rhoe_g)/rho )/csq
 
+       ptot = q(i,qptot)
+
+       er(:) = q(i,qrad:qradhi)
+       hr(:) = (lam0+1.e0_rt)*er/rho
+
        Clag = rho*cc
 
-       gam_g = qaux(i,QGAMC)
+       gam_g = qaux(i,QGAMCG)
        game = q(i,QGAME)
 
        !----------------------------------------------------------------------
@@ -286,39 +256,42 @@ contains
        ! this will be the fastest moving state to the left --
        ! this is the method that Miller & Colella and Colella &
        ! Woodward use
-       rho_ref  = Im(i,1,QRHO)
-       u_ref    = Im(i,1,QU)
+       rho_ref = Im(i,1,QRHO)
+       u_ref = Im(i,1,QU)
 
-       p_ref    = Im(i,1,QPRES)
+       p_ref = Im(i,1,QPRES)
        rhoe_g_ref = Im(i,1,QREINT)
 
        tau_ref = ONE/Im(i,1,QRHO)
 
-       gam_g_ref = Im_gc(i,1,1)
        game_ref = Im(i,1,QGAME)
+
+       ptot_ref = Im(i,1,qptot)
+
+       er_ref(:) = Im(i,1,qrad:qradhi)
 
        rho_ref = max(rho_ref,small_dens)
        p_ref = max(p_ref,small_pres)
 
-       ! for tracing (optionally)
-       cc_ref = sqrt(gam_g_ref*p_ref/rho_ref)
-       csq_ref = cc_ref**2
-       Clag_ref = rho_ref*cc_ref
-       h_g_ref = ( (p_ref + rhoe_g_ref)/rho_ref )/csq_ref
-
        ! *m are the jumps carried by u-c
        ! *p are the jumps carried by u+c
 
-       dum    = u_ref    - Im(i,1,QU)
-       dptotm    = p_ref    - Im(i,1,QPRES)
+       ! note, for radiation, we use ptot here.  This is
+       !    ptot = pgas + lambda Er
+       ! (where lambda is the flux limiter)
+       ! This is what appears in the betas (l . dq) directly
 
-       drho  = rho_ref  - Im(i,2,QRHO)
+       dum    = u_ref    - Im(i,1,QU)
+       dptotm = ptot_ref - Im(i,1,qptot)
+
+       drho    = rho_ref    - Im(i,2,QRHO)
        drhoe_g = rhoe_g_ref - Im(i,2,QREINT)
-       dptot    = p_ref    - Im(i,2,QPRES)
-       dtau = tau_ref - ONE/Im(i,2,QRHO)
+       dptot   = ptot_ref   - Im(i,2,qptot)
+       dtau    = tau_ref    - ONE/Im(i,2,QRHO)
+       der(:)  = er_ref(:)  - Im(i,2,qrad:qradhi)
 
        dup    = u_ref    - Im(i,3,QU)
-       dptotp    = p_ref    - Im(i,3,QPRES)
+       dptotp = ptot_ref - Im(i,3,qptot)
 
        ! if we are doing source term tracing, then we add the force to
        ! the velocity here, otherwise we will deal with this later
@@ -329,24 +302,6 @@ contains
 
        ! optionally use the reference state in evaluating the
        ! eigenvectors
-       if (ppm_reference_eigenvectors == 0) then
-          rho_ev  = rho
-          cc_ev   = cc
-          csq_ev  = csq
-          Clag_ev = Clag
-          h_g_ev = h_g
-          p_ev    = p
-          tau_ev  = ONE/rho
-       else
-          rho_ev  = rho_ref
-          cc_ev   = cc_ref
-          csq_ev  = csq_ref
-          Clag_ev = Clag_ref
-          h_g_ev = h_g_ref
-          p_ev    = p_ref
-          tau_ev  = tau_ref
-       endif
-
 
        if (ppm_predict_gammae == 0) then
 
@@ -356,10 +311,10 @@ contains
           ! PPM paper (except we work with rho instead of tau).
           ! This is simply (l . dq), where dq = qref - I(q)
 
-          alpham = HALF*(dptotm/(rho_ev*cc_ev) - dum)*rho_ev/cc_ev
-          alphap = HALF*(dptotp/(rho_ev*cc_ev) + dup)*rho_ev/cc_ev
-          alpha0r = drho - dptot/csq_ev
-          alpha0e_g = drhoe_g - dptot*h_g_ev  ! note h_g has a 1/c**2 in it
+          alpham = HALF*(dptotm/(rho*cc) - dum)*rho/cc
+          alphap = HALF*(dptotp/(rho*cc) + dup)*rho/cc
+          alpha0r = drho - dptot/csq
+          alpha0e_g = drhoe_g - dptot*h_g  ! note h_g has a 1/c**2 in it
 
        else
 
@@ -369,15 +324,17 @@ contains
           ! paper -- here we work with tau in the characteristic
           ! system.
 
-          alpham = HALF*( dum - dptotm/Clag_ev)/Clag_ev
-          alphap = HALF*(-dup - dptotp/Clag_ev)/Clag_ev
-          alpha0r = dtau + dptot/Clag_ev**2
+          alpham = HALF*( dum - dptotm/Clag)/Clag
+          alphap = HALF*(-dup - dptotp/Clag)/Clag
+          alpha0r = dtau + dptot/Clag**2
 
           dge = game_ref - Im(i,2,QGAME)
-          gfactor = (game - ONE)*(game - gam_g)  ! why not ref?
-          alpha0e_g = gfactor*dptot/(tau_ev*Clag_ev**2) + dge
+          gfactor = (game - ONE)*(game - gam_g)
+          alpha0e_g = gfactor*dptot/(tau*Clag**2) + dge
 
        endif ! which tracing method
+
+       alphar(:) = der(:) - dptot/csq*hr
 
        if (u-cc > ZERO) then
           alpham = ZERO
@@ -386,7 +343,6 @@ contains
        else
           alpham = -HALF*alpham
        endif
-
        if (u+cc > ZERO) then
           alphap = ZERO
        else if (u+cc < ZERO) then
@@ -394,16 +350,18 @@ contains
        else
           alphap = -HALF*alphap
        endif
-
        if (u > ZERO) then
           alpha0r = ZERO
           alpha0e_g = ZERO
+          alphar(:) = ZERO
        else if (u < ZERO) then
           alpha0r = -alpha0r
           alpha0e_g = -alpha0e_g
+          alphar(:) = -alphar(:)
        else
           alpha0r = -HALF*alpha0r
           alpha0e_g = -HALF*alpha0e_g
+          alphar(:) = -HALF*alphar(:)
        endif
 
        ! the final interface states are just
@@ -411,38 +369,67 @@ contains
        if (i >= ilo) then
 
           if (ppm_predict_gammae == 0) then
-             qxp(i,QRHO)   = rho_ref  + alphap + alpham + alpha0r
-             qxp(i,QU)     = u_ref + (alphap - alpham)*cc_ev/rho_ev
-             qxp(i,QREINT) = rhoe_g_ref + (alphap + alpham)*h_g_ev*csq_ev + alpha0e_g
-             qxp(i,QPRES)  = p_ref + (alphap + alpham)*csq_ev
+             qxp(i,QRHO)   = rho_ref + alphap + alpham + alpha0r
+             qxp(i,QU)     = u_ref + (alphap - alpham)*cc/rho
+             qxp(i,QREINT) = rhoe_g_ref + (alphap + alpham)*h_g*csq + alpha0e_g
+             qxp(i,QPRES)  = p_ref + (alphap + alpham)*cgassq - sum(lamp(:)*alphar(:))
+
+             qrtmp = er_ref(:) + (alphap + alpham)*hr + alphar(:)
+             qxp(i,qrad:qradhi) = qrtmp
+
+             qxp(i,qptot) = ptot_ref + (alphap + alpham)*csq
+             qxp(i,qreitot) = qxp(i,QREINT) + sum(qrtmp)
+
           else
+
              tau_s = tau_ref + alphap + alpham + alpha0r
              qxp(i,QRHO)   = ONE/tau_s
 
-             qxp(i,QU)     = u_ref + (alpham - alphap)*Clag_ev
-             qxp(i,QPRES)  = p_ref - (alphap + alpham)*Clag_ev**2
+             qxp(i,QU)     = u_ref + (alpham - alphap)*Clag
+             qxp(i,QPRES)  = p_ref - (alphap + alpham)*(cgassq/tau**2) - sum(lamp(:)*alphar(:))
 
-             qxp(i,QGAME) = game_ref + gfactor*(alpham + alphap)/tau_ev + alpha0e_g
+             qxp(i,QGAME) = game_ref + gfactor*(alpham + alphap)/tau + alpha0e_g
              qxp(i,QREINT) = qxp(i,QPRES )/(qxp(i,QGAME) - ONE)
-          endif
 
+             qrtmp = er_ref(:) - (alphap + alpham)*hr/tau**2 + alphar(:)
+             qxp(i,qrad:qradhi) = qrtmp
+
+             qxp(i,qptot) = ptot_ref - (alphap + alpham)*Clag**2
+             qxp(i,qreitot) = qxp(i,QREINT) + sum(qrtmp)
+
+          endif
 
           ! enforce small_*
           qxp(i,QRHO) = max(small_dens,qxp(i,QRHO))
           qxp(i,QPRES) = max(small_pres,qxp(i,QPRES))
 
           ! add source terms
-          qxp(i  ,QRHO  ) = qxp(i,QRHO  ) + hdt*srcQ(i,QRHO)
-          qxp(i  ,QRHO  ) = max(small_dens,qxp(i,QRHO))
-          qxp(i  ,QREINT) = qxp(i,QREINT) + hdt*srcQ(i,QREINT)
-          qxp(i  ,QPRES ) = qxp(i,QPRES ) + hdt*srcQ(i,QPRES)
+          qxp(i  ,QRHO  )  = qxp(i,QRHO   ) + hdt*srcQ(i,QRHO)
+          qxp(i  ,QRHO  )  = max(small_dens,qxp(i,QRHO))
+          qxp(i  ,QREINT)  = qxp(i,QREINT ) + hdt*srcQ(i,QREINT)
+          qxp(i  ,QPRES )  = qxp(i,QPRES  ) + hdt*srcQ(i,QPRES)
+          qxp(i  ,qptot )  = qxp(i,qptot  ) + hdt*srcQ(i,QPRES)
+          qxp(i  ,qreitot) = qxp(i,qreitot) + hdt*srcQ(i,QREINT)
 
-          ! if we didn't add the gravity source via tracing above, then add it now
+          ! add traced source terms as needed
           if (ppm_trace_sources == 0) then
              qxp(i  ,QU) = qxp(i,QU) + hdt*srcQ(i,QU)
           endif
 
-       endif
+          do g=0, ngroups-1
+             if (qxp(i,qrad+g) < ZERO) then
+                er_foo = - qxp(i,qrad+g)
+                qxp(i,qrad+g) = ZERO
+                qxp(i,qptot) = qxp(i,qptot) + lamp(g) * er_foo
+                qxp(i,qreitot) = qxp(i,qreitot) + er_foo
+             end if
+          end do
+
+          if ( qxp(i,QPRES) < ZERO ) then
+             qxp(i,QPRES) = p
+          end if
+
+       end if
 
 
        !----------------------------------------------------------------------
@@ -454,36 +441,34 @@ contains
        rho_ref  = Ip(i,3,QRHO)
        u_ref    = Ip(i,3,QU)
 
-       p_ref    = Ip(i,3,QPRES)
+       p_ref      = Ip(i,3,QPRES)
        rhoe_g_ref = Ip(i,3,QREINT)
 
        tau_ref = ONE/Ip(i,3,QRHO)
 
-       gam_g_ref  = Ip_gc(i,3,1)
        game_ref = Ip(i,3,QGAME)
+
+       ptot_ref = Ip(i,3,qptot)
+
+       er_ref(:) = Ip(i,3,qrad:qradhi)
 
        rho_ref = max(rho_ref,small_dens)
        p_ref = max(p_ref,small_pres)
 
-       ! for tracing (optionally)
-       cc_ref = sqrt(gam_g_ref*p_ref/rho_ref)
-       csq_ref = cc_ref**2
-       Clag_ref = rho_ref*cc_ref
-       h_g_ref = ( (p_ref + rhoe_g_ref)/rho_ref )/csq_ref
-
-       ! *m are the jumps carried by u-c
-       ! *p are the jumps carried by u+c
+       !  *m are the jumps carried by u-c
+       !  *p are the jumps carried by u+c
 
        dum    = u_ref    - Ip(i,1,QU)
-       dptotm    = p_ref    - Ip(i,1,QPRES)
+       dptotm = ptot_ref - Ip(i,1,qptot)
 
-       drho  = rho_ref  - Ip(i,2,QRHO)
-       dptot    = p_ref    - Ip(i,2,QPRES)
+       drho    = rho_ref    - Ip(i,2,QRHO)
+       dptot   = ptot_ref   - Ip(i,2,qptot)
        drhoe_g = rhoe_g_ref - Ip(i,2,QREINT)
-       dtau = tau_ref - ONE/Ip(i,2,QRHO)
+       dtau    = tau_ref    - ONE/Ip(i,2,QRHO)
+       der(:)  = er_ref(:)  - Ip(i,2,qrad:qradhi)
 
        dup    = u_ref    - Ip(i,3,QU)
-       dptotp    = p_ref    - Ip(i,3,QPRES)
+       dptotp = ptot_ref - Ip(i,3,qptot)
 
        ! if we are doing source term tracing, then we add the force to
        ! the velocity here, otherwise we will deal with this in the
@@ -495,23 +480,6 @@ contains
 
        ! optionally use the reference state in evaluating the
        ! eigenvectors
-       if (ppm_reference_eigenvectors == 0) then
-          rho_ev  = rho
-          cc_ev   = cc
-          csq_ev  = csq
-          Clag_ev = Clag
-          h_g_ev = h_g
-          p_ev    = p
-          tau_ev = ONE/rho
-       else
-          rho_ev  = rho_ref
-          cc_ev   = cc_ref
-          csq_ev  = csq_ref
-          Clag_ev = Clag_ref
-          h_g_ev = h_g_ref
-          p_ev    = p_ref
-          tau_ev  = tau_ref
-       endif
 
        if (ppm_predict_gammae == 0) then
 
@@ -520,10 +488,10 @@ contains
           ! these are analogous to the beta's from the original
           ! PPM paper (except we work with rho instead of tau).
           ! This is simply (l . dq), where dq = qref - I(q)
-          alpham = HALF*(dptotm/(rho_ev*cc_ev) - dum)*rho_ev/cc_ev
-          alphap = HALF*(dptotp/(rho_ev*cc_ev) + dup)*rho_ev/cc_ev
-          alpha0r = drho - dptot/csq_ev
-          alpha0e_g = drhoe_g - dptot*h_g_ev  ! h_g has a 1/c**2 in it
+          alpham = HALF*(dptotm/(rho*cc) - dum)*rho/cc
+          alphap = HALF*(dptotp/(rho*cc) + dup)*rho/cc
+          alpha0r = drho - dptot/csq
+          alpha0e_g = drhoe_g - dptot*h_g
 
        else
 
@@ -533,16 +501,17 @@ contains
           ! paper -- here we work with tau in the characteristic
           ! system.
 
-          alpham = HALF*( dum - dptotm/Clag_ev)/Clag_ev
-          alphap = HALF*(-dup - dptotp/Clag_ev)/Clag_ev
-          alpha0r = dtau + dptot/Clag_ev**2
+          alpham = HALF*( dum - dptotm/Clag)/Clag
+          alphap = HALF*(-dup - dptotp/Clag)/Clag
+          alpha0r = dtau + dptot/Clag**2
 
           dge = game_ref - Ip(i,2,QGAME)
           gfactor = (game - ONE)*(game - gam_g)
-          alpha0e_g = gfactor*dptot/(tau_ev*Clag_ev**2) + dge
+          alpha0e_g = gfactor*dptot/(tau*Clag**2) + dge
 
        endif
 
+       alphar(:) = der(:)- dptot/csq*hr
 
        if (u-cc > ZERO) then
           alpham = -alpham
@@ -551,7 +520,6 @@ contains
        else
           alpham = -HALF*alpham
        endif
-
        if (u+cc > ZERO) then
           alphap = -alphap
        else if (u+cc < ZERO) then
@@ -559,37 +527,53 @@ contains
        else
           alphap = -HALF*alphap
        endif
-
        if (u > ZERO) then
           alpha0r = -alpha0r
           alpha0e_g = -alpha0e_g
+          alphar(:) = -alphar(:)
        else if (u < ZERO) then
           alpha0r = ZERO
           alpha0e_g = ZERO
+          alphar(:) = ZERO
        else
           alpha0r = -HALF*alpha0r
           alpha0e_g = -HALF*alpha0e_g
+          alphar(:) = -HALF*alphar(:)
        endif
 
        ! the final interface states are just
-       ! q_s = q_ref - sum (l .dq) r
+       ! q_s = q_ref - sum (l . dq) r
        if (i <= ihi) then
 
           if (ppm_predict_gammae == 0) then
              qxm(i+1,QRHO)   = rho_ref + alphap + alpham + alpha0r
-             qxm(i+1,QU)     = u_ref + (alphap - alpham)*cc_ev/rho_ev
-             qxm(i+1,QREINT) = rhoe_g_ref + (alphap + alpham)*h_g_ev*csq_ev + alpha0e_g
-             qxm(i+1,QPRES)  = p_ref + (alphap + alpham)*csq_ev
+             qxm(i+1,QU)     = u_ref + (alphap - alpham)*cc/rho
+             qxm(i+1,QREINT) = rhoe_g_ref + (alphap + alpham)*h_g*csq + alpha0e_g
+             qxm(i+1,QPRES)  = p_ref + (alphap + alpham)*cgassq - sum(lamm(:)*alphar(:))
+
+             qrtmp = er_ref(:) + (alphap + alpham)*hr + alphar(:)
+             qxm(i+1,qrad:qradhi) = qrtmp
+
+             qxm(i+1,qptot) = ptot_ref + (alphap + alpham)*csq
+             qxm(i+1,qreitot) = qxm(i+1,QREINT) + sum(qrtmp)
 
           else
-             tau_s = tau_ref + (alphap + alpham + alpha0r)
+
+             tau_s = tau_ref + alphap + alpham + alpha0r
              qxm(i+1,QRHO)   = ONE/tau_s
 
-             qxm(i+1,QU)     = u_ref + (alpham - alphap)*Clag_ev
-             qxm(i+1,QPRES)  = p_ref - (alphap + alpham)*Clag_ev**2
+             qxm(i+1,QU)     = u_ref + (alpham - alphap)*Clag
+             qxm(i+1,QPRES)  = p_ref - (alphap + alpham)*(cgassq/tau**2) - sum(lamm(:)*alphar(:))
 
-             qxm(i+1,QGAME) = game_ref + gfactor*(alpham + alphap)/tau_ev + alpha0e_g
+             qxm(i+1,QGAME) = game_ref + gfactor*(alpham + alphap)/tau + alpha0e_g
              qxm(i+1,QREINT) = qxm(i+1,QPRES )/(qxm(i+1,QGAME) - ONE)
+
+             qrtmp = er_ref(:) - (alphap + alpham)*hr/tau**2 + alphar(:)
+             qxm(i+1,qrad:qradhi) = qrtmp
+
+             qxm(i+1,qptot) = ptot_ref - (alphap + alpham)*Clag**2
+             qxm(i+1,qreitot) = qxm(i+1,QREINT) + sum(qrtmp)
+
           endif
 
           ! enforce small_*
@@ -597,15 +581,30 @@ contains
           qxm(i+1,QPRES) = max(qxm(i+1,QPRES),small_pres)
 
           ! add source terms
-          qxm(i+1,QRHO  ) = qxm(i+1,QRHO  ) + hdt*srcQ(i,QRHO)
-          qxm(i+1,QRHO  ) = max(small_dens, qxm(i+1,QRHO))
-          qxm(i+1,QREINT) = qxm(i+1,QREINT) + hdt*srcQ(i,QREINT)
-          qxm(i+1,QPRES ) = qxm(i+1,QPRES ) + hdt*srcQ(i,QPRES)
+          qxm(i+1,QRHO   ) = qxm(i+1,QRHO   ) + hdt*srcQ(i,QRHO)
+          qxm(i+1,QRHO   ) = max(small_dens, qxm(i+1,QRHO))
+          qxm(i+1,QREINT ) = qxm(i+1,QREINT ) + hdt*srcQ(i,QREINT)
+          qxm(i+1,QPRES  ) = qxm(i+1,QPRES  ) + hdt*srcQ(i,QPRES)
+          qxm(i+1,qptot  ) = qxm(i+1,qptot  ) + hdt*srcQ(i,QPRES)
+          qxm(i+1,qreitot) = qxm(i+1,qreitot) + hdt*srcQ(i,QREINT)
 
-          ! if we didn't add the gravity source via tracing above, then add it now
+          ! add traced source terms as needed
           if (ppm_trace_sources == 0) then
              qxm(i+1,QU) = qxm(i+1,QU) + hdt*srcQ(i,QU)
           endif
+
+          do g=0, ngroups-1
+             if (qxm(i+1,qrad+g) < ZERO) then
+                er_foo = - qxm(i+1,qrad+g)
+                qxm(i+1,qrad+g) = ZERO
+                qxm(i+1,qptot) = qxm(i+1,qptot) + lamm(g) * er_foo
+                qxm(i+1,qreitot) = qxm(i+1,qreitot) + er_foo
+             end if
+          end do
+
+          if ( qxm(i+1,QPRES) < ZERO ) then
+             qxm(i+1,QPRES) = p
+          end if
 
        end if
 
@@ -619,20 +618,29 @@ contains
           eta = (ONE-courn)/(cc*dt*abs(dloga(i)))
           dlogatmp = min(eta,ONE)*dloga(i)
           sourcr = -HALF*dt*rho*dlogatmp*u
-          sourcp = sourcr*csq
+          sourcp = sourcr*cgassq
           source = sourcp*h_g
+          sourcer(:) = -HALF*dt*dlogatmp*u*(lam0(:)+ONE)*er(:)
 
           if (i <= ihi) then
              qxm(i+1,QRHO  ) = qxm(i+1,QRHO  ) + sourcr
              qxm(i+1,QRHO  ) = max(small_dens, qxm(i+1,QRHO))
              qxm(i+1,QPRES ) = qxm(i+1,QPRES ) + sourcp
              qxm(i+1,QREINT) = qxm(i+1,QREINT) + source
+             qxm(i+1,qrad:qradhi) = qxm(i+1,qrad:qradhi) + sourcer(:)
+             !           qxm(i+1,qptot ) = sum(lamm(:)*qxm(i+1,qrad:qradhi)) + qxm(i+1,QPRES)
+             qxm(i+1,qptot) = qxm(i+1,qptot) + sum(lamm(:)*sourcer(:)) + sourcp
+             qxm(i+1,qreitot) = sum(qxm(i+1,qrad:qradhi))  + qxm(i+1,QREINT)
           end if
           if (i >= ilo) then
              qxp(i  ,QRHO  ) = qxp(i  ,QRHO  ) + sourcr
              qxp(i  ,QRHO  ) = max(small_dens,qxp(i,QRHO))
              qxp(i  ,QPRES ) = qxp(i  ,QPRES ) + sourcp
              qxp(i  ,QREINT) = qxp(i  ,QREINT) + source
+             qxp(i  ,qrad:qradhi) = qxp(i  ,qrad:qradhi) + sourcer(:)
+             !           qxp(i  ,qptot ) = sum(lamp(:)*qxp(i,qrad:qradhi)) + qxp(i,QPRES)
+             qxp(i,qptot) = qxp(i,qptot) + sum(lamp(:)*sourcer(:)) + sourcp
+             qxp(i  ,qreitot) = sum(qxp(i,qrad:qradhi))  + qxp(i,QREINT)
           end if
        endif
 
@@ -640,18 +648,24 @@ contains
 
     ! Enforce constant mass flux rate if specified
     if (fix_mass_flux_lo) then
-       qxm(ilo,QRHO  ) = q(domlo(1)-1,QRHO)
-       qxm(ilo,QU    ) = q(domlo(1)-1,QU  )
-       qxm(ilo,QPRES ) = q(domlo(1)-1,QPRES)
-       qxm(ilo,QREINT) = q(domlo(1)-1,QREINT)
+       qxm(ilo,QRHO   ) = q(domlo(1)-1,QRHO)
+       qxm(ilo,QU     ) = q(domlo(1)-1,QU  )
+       qxm(ilo,QPRES  ) = q(domlo(1)-1,QPRES)
+       qxm(ilo,QREINT ) = q(domlo(1)-1,QREINT)
+       qxm(ilo,qrad:qradhi) = q(domlo(1)-1,qrad:qradhi)
+       qxm(ilo,qptot  ) = q(domlo(1)-1,qptot)
+       qxm(ilo,qreitot) = q(domlo(1)-1,qreitot)
     end if
 
     ! Enforce constant mass flux rate if specified
     if (fix_mass_flux_hi) then
-       qxp(ihi+1,QRHO  ) = q(domhi(1)+1,QRHO)
-       qxp(ihi+1,QU    ) = q(domhi(1)+1,QU  )
-       qxp(ihi+1,QPRES ) = q(domhi(1)+1,QPRES)
-       qxp(ihi+1,QREINT) = q(domhi(1)+1,QREINT)
+       qxp(ihi+1,QRHO   ) = q(domhi(1)+1,QRHO)
+       qxp(ihi+1,QU     ) = q(domhi(1)+1,QU  )
+       qxp(ihi+1,QPRES  ) = q(domhi(1)+1,QPRES)
+       qxp(ihi+1,QREINT ) = q(domhi(1)+1,QREINT)
+       qxp(ihi+1,qrad:qradhi) = q(domhi(1)+1,qrad:qradhi)
+       qxp(ihi+1,qptot  ) = q(domhi(1)+1,qptot)
+       qxp(ihi+1,qreitot) = q(domhi(1)+1,qreitot)
     end if
 
 
@@ -677,7 +691,8 @@ contains
           ! projecting, the reference state doesn't matter
 
           if (u > ZERO) then
-             qxp(i,n) = q(i,n)
+             qxp(i,n) = q(i,n)    ! we might want to change this to
+                                  ! the limit of the parabola
           else if (u < ZERO) then
              qxp(i,n) = Im(i,2,n)
           else
@@ -704,11 +719,10 @@ contains
     enddo
 
     deallocate(Ip,Im)
-    deallocate(Ip_gc,Im_gc)
     if (ppm_trace_sources == 1) then
        deallocate(Ip_src,Im_src)
     endif
 
-  end subroutine trace_ppm
+  end subroutine trace_ppm_rad
 
-end module trace_ppm_module
+end module trace_ppm_rad_module

@@ -13,7 +13,7 @@ contains
 
         integer, intent(in) :: slo(2), shi(2), lo(2), hi(2), Ncomp, glo(2), ghi(2), wlo(2), whi(2)
         double precision, intent(in) :: q(slo(1):shi(1), slo(2):shi(2), Ncomp)
-        double precision, intent(in) :: gamma_up(glo(1):ghi(1), glo(2):ghi(2), 9)
+        double precision, intent(in) :: gamma_up(glo(1):ghi(1), glo(2):ghi(2), 4)
         double precision, intent(out) :: W(wlo(1):whi(1), wlo(2):whi(2))
 
         integer i,j
@@ -26,7 +26,7 @@ contains
                     W(i,j) = sqrt((q(i,j,2)**2 * gamma_up(i,j,1)+&
                           2.0d0 * q(i,j,2) * q(i,j,3) * &
                           gamma_up(i,j,2) + q(i,j,3)**2 * &
-                          gamma_up(i,j,5)) / q(i,j,1)**2 + 1.0d0)
+                          gamma_up(i,j,4)) / q(i,j,1)**2 + 1.0d0)
                 end if
                 ! nan check
                 if (W(i,j) /= W(i,j)) then
@@ -51,7 +51,7 @@ contains
         double precision, intent(in) :: p_swe
         double precision, intent(in) :: alpha0, M, R, dx(2), prob_lo(2)
 
-        double precision gamma_up(lo(1):hi(1), lo(2):hi(2), 9)
+        double precision gamma_up(lo(1):hi(1), lo(2):hi(2), 4)
         double precision h_comp, ssq
         integer neighbour, minl(1)
         double precision zfrac, W, h
@@ -85,12 +85,7 @@ contains
                 ssq = U_prim(i,j,2)**2 * gamma_up(i,j,1) + &
                     2.0d0 * U_prim(i,j,2) * U_prim(i,j,3) * &
                         gamma_up(i,j,2) + &
-                    2.0d0 * U_prim(i,j,2) * U_prim(i,j,4) * &
-                        gamma_up(i,j,3) + &
-                    U_prim(i,j,3)**2 * gamma_up(i,j,5) + &
-                    2.0d0 * U_prim(i,j,3) * U_prim(i,j,4) * &
-                        gamma_up(i,j,6) + &
-                    U_prim(i,j,4)**2 * gamma_up(i,j,9)
+                    U_prim(i,j,3)**2 * gamma_up(i,j,4)
 
                 W = 1.0d0 / sqrt(1.0d0 - ssq)
 
@@ -123,13 +118,12 @@ contains
         integer, intent(in) :: n_comp
         integer, intent(in) :: slo(2), shi(2), lo(2), hi(2)
         double precision, intent(in) :: U(slo(1):shi(1), slo(2):shi(2), n_comp)
-        double precision, intent(out) :: gamma_up(lo(1):hi(1), lo(2):hi(2), 9)
+        double precision, intent(out) :: gamma_up(lo(1):hi(1), lo(2):hi(2), 4)
 
         gamma_up = 0.0d0
 
         gamma_up(:,:,1) = 1.0d0
-        gamma_up(:,:,5) = 1.0d0
-        gamma_up(:,:,9) = exp(-2.0d0 * U(lo(1):hi(1), lo(2):hi(2),1))
+        gamma_up(:,:,4) = 1.0d0
 
     end subroutine calc_gamma_up_swe
 
@@ -157,8 +151,8 @@ contains
         double precision W(lo(1)-nghost:hi(1)+nghost, lo(2)-nghost:hi(2)+nghost)
         double precision rhoh(lo(1)-nghost:hi(1)+nghost, lo(2)-nghost:hi(2)+nghost)
 
-        double precision gamma_up_swe(lo(1)-nghost:hi(1)+nghost, lo(2)-nghost:hi(2)+nghost, 9)
-        double precision gamma_up(lo(1)-nghost:hi(1)+nghost, lo(2)-nghost:hi(2)+nghost, 9)
+        double precision gamma_up_swe(lo(1)-nghost:hi(1)+nghost, lo(2)-nghost:hi(2)+nghost, 4)
+        double precision gamma_up(lo(1)-nghost:hi(1)+nghost, lo(2)-nghost:hi(2)+nghost, 4)
 
         nlo = lo - nghost
         nhi = hi + nghost
@@ -216,12 +210,7 @@ contains
                     W(i,j) = U_comp(i,j,2)**2*gamma_up(i,j,1) + &
                         2.0d0 * U_comp(i,j,2) * U_comp(i,j,3) * &
                             gamma_up(i,j,2) + &
-                        2.0d0 * U_comp(i,j,2) * U_comp(i,j,4) * &
-                            gamma_up(i,j,3) + &
-                        U_comp(i,j,3)**2 * gamma_up(i,j,5) + &
-                        2.0d0 * U_comp(i,j,3) * U_comp(i,j,4) * &
-                            gamma_up(i,j,6) + &
-                        U_comp(i,j,4)**2 * gamma_up(i,j,9)
+                        U_comp(i,j,3)**2 * gamma_up(i,j,4)
                     !write(*,*) "U_comp = ", U_comp(i,j,:)
                     W(i,j) = 1.0d0 / sqrt(1.0d0 - W(i,j))
                 end do
@@ -292,16 +281,15 @@ contains
         implicit none
 
         integer, intent(in) :: glo(2), ghi(2), lo(2), hi(2)
-        double precision, intent(out)  :: gamma_up(glo(1):ghi(1), glo(2):ghi(2), 9)
+        double precision, intent(out)  :: gamma_up(glo(1):ghi(1), glo(2):ghi(2), 4)
         double precision, intent(in)  :: alpha0, M, R
         double precision, intent(in)  :: dx(2), prob_lo(2)
 
 
         gamma_up(:,:,:) = 0.0d0
         gamma_up(:,:,1) = 1.0d0
-        gamma_up(:,:,5) = 1.0d0
+        gamma_up(:,:,4) = 1.0d0
 
-        gamma_up(:,:,9) = alpha0
     end subroutine calc_gamma_up
 
     subroutine calc_gamma_down(gamma_down, glo, ghi, lo, hi, alpha0, &
@@ -309,13 +297,12 @@ contains
         implicit none
 
         integer, intent(in) :: glo(2), ghi(2), lo(2), hi(2)
-        double precision, intent(out)  :: gamma_down(glo(1):ghi(1), glo(2):ghi(2), 9)
+        double precision, intent(out)  :: gamma_down(glo(1):ghi(1), glo(2):ghi(2), 4)
         double precision, intent(in)  :: alpha0, M, R
         double precision, intent(in)  :: dx(2), prob_lo(2)
 
         call calc_gamma_up(gamma_down, glo, ghi, lo, hi, alpha0, M, R, dx, prob_lo)
 
-        gamma_down(:,:,9) = 1.0 / gamma_down(:,:,9)
     end subroutine calc_gamma_down
 
     subroutine gr_sources(S, slo, shi, U, ulo, uhi, p, plo, phi, &
@@ -328,7 +315,7 @@ contains
         double precision, intent(in)  :: U(ulo(1):uhi(1), ulo(2):uhi(2), Ncomp)
         double precision, intent(in)  :: p(plo(1):phi(1), plo(2):phi(2))
         double precision, intent(in)  :: alpha(alo(1):ahi(1), alo(2):ahi(2))
-        double precision, intent(in)  :: gamma_up(glo(1):ghi(1), glo(2):ghi(2), 9)
+        double precision, intent(in)  :: gamma_up(glo(1):ghi(1), glo(2):ghi(2), 4)
         double precision, intent(in)  :: M, R, gamma, dx(2)
 
         double precision Ssq(lo(1):hi(1), lo(2):hi(2))
@@ -342,16 +329,8 @@ contains
             2.0d0 * U(lo(1):hi(1), lo(2):hi(2), 2) * &
             U(lo(1):hi(1), lo(2):hi(2), 3) * &
             gamma_up(lo(1):hi(1), lo(2):hi(2),2) + &
-            2.0d0 * U(lo(1):hi(1), lo(2):hi(2), 2) * &
-            U(lo(1):hi(1), lo(2):hi(2), 4) * &
-            gamma_up(lo(1):hi(1), lo(2):hi(2),3) + &
             U(lo(1):hi(1), lo(2):hi(2), 3)**2 * &
-            gamma_up(lo(1):hi(1), lo(2):hi(2),5) + &
-            2.0d0 * U(lo(1):hi(1), lo(2):hi(2), 3) * &
-            U(lo(1):hi(1), lo(2):hi(2), 4) * &
-            gamma_up(lo(1):hi(1), lo(2):hi(2),6) + &
-            U(lo(1):hi(1), lo(2):hi(2), 4)**2 * &
-            gamma_up(lo(1):hi(1), lo(2):hi(2),9)
+            gamma_up(lo(1):hi(1), lo(2):hi(2),4)
 
         h = 1.0d0 + gamma * &
             (sqrt((U(lo(1):hi(1), lo(2):hi(2), 5) + &
@@ -397,7 +376,7 @@ contains
 
         integer, intent(in) :: Ncomp
         double precision, intent(out) :: p
-        double precision, intent(in)  :: U(Ncomp), gamma, gamma_up(9), x1
+        double precision, intent(in)  :: U(Ncomp), gamma, gamma_up(4), x1
         double precision, intent(inout) :: b
 
         double precision, parameter :: TOL = 1.0d-12
