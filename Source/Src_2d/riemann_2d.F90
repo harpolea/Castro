@@ -166,7 +166,8 @@ contains
 
     elseif (riemann_solver == 2) then
        ! HLLC
-       call HLLC(qm, qp, qpd_lo, qpd_hi, &
+       !call HLLC(qm, qp, qpd_lo, qpd_hi, &
+       call gr_HLL(qm, qp, qpd_lo, qpd_hi, &
                  qaux, qa_lo, qa_hi, &
                  flx, flx_lo, flx_hi, &
                  qint, qg_lo, qg_hi, &

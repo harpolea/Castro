@@ -379,25 +379,23 @@ contains
   end subroutine cons_state
 
 
-  pure subroutine gr_cons_state(q, U)
+  pure subroutine gr_cons_state(q, U, gamma)
 
     use meth_params_module, only: QVAR, QRHO, QU, QV, QW, QREINT, &
          NVAR, URHO, UMX, UMY, UMZ, UEDEN, UEINT, UTEMP, &
          npassive, upass_map, qpass_map
 
-    real(rt)        , intent(in)  :: q(QVAR)
+    real(rt)        , intent(in)  :: q(QVAR), gamma
     real(rt)        , intent(out) :: U(NVAR)
 
     integer  :: ipassive, n, nq
-    real(rt) :: W, rhoh, gamma, p
-
-    gamma = 5.0d0/3.0d0
+    real(rt) :: W, rhoh, p
 
     W = 1.0d0 / sqrt(1.0d0 - sum(q(QU:QW)**2))
 
     U(URHO) = q(QRHO) * W
-    rhoh = U(URHO) * (1.0d0 + gamma * q(QREINT))
-    p = (gamma - 1.0d0) * q(QRHO) * q(QREINT)
+    rhoh = W * (q(QRHO) + gamma * q(QREINT))
+    p = (gamma - 1.0d0) * q(QREINT)
 
     ! since we advect all 3 velocity components regardless of dimension, this
     ! will be general
@@ -406,7 +404,7 @@ contains
     U(UMZ)  = rhoh * q(QW) * W**2
 
     U(UEDEN) = rhoh * W**2 - p - q(QRHO) * W !q(QREINT) + HALF*q(QRHO)*(q(QU)**2 + q(QV)**2 + q(QW)**2)
-    U(UEINT) = q(QREINT)
+    U(UEINT) = q(QREINT) * W**2
 
     ! we don't care about T here, but initialize it to make NaN
     ! checking happy
@@ -474,6 +472,60 @@ contains
 
   end subroutine HLLC_state
 
+  pure subroutine gr_HLLC_state(idir, S_k, S_c, q, gamma, U)
+
+    use meth_params_module, only: QVAR, QRHO, QU, QV, QW, QREINT, QPRES, &
+         NVAR, URHO, UMX, UMY, UMZ, UEDEN, UEINT, UTEMP, &
+         npassive, upass_map, qpass_map
+
+    integer, intent(in) :: idir
+    real(rt)        , intent(in)  :: S_k, S_c, gamma
+    real(rt)        , intent(in)  :: q(QVAR)
+    real(rt)        , intent(out) :: U(NVAR)
+
+    real(rt)         :: hllc_factor, u_k, W
+    integer :: ipassive, n, nq
+
+    W = 1.0d0 / sqrt(1.0d0 - sum(q(QU:QW)**2))
+
+    if (idir == 1) then
+       u_k = q(QU)
+    elseif (idir == 2) then
+       u_k = q(QV)
+    elseif (idir == 3) then
+       u_k = q(QW)
+    endif
+
+    hllc_factor = q(QRHO)*W*(S_k - u_k)/(S_k - S_c)
+    U(URHO) = hllc_factor
+    if (idir == 1) then
+       U(UMX)  = hllc_factor * S_c * W * (1.0d0 + gamma * q(QREINT)/q(QRHO))
+       U(UMY)  = hllc_factor * q(QV) * W * (1.0d0 + gamma * q(QREINT)/q(QRHO))
+       U(UMZ)  = hllc_factor * q(QW) * W * (1.0d0 + gamma * q(QREINT)/q(QRHO))
+    elseif (idir == 2) then
+       U(UMX)  = hllc_factor * q(QU) * W * (1.0d0 + gamma * q(QREINT)/q(QRHO))
+       U(UMY)  = hllc_factor * S_c * W * (1.0d0 + gamma * q(QREINT)/q(QRHO))
+       U(UMZ)  = hllc_factor * q(QW) * W * (1.0d0 + gamma * q(QREINT)/q(QRHO))
+    elseif (idir == 3) then
+       U(UMX)  = hllc_factor * q(QU) * W * (1.0d0 + gamma * q(QREINT)/q(QRHO))
+       U(UMY)  = hllc_factor * q(QV) * W * (1.0d0 + gamma * q(QREINT)/q(QRHO))
+       U(UMZ)  = hllc_factor * S_c * W * (1.0d0 + gamma * q(QREINT)/q(QRHO))
+    endif
+
+    U(UEDEN) = hllc_factor*W * (1.0d0 + gamma * q(QREINT)/q(QRHO)) - &
+         hllc_factor - &
+         (S_c - u_k)*q(QPRES)/(S_k - u_k)
+    U(UEINT) = hllc_factor*q(QREINT)/q(QRHO)*W
+
+    U(UTEMP) = ZERO  ! we don't evolve T
+
+    do ipassive = 1, npassive
+       n  = upass_map(ipassive)
+       nq = qpass_map(ipassive)
+       U(n) = hllc_factor*q(nq)
+    enddo
+
+  end subroutine gr_HLLC_state
 
   pure subroutine compute_flux(idir, bnd_fac, U, p, F)
 
@@ -576,5 +628,137 @@ contains
     enddo
 
 end subroutine gr_compute_flux
+
+subroutine f_of_p(f, p, U, gamma, gamma_up)
+    use meth_params_module, only: NVAR, URHO, UMX, UMY, UMZ, UEDEN, UEINT
+    implicit none
+
+    double precision, intent(in)  :: U(NVAR), p, gamma, gamma_up(9)
+    double precision, intent(out) :: f
+
+    double precision :: sq
+
+    sq = sqrt((U(UEDEN) + p + U(URHO))**2 - U(UMX)**2*gamma_up(1) - &
+        2.0d0 * U(UMX) * U(UMY) * gamma_up(2) - &
+        2.0d0 * U(UMX) * U(UMZ) * gamma_up(3) - &
+        U(UMY)**2 * gamma_up(5) - &
+        2.0d0 * U(UMY) * U(UMZ) * gamma_up(6) - &
+        U(UMZ)**2 * gamma_up(9))
+
+    f = (gamma - 1.0d0) * sq / (U(UEDEN) + p + U(URHO)) * &
+        (sq - p * (U(UEDEN) + p + U(URHO)) / sq - U(URHO)) - p
+
+end subroutine f_of_p
+
+subroutine zbrent(p, x1, b, U, gamma, gamma_up)
+    ! route finder using brent's method
+    use meth_params_module, only: NVAR
+    implicit none
+
+    double precision, intent(out) :: p
+    double precision, intent(in)  :: U(NVAR), gamma, gamma_up(9), x1
+    double precision, intent(inout) :: b
+
+    double precision, parameter :: TOL = 1.0d-12
+    integer, parameter :: ITMAX = 100
+
+    double precision a, c, d, fa, fb, fc, fs, s
+    logical mflag, con1, con2, con3, con4, con5
+    integer i
+
+    a = x1
+    c = 0.0d0
+    d = 0.0d0
+    call f_of_p(fa, a, U, gamma, gamma_up)
+    call f_of_p(fb, b, U, gamma, gamma_up)
+    fc = 0.0d0
+
+    if (fa * fb >= 0.0d0) then
+        p = b
+        return
+    end if
+
+    if (abs(fa) < abs(fb)) then
+        d = a
+        a = b
+        b = d
+
+        d = fa
+        fa = fb
+        fb = d
+    end if
+
+    c = a
+    fc = fa
+
+    mflag = .true.
+
+    do i = 1, ITMAX
+        if (fa /= fc .and. fb /= fc) then
+            s = a*fb*fc / ((fa-fb) * (fa-fc)) + b*fa*fc / ((fb-fa)*(fb-fc)) +&
+                c*fa*fb / ((fc-fa)*(fc-fb))
+        else
+            s = b - fb * (b-a) / (fb-fa)
+        end if
+
+        con1 = .false.
+
+        if (0.25d0 * (3.0d0 * a + b) < b) then
+            if ( s < 0.25d0 * (3.0d0 * a + b) .or. s > b) then
+                con1 = .true.
+            end if
+        else if (s < b .or. s > 0.25d0  * (3.0d0 * a + b)) then
+            con1 = .true.
+        end if
+
+        con2 = mflag .and. abs(s - b) >= 0.5d0 * abs(b-c)
+
+        con3 = (.not. mflag) .and. abs(s-b) >= 0.5d0 * abs(c-d)
+
+        con4 = mflag .and. abs(b-c) < TOL
+
+        con5 = (.not. mflag) .and. abs(c-d) < TOL
+
+        if (con1 .or. con2 .or. con3 .or. con4 .or. con5) then
+            s = 0.5d0 * (a + b)
+            mflag = .true.
+        else
+            mflag = .false.
+        end if
+
+        call f_of_p(fs, s, U, gamma, gamma_up)
+
+        if (abs(fa) < abs(fb)) then
+            d = a
+            a = b
+            b = d
+
+            d = fa
+            fa = fb
+            fb = d
+        end if
+
+        d = c
+        c = b
+        fc = fb
+
+        if (fa * fs < 0.0d0) then
+            b = s
+            fb = fs
+        else
+            a = s
+            fa = fs
+        end if
+
+        if (fb == 0.0d0 .or. fs == 0.0d0 .or. abs(b-a) < TOL) then
+            p = b
+            return
+        end if
+
+    end do
+
+    p = x1
+
+end subroutine zbrent
 
 end module riemann_util_module

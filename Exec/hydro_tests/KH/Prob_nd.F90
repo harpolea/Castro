@@ -4,7 +4,7 @@ subroutine amrex_probinit (init,name,namlen,problo,probhi) bind(c)
    use bl_constants_module
    use fundamental_constants_module
    use meth_params_module, only: small_temp, small_pres, small_dens
-   
+
    use amrex_fort_module, only : rt => amrex_real
    implicit none
 
@@ -43,15 +43,15 @@ subroutine amrex_probinit (init,name,namlen,problo,probhi) bind(c)
 
    problem = 2
 
-   rho1 = 1.0
-   rho2 = 2.0
-   pressure = 2.5
+   rho1 = 1.0d-3
+   rho2 = 2.0d-3
+   pressure = 2.5d-3
 
    bulk_velocity = 0.0
 
    ! Read namelists -- override the defaults
-   
-   untin = 9 
+
+   untin = 9
    open(untin,file=probin(1:namlen),form='formatted',status='old')
    read(untin,fortin)
    close(unit=untin)
@@ -59,7 +59,7 @@ subroutine amrex_probinit (init,name,namlen,problo,probhi) bind(c)
    ! Force a different pressure choice for problem 5
 
    if (problem .eq. 5) then
-      pressure = 10.0
+      pressure = 10.0d-3
    endif
 
 end subroutine amrex_probinit
@@ -67,16 +67,16 @@ end subroutine amrex_probinit
 
 ! ::: -----------------------------------------------------------
 ! ::: This routine is called at problem setup time and is used
-! ::: to initialize data on each grid.  
-! ::: 
+! ::: to initialize data on each grid.
+! :::
 ! ::: NOTE:  all arrays have one cell of ghost zones surrounding
 ! :::        the grid interior.  Values in these cells need not
 ! :::        be set here.
-! ::: 
+! :::
 ! ::: INPUTS/OUTPUTS:
-! ::: 
+! :::
 ! ::: level     => amr level of grid
-! ::: time      => time at which to init data             
+! ::: time      => time at which to init data
 ! ::: lo,hi     => index limits of grid interior (cell centered)
 ! ::: nstate    => number of state components.  You should know
 ! :::		   this already!
@@ -98,7 +98,7 @@ subroutine ca_initdata(level,time,lo,hi,nscal, &
   use network, only : nspec
   use bl_constants_module
   use prob_params_module, only: problo, center, probhi
-  
+
   use amrex_fort_module, only : rt => amrex_real
   implicit none
 
@@ -118,51 +118,58 @@ subroutine ca_initdata(level,time,lo,hi,nscal, &
   real(rt)         :: w0, sigma, ramp, delta_y
   real(rt)         :: vel1, vel2
   real(rt)         :: y1, y2
-  real(rt)         :: dye
-  
+  real(rt)         :: dye, rhoh, W, gamma_up(9), gamma
+
   integer :: sine_n
 
-  vel1 = -0.5
-  vel2 =  0.5
+  vel1 = -0.5d-1
+  vel2 =  0.5d-1
+
+  gamma_up(:) = 0.0d0
+  gamma_up(1) = 1.0d0
+  gamma_up(5) = 1.0d0
+  gamma_up(9) = 1.0d0
+
+  gamma = 5.0d0 / 3.0d0
 
   if (problem .eq. 1) then
      sine_n = 4
-     w0 = 0.1
+     w0 = 0.1d-3
      sigma = 0.05 / 2**0.5
   else if (problem .eq. 2) then
      sine_n = 2
-     w0 = 0.1
+     w0 = 0.1d-3
      delta_y = 0.05
   else if (problem .eq. 3) then
      sine_n = 4
-     w0 = 0.01
+     w0 = 0.01d-1
      delta_y = 0.025
   else if (problem .eq. 4) then
      sine_n = 2
-     w0 = 0.01
+     w0 = 0.01d-1
      delta_y = 0.025
   else if (problem .eq. 5) then
      sine_n = 2
-     w0 = 0.01
+     w0 = 0.01d-3
      delta_y = 0.05
-     sigma = 0.2     
+     sigma = 0.2
      vel1 = ONE
      vel2 = ONE
   endif
 
   y1 = center(2) - (probhi(2) - problo(2)) * 0.25e0_rt
-  y2 = center(2) + (probhi(2) - problo(2)) * 0.25e0_rt  
-  
+  y2 = center(2) + (probhi(2) - problo(2)) * 0.25e0_rt
+
   velz = 0.0
-  
+
   !$OMP PARALLEL DO PRIVATE(i, j, k, xx, yy, zz, dens, velx, vely, velz, ramp, eos_state)
   do k = lo(3), hi(3)
      zz = xlo(3) + delta(3)*dble(k-lo(3)+HALF)
 
-     do j = lo(2), hi(2)     
+     do j = lo(2), hi(2)
         yy = xlo(2) + delta(2)*dble(j-lo(2)+HALF)
 
-        do i = lo(1), hi(1)   
+        do i = lo(1), hi(1)
            xx = xlo(1) + delta(1)*dble(i-lo(1)+HALF)
 
            ! Assume the initial y-velocity represents the bulk flow
@@ -170,15 +177,15 @@ subroutine ca_initdata(level,time,lo,hi,nscal, &
 
            vely = bulk_velocity
            dye = ZERO
-           
+
            if (problem .eq. 1) then
 
               if (abs(yy - HALF * (y1 + y2)) < HALF * (y2 - y1)) then
                  dens = rho2
-                 velx = 0.5
+                 velx = 0.5d-3
               else
                  dens = rho1
-                 velx = -0.5
+                 velx = -0.5d-3
               endif
 
               vely = vely + w0 * sin(sine_n*M_PI*xx) * (exp(-(yy-y1)**2/(2*sigma**2)) + exp(-(yy-y2)**2/(2*sigma**2)))
@@ -216,17 +223,28 @@ subroutine ca_initdata(level,time,lo,hi,nscal, &
               velx = vel1 * (tanh( (yy - y1) / delta_y) - tanh( (yy - y2) / delta_y ) - ONE)
               vely = vely + w0 * sin(sine_n*M_PI*xx) * (exp(-(yy - y1)**2 / sigma**2) + exp(-(yy - y2)**2 / sigma**2))
               dye  = HALF * (tanh( (yy - y2) / delta_y) - tanh( (yy - y1) / delta_y ) + TWO)
-              
+
            else
 
               call bl_error("Error: This problem choice is undefined.")
 
            endif
 
+           W = velx**2 * gamma_up(1) + &
+            2.0d0 * velx * vely * gamma_up(2) + &
+            2.0d0 * velx * velz * gamma_up(3) + &
+            vely**2 * gamma_up(5) + &
+            2.0d0 * vely * velz * gamma_up(6) + &
+            velz**2 * gamma_up(9)
+
+           W = 1.0d0 / sqrt(1.0d0 - W)
+
+           rhoh = dens + pressure * gamma / (gamma - 1.0d0)
+
            state(i,j,k,URHO) = dens
-           state(i,j,k,UMX)  = dens * velx
-           state(i,j,k,UMY)  = dens * vely
-           state(i,j,k,UMZ)  = dens * velz
+           state(i,j,k,UMX)  = rhoh * W**2 * velx !dens * velx
+           state(i,j,k,UMY)  = rhoh * W**2 * vely
+           state(i,j,k,UMZ)  = rhoh * W**2 * velz
            state(i,j,k,UFA)  = dye
 
            ! Establish the thermodynamic quantities
@@ -241,11 +259,11 @@ subroutine ca_initdata(level,time,lo,hi,nscal, &
 
            state(i,j,k,UTEMP) = eos_state % T
 
-           state(i,j,k,UEDEN) = state(i,j,k,URHO) * eos_state % e
-           state(i,j,k,UEINT) = state(i,j,k,URHO) * eos_state % e
+           state(i,j,k,UEDEN) = rhoh * W**2 - pressure - dens * W !state(i,j,k,URHO) * eos_state % e
+           state(i,j,k,UEINT) = state(i,j,k,URHO) * eos_state % e * W**2
 
            state(i,j,k,UEDEN) = state(i,j,k,UEDEN) + &
-                HALF * dens * (velx**2 + vely**2 + velz**2)
+                HALF * rhoh * W**2 * (velx**2 + vely**2 + velz**2)
 
            do n = 1,nspec
               state(i,j,k,UFS+n-1) = state(i,j,k,URHO) * state(i,j,k,UFS+n-1)
@@ -254,7 +272,6 @@ subroutine ca_initdata(level,time,lo,hi,nscal, &
         enddo
      enddo
   enddo
-  !$OMP END PARALLEL DO  
+  !$OMP END PARALLEL DO
 
 end subroutine ca_initdata
-

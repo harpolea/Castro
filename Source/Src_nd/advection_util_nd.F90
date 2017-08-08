@@ -6,7 +6,7 @@ module advection_util_module
   private
 
   public enforce_minimum_density, compute_cfl, ctoprim, grctoprim, &
-         srctoprim, dflux, &
+         srctoprim, gr_srctoprim, dflux, &
          limit_hydro_fluxes_on_small_dens, shock
 
 contains
@@ -581,8 +581,8 @@ contains
 #endif
 
     use amrex_fort_module, only : rt => amrex_real
-    use compute_flux_module, only : f_of_p
-    use gr_utils_module, only : zbrent
+    use riemann_util_module, only : zbrent, f_of_p
+
     implicit none
 
     integer, intent(in) :: lo(3), hi(3)
@@ -653,20 +653,20 @@ contains
                   pmax = 1.0d0
               end if
 
-              call f_of_p(fmin, pmin, uin, NVAR, gamma, gamma_up(i,j,k,:))
-              call f_of_p(fmax, pmax, uin, NVAR, gamma, gamma_up(i,j,k,:))
+              call f_of_p(fmin, pmin, uin, gamma, gamma_up(i,j,k,:))
+              call f_of_p(fmax, pmax, uin, gamma, gamma_up(i,j,k,:))
 
               if (fmin * fmax > 0.0d0) then
                   pmin = 0.d0
               end if
 
-              call f_of_p(fmin, pmin, uin, NVAR, gamma, gamma_up(i,j,k,:))
+              call f_of_p(fmin, pmin, uin, gamma, gamma_up(i,j,k,:))
 
               if (fmin * fmax > 0.0d0) then
                   pmax = pmax * 10.d0
               end if
 
-              call zbrent(p, pmin, pmax, uin, NVAR, gamma, gamma_up(i,j,k,:))
+              call zbrent(p, pmin, pmax, uin, gamma, gamma_up(i,j,k,:))
 
               if (p /= p .or. p < 0.0d0 .or. p > 1.0d0) then
                   p = abs((gamma - 1.0d0) * (uin(i,j,k,UEDEN) + uin(i,j,k,URHO)) / (2.0d0 - gamma))
@@ -859,6 +859,95 @@ contains
     enddo
 
   end subroutine srctoprim
+
+  subroutine gr_srctoprim(lo, hi, &
+                       q,     q_lo,   q_hi, &
+                       qaux, qa_lo,  qa_hi, &
+                       src, src_lo, src_hi, &
+                       srcQ,srQ_lo, srQ_hi, &
+                       gamma_up, g_lo, g_hi, &
+                       alpha, a_lo, a_hi)
+
+    use mempool_module, only : bl_allocate, bl_deallocate
+    use actual_network, only : nspec, naux
+    use eos_module, only : eos
+    use eos_type_module, only : eos_t, eos_input_re
+    use meth_params_module, only : NVAR, URHO, UMX, UMY, UMZ, UEINT, &
+                                   QVAR, QRHO, QU, QV, QW, NQ, &
+                                   QREINT, QPRES, QDPDR, QDPDE, NQAUX, &
+                                   npassive, upass_map, qpass_map
+    use bl_constants_module, only: ZERO, HALF, ONE
+    use castro_util_module, only: position
+
+    use amrex_fort_module, only : rt => amrex_real
+    implicit none
+
+    integer, intent(in) :: lo(3), hi(3)
+    integer, intent(in) :: q_lo(3), q_hi(3)
+    integer, intent(in) :: qa_lo(3),   qa_hi(3)
+    integer, intent(in) :: src_lo(3), src_hi(3)
+    integer, intent(in) :: srQ_lo(3), srQ_hi(3)
+    integer, intent(in) :: g_lo(3), g_hi(3)
+    integer, intent(in) :: a_lo(3), a_hi(3)
+
+    real(rt)        , intent(in   ) :: q(q_lo(1):q_hi(1),q_lo(2):q_hi(2),q_lo(3):q_hi(3),NQ)
+    real(rt)        , intent(in   ) :: qaux(qa_lo(1):qa_hi(1),qa_lo(2):qa_hi(2),qa_lo(3):qa_hi(3),NQAUX)
+    real(rt)        , intent(in   ) :: src(src_lo(1):src_hi(1),src_lo(2):src_hi(2),src_lo(3):src_hi(3),NVAR)
+    real(rt)        , intent(inout) :: srcQ(srQ_lo(1):srQ_hi(1),srQ_lo(2):srQ_hi(2),srQ_lo(3):srQ_hi(3),QVAR)
+    real(rt)        , intent(in   ) :: gamma_up(g_lo(1):g_hi(1),g_lo(2):g_hi(2),g_lo(3):g_hi(3),9)
+    real(rt)        , intent(in   ) :: alpha(a_lo(1):a_hi(1),a_lo(2):a_hi(2),a_lo(3):a_hi(3))
+
+    integer          :: i, j, k
+    integer          :: n, iq, ipassive
+    real(rt)         :: rhoinv, W
+
+    srcQ(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),:) = ZERO
+
+    ! compute srcQ terms
+    do k = lo(3), hi(3)
+       do j = lo(2), hi(2)
+          do i = lo(1), hi(1)
+
+             W = q(i,j,k,QU)**2 * gamma_up(i,j,k,1) + &
+                2.0d0 * q(i,j,k,QU) * q(i,j,k,QV) * gamma_up(i,j,k,2) + &
+                2.0d0 * q(i,j,k,QU) * q(i,j,k,QW) * gamma_up(i,j,k,3) + &
+                q(i,j,k,QV)**2 * gamma_up(i,j,k,5) + &
+                2.0d0 * q(i,j,k,QV) * q(i,j,k,QW) * gamma_up(i,j,k,6) + &
+                q(i,j,k,QW)**2 * gamma_up(i,j,k,9)
+
+            W = 1.0d0 / sqrt(1.0d0 - W)
+
+             rhoinv = ONE / q(i,j,k,QRHO)
+
+             srcQ(i,j,k,QRHO  ) = src(i,j,k,URHO)
+             srcQ(i,j,k,QU    ) = (src(i,j,k,UMX) - q(i,j,k,QU) * srcQ(i,j,k,QRHO) * W**2) * rhoinv
+             srcQ(i,j,k,QV    ) = (src(i,j,k,UMY) - q(i,j,k,QV) * srcQ(i,j,k,QRHO) * W**2) * rhoinv
+             srcQ(i,j,k,QW    ) = (src(i,j,k,UMZ) - q(i,j,k,QW) * srcQ(i,j,k,QRHO) * W**2) * rhoinv
+             srcQ(i,j,k,QREINT) = src(i,j,k,UEINT)
+             srcQ(i,j,k,QPRES ) = qaux(i,j,k,QDPDE)*(srcQ(i,j,k,QREINT) - &
+                                  q(i,j,k,QREINT)*srcQ(i,j,k,QRHO)*rhoinv) * rhoinv + &
+                                  qaux(i,j,k,QDPDR)*srcQ(i,j,k,QRHO)
+
+          enddo
+       enddo
+    enddo
+
+    do ipassive = 1, npassive
+       n = upass_map(ipassive)
+       iq = qpass_map(ipassive)
+
+       do k = lo(3), hi(3)
+          do j = lo(2), hi(2)
+             do i = lo(1), hi(1)
+                srcQ(i,j,k,iq) = ( src(i,j,k,n) - q(i,j,k,iq) * srcQ(i,j,k,QRHO) ) / &
+                                 q(i,j,k,QRHO)
+             enddo
+          enddo
+       enddo
+
+    enddo
+
+  end subroutine gr_srctoprim
 
 
 

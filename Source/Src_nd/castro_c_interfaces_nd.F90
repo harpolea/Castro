@@ -157,7 +157,7 @@ contains
                         q,     q_lo,   q_hi, &
                         qaux, qa_lo,  qa_hi, idx) bind(C, name = "ca_ctoprim")
 
-    use advection_util_module, only: ctoprim
+    use advection_util_module, only: ctoprim, grctoprim
 
     implicit none
 
@@ -172,10 +172,31 @@ contains
     real(rt)        , intent(inout) :: qaux(qa_lo(1):qa_hi(1),qa_lo(2):qa_hi(2),qa_lo(3):qa_hi(3),NQAUX)
     integer, intent(in)     :: idx
 
-    call ctoprim(lo, hi, &
-                 uin, uin_lo, uin_hi, &
-                 q,     q_lo,   q_hi, &
-                 qaux, qa_lo,  qa_hi)
+    logical :: do_gr = .true.
+    real(rt) :: gamma_up(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),9)
+    real(rt) :: alpha(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3))
+
+    if (do_gr) then
+
+        gamma_up(:,:,:,:) = 0.0d0
+        gamma_up(:,:,:,1) = 1.0d0
+        gamma_up(:,:,:,5) = 1.0d0
+        gamma_up(:,:,:,9) = 1.0d0
+        alpha(:,:,:) = 1.0d0
+
+        call grctoprim(lo, hi, &
+                     uin, uin_lo, uin_hi, &
+                     q,     q_lo,   q_hi, &
+                     qaux, qa_lo,  qa_hi, &
+                     gamma_up, lo, hi, &
+                     alpha, lo, hi)
+    else
+
+        call ctoprim(lo, hi, &
+                     uin, uin_lo, uin_hi, &
+                     q,     q_lo,   q_hi, &
+                     qaux, qa_lo,  qa_hi)
+    endif
 
   end subroutine ca_ctoprim
 
@@ -186,7 +207,7 @@ contains
                           src, src_lo, src_hi, &
                           srcQ,srQ_lo, srQ_hi, idx) bind(C, name = "ca_srctoprim")
 
-    use advection_util_module, only: srctoprim
+    use advection_util_module, only: srctoprim, gr_srctoprim
 
     implicit none
 
@@ -202,11 +223,35 @@ contains
     real(rt)        , intent(inout) :: srcQ(srQ_lo(1):srQ_hi(1),srQ_lo(2):srQ_hi(2),srQ_lo(3):srQ_hi(3),QVAR)
     integer, intent(in)     :: idx
 
-    call srctoprim(lo, hi, &
-                   q,     q_lo,   q_hi, &
-                   qaux, qa_lo,  qa_hi, &
-                   src, src_lo, src_hi, &
-                   srcQ,srQ_lo, srQ_hi)
+    logical :: do_gr = .true.
+    real(rt) :: gamma_up(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),9)
+    real(rt) :: alpha(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3))
+
+    if (do_gr) then
+
+        gamma_up(:,:,:,:) = 0.0d0
+        gamma_up(:,:,:,1) = 1.0d0
+        gamma_up(:,:,:,5) = 1.0d0
+        gamma_up(:,:,:,9) = 1.0d0
+        alpha(:,:,:) = 1.0d0
+
+        call gr_srctoprim(lo, hi, &
+                       q,     q_lo,   q_hi, &
+                       qaux, qa_lo,  qa_hi, &
+                       src, src_lo, src_hi, &
+                       srcQ,srQ_lo, srQ_hi, &
+                       gamma_up, lo, hi, &
+                       alpha, lo, hi)
+
+    else
+
+        call srctoprim(lo, hi, &
+                       q,     q_lo,   q_hi, &
+                       qaux, qa_lo,  qa_hi, &
+                       src, src_lo, src_hi, &
+                       srcQ,srQ_lo, srQ_hi)
+
+    end if
 
   end subroutine ca_srctoprim
 
