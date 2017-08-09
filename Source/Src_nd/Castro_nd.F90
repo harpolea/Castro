@@ -6,6 +6,14 @@ subroutine ca_network_init() bind(C, name="ca_network_init")
 
 end subroutine ca_network_init
 
+subroutine ca_network_finalize() bind(C, name="ca_network_finalize")
+
+  use network, only: network_finalize
+
+  call network_finalize()
+
+end subroutine ca_network_finalize
+
 
 ! :::
 ! ::: ----------------------------------------------------------------
