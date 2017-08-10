@@ -197,10 +197,6 @@ Castro::variableSetUp ()
       cnt += NumAux;
     }
 
-#ifdef SHOCK_VAR
-  Shock = cnt++;
-#endif
-
   NUM_STATE = cnt;
 
   // Define NUM_GROW from the f90 module.
@@ -230,9 +226,6 @@ Castro::variableSetUp ()
 
   ca_set_method_params(dm, Density, Xmom, Eden, Eint, Temp, FirstAdv, FirstSpec, FirstAux,
 		       NumAdv,
-#ifdef SHOCK_VAR
-		       Shock,
-#endif
 		       gravity_type_name.dataPtr(), gravity_type_length);
 
   // Get the number of primitive variables from Fortran.
@@ -304,19 +297,6 @@ Castro::variableSetUp ()
   desc_lst.addDescriptor(Source_Type, IndexType::TheCellType(),
 			 StateDescriptor::Point,NUM_GROW,NUM_STATE,
 			 &cell_cons_interp, state_data_extrap,store_in_checkpoint);
-
-#ifdef ROTATION
-  store_in_checkpoint = false;
-  desc_lst.addDescriptor(PhiRot_Type, IndexType::TheCellType(),
-			 StateDescriptor::Point, 1, 1,
-			 &cell_cons_interp, state_data_extrap,
-			 store_in_checkpoint);
-
-  store_in_checkpoint = false;
-  desc_lst.addDescriptor(Rotation_Type,IndexType::TheCellType(),
-			 StateDescriptor::Point,NUM_GROW,3,
-			 &cell_cons_interp,state_data_extrap,store_in_checkpoint);
-#endif
 
   Array<BCRec>       bcs(NUM_STATE);
   Array<std::string> name(NUM_STATE);
@@ -398,26 +378,11 @@ Castro::variableSetUp ()
       name[cnt] = "rho_" + aux_names[i];
     }
 
-#ifdef SHOCK_VAR
-  cnt++; set_scalar_bc(bc,phys_bc); bcs[cnt] = bc; name[cnt] = "Shock";
-#endif
-
   desc_lst.setComponent(State_Type,
 			Density,
 			name,
 			bcs,
 			BndryFunc(ca_denfill,ca_hypfill));
-
-#ifdef ROTATION
-  set_scalar_bc(bc,phys_bc);
-  desc_lst.setComponent(PhiRot_Type,0,"phiRot",bc,BndryFunc(ca_phirotfill));
-  set_x_vel_bc(bc,phys_bc);
-  desc_lst.setComponent(Rotation_Type,0,"rot_x",bc,BndryFunc(ca_rotxfill));
-  set_y_vel_bc(bc,phys_bc);
-  desc_lst.setComponent(Rotation_Type,1,"rot_y",bc,BndryFunc(ca_rotyfill));
-  set_z_vel_bc(bc,phys_bc);
-  desc_lst.setComponent(Rotation_Type,2,"rot_z",bc,BndryFunc(ca_rotzfill));
-#endif
 
   // Source term array will use standard hyperbolic fill.
 
@@ -427,12 +392,6 @@ Castro::variableSetUp ()
     state_type_source_names[i] = name[i] + "_source";
 
   desc_lst.setComponent(Source_Type,Density,state_type_source_names,bcs,BndryFunc(ca_denfill,ca_hypfill));
-
-#ifdef SDC
-  for (int i = 0; i < NUM_STATE; ++i)
-      state_type_source_names[i] = "sdc_sources_" + name[i];
-  desc_lst.setComponent(SDC_Source_Type,Density,state_type_source_names,bcs,BndryFunc(ca_denfill,ca_hypfill));
-#endif
 
   if (use_custom_knapsack_weights) {
       Knapsack_Weight_Type = desc_lst.size();
@@ -624,11 +583,6 @@ Castro::variableSetUp ()
 #ifdef GRAVITY
   source_names[grav_src] = "gravity";
 #endif
-
-#ifdef ROTATION
-  source_names[rot_src] = "rotation";
-#endif
-
 
   // method of lines Butcher tableau
 #define SECONDORDER_TVD

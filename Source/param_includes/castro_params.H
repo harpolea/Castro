@@ -87,39 +87,6 @@ static int do_grav;
 static int moving_center;
 static int grav_source_type;
 static int do_rotation;
-#ifdef ROTATION
-static amrex::Real rotational_period;
-#endif
-#ifdef ROTATION
-static amrex::Real rotational_dPdt;
-#endif
-#ifdef ROTATION
-static int rotation_include_centrifugal;
-#endif
-#ifdef ROTATION
-static int rotation_include_coriolis;
-#endif
-#ifdef ROTATION
-static int rotation_include_domegadt;
-#endif
-#ifdef ROTATION
-static int state_in_rotating_frame;
-#endif
-#ifdef ROTATION
-static int rot_source_type;
-#endif
-#ifdef ROTATION
-static int implicit_rotation_update;
-#endif
-#ifdef ROTATION
-static int rot_axis;
-#endif
-#ifdef POINTMASS
-static amrex::Real point_mass;
-#endif
-#ifdef POINTMASS
-static int point_mass_fix_solution;
-#endif
 static int do_acc;
 static int bndry_func_thread_safe;
 static int grown_factor;

@@ -394,12 +394,6 @@ contains
                                    small_dens
     use bl_constants_module, only: ZERO, HALF, ONE
     use castro_util_module, only: position
-#ifdef ROTATION
-    use meth_params_module, only: do_rotation, state_in_rotating_frame
-    use rotation_module, only: inertial_to_rotational_velocity
-    use amrinfo_module, only: amr_time
-#endif
-
     use amrex_fort_module, only : rt => amrex_real
     implicit none
 
@@ -466,12 +460,6 @@ contains
 
              ! If we're advecting in the rotating reference frame,
              ! then subtract off the rotation component here.
-
-#ifdef ROTATION
-             if (do_rotation == 1 .and. state_in_rotating_frame /= 1) then
-                call inertial_to_rotational_velocity([i, j, k], amr_time, q(i,j,k,QU:QW))
-             endif
-#endif
 
              q(i,j,k,QTEMP) = uin(i,j,k,UTEMP)
 
@@ -542,11 +530,6 @@ contains
                                    small_dens
     use bl_constants_module, only: ZERO, HALF, ONE
     use castro_util_module, only: position
-#ifdef ROTATION
-    use meth_params_module, only: do_rotation, state_in_rotating_frame
-    use rotation_module, only: inertial_to_rotational_velocity
-    use amrinfo_module, only: amr_time
-#endif
 
     use amrex_fort_module, only : rt => amrex_real
     use riemann_util_module, only : zbrent, f_of_p
@@ -683,12 +666,6 @@ contains
 
              ! If we're advecting in the rotating reference frame,
              ! then subtract off the rotation component here.
-
-#ifdef ROTATION
-             if (do_rotation == 1 .and. state_in_rotating_frame /= 1) then
-                call inertial_to_rotational_velocity([i, j, k], amr_time, q(i,j,k,QU:QW))
-             endif
-#endif
 
              q(i,j,k,QTEMP) = uin(i,j,k,UTEMP)
 

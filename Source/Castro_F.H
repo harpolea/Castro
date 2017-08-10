@@ -44,9 +44,6 @@ extern "C"
      const int& Temp     , const int& FirstAdv,
      const int& FirstSpec, const int& FirstAux,
      const int& NumAdv,
-#ifdef SHOCK_VAR
-     const int& Shock,
-#endif
      const int* gravity_type, const int& gravity_type_len);
 
   void ca_finalize_meth_params();
@@ -155,32 +152,6 @@ extern "C"
      const amrex::Real* dx, const amrex::Real* glo,
      const amrex::Real* time, const int* bc);
 
-#ifdef ROTATION
-  void ca_phirotfill
-    (BL_FORT_FAB_ARG_3D(state),
-     const int* dlo, const int* dhi,
-     const amrex::Real* dx, const amrex::Real* glo,
-     const amrex::Real* time, const int* bc);
-
-  void ca_rotxfill
-    (BL_FORT_FAB_ARG_3D(state),
-     const int* dlo, const int* dhi,
-     const amrex::Real* dx, const amrex::Real* glo,
-     const amrex::Real* time, const int* bc);
-
-  void ca_rotyfill
-    (BL_FORT_FAB_ARG_3D(state),
-     const int* dlo, const int* dhi,
-     const amrex::Real* dx, const amrex::Real* glo,
-     const amrex::Real* time, const int* bc);
-
-  void ca_rotzfill
-    (BL_FORT_FAB_ARG_3D(state),
-     const int* dlo, const int* dhi,
-     const amrex::Real* dx, const amrex::Real* glo,
-     const amrex::Real* time, const int* bc);
-#endif
-
   inline void ca_nullfill
     (BL_FORT_FAB_ARG_3D(state),
      const int* dlo, const int* dhi,
@@ -235,40 +206,6 @@ extern "C"
      const int dlo[], const int dhi[],
      const amrex::Real dx[], const amrex::Real glo[],
      const amrex::Real* time, const int bc[]);
-
-#ifdef RADIATION
-  void ca_radfill
-    (BL_FORT_FAB_ARG(state),
-     const int dlo[], const int dhi[],
-     const amrex::Real dx[], const amrex::Real glo[],
-     const amrex::Real* time, const int bc[]);
-#endif
-
-#ifdef ROTATION
-  void ca_phirotfill
-    (BL_FORT_FAB_ARG(state),
-     const int dlo[], const int dhi[],
-     const amrex::Real dx[], const amrex::Real glo[],
-     const amrex::Real* time, const int bc[]);
-
-  void ca_rotxfill
-    (BL_FORT_FAB_ARG(state),
-     const int dlo[], const int dhi[],
-     const amrex::Real dx[], const amrex::Real glo[],
-     const amrex::Real* time, const int bc[]);
-
-  void ca_rotyfill
-    (BL_FORT_FAB_ARG(state),
-     const int dlo[], const int dhi[],
-     const amrex::Real dx[], const amrex::Real glo[],
-     const amrex::Real* time, const int bc[]);
-
-  void ca_rotzfill
-    (BL_FORT_FAB_ARG(state),
-     const int dlo[], const int dhi[],
-     const amrex::Real dx[], const amrex::Real glo[],
-     const amrex::Real* time, const int bc[]);
-#endif
 
   inline void ca_nullfill
     (BL_FORT_FAB_ARG(state),
@@ -381,47 +318,6 @@ extern "C"
      BL_FORT_FAB_ARG_3D(zflux),
      BL_FORT_FAB_ARG_3D(source),
      const amrex::Real* dx, const amrex::Real& dt, const amrex::Real* time);
-#endif
-
-#ifdef ROTATION
-
-  void ca_fill_rotational_potential
-    (const int* lo, const int* hi,
-     BL_FORT_FAB_ARG_3D(phi),
-     const amrex::Real* dx, const amrex::Real& time);
-
-  void ca_fill_rotational_acceleration
-    (const int* lo, const int* hi,
-     BL_FORT_FAB_ARG_3D(rot),
-     const BL_FORT_FAB_ARG_3D(state),
-     const amrex::Real* dx, const amrex::Real& time);
-
-  void ca_rsrc
-    (const int* lo, const int* hi,
-     const int* domlo, const int* domhi,
-     const BL_FORT_FAB_ARG_3D(phi),
-     const BL_FORT_FAB_ARG_3D(rot),
-     const BL_FORT_FAB_ARG_3D(s_old),
-     BL_FORT_FAB_ARG_3D(source),
-     const BL_FORT_FAB_ARG_3D(vol),
-     const amrex::Real* dx, const amrex::Real& dt, const amrex::Real* time);
-
-  void ca_corrrsrc
-    (const int* lo, const int* hi,
-     const int* domlo, const int* domhi,
-     const BL_FORT_FAB_ARG_3D(phi_old),
-     const BL_FORT_FAB_ARG_3D(phi_new),
-     const BL_FORT_FAB_ARG_3D(rot_old),
-     const BL_FORT_FAB_ARG_3D(rot_new),
-     const BL_FORT_FAB_ARG_3D(S_old),
-     const BL_FORT_FAB_ARG_3D(S_new),
-     BL_FORT_FAB_ARG_3D(source),
-     const BL_FORT_FAB_ARG_3D(xflux),
-     const BL_FORT_FAB_ARG_3D(yflux),
-     const BL_FORT_FAB_ARG_3D(zflux),
-     const amrex::Real* dx, const amrex::Real& dt, const amrex::Real* time,
-     const BL_FORT_FAB_ARG_3D(volume));
-
 #endif
 
   void ca_summass

@@ -19,11 +19,6 @@ contains
     use eos_type_module, only: eos_t, eos_input_re
     use prob_params_module, only: dim
     use bl_constants_module
-#ifdef ROTATION
-    use meth_params_module, only: do_rotation, state_in_rotating_frame
-    use rotation_module, only: inertial_to_rotational_velocity
-    use amrinfo_module, only: amr_time
-#endif
     use amrex_fort_module, only : rt => amrex_real
 
     implicit none
@@ -37,10 +32,6 @@ contains
     integer          :: i, j, k
 
     type (eos_t) :: eos_state
-
-#ifdef ROTATION
-    real(rt)         :: vel(3)
-#endif
 
     real(rt)     :: q(u_lo(1):u_hi(1),u_lo(2):u_hi(2),u_lo(3):u_hi(3),NQ)
     real(rt)   :: qaux(u_lo(1):u_hi(1),u_lo(2):u_hi(2),u_lo(3):u_hi(3),NQAUX)
@@ -70,16 +61,6 @@ contains
              ux = q(i,j,k,QU)
              uy = q(i,j,k,QV)
              uz = q(i,j,k,QW)
-
-#ifdef ROTATION
-             if (do_rotation == 1 .and. state_in_rotating_frame /= 1) then
-                vel = [ux, uy, uz]
-                call inertial_to_rotational_velocity([i, j, k], amr_time, vel)
-                ux = vel(1)
-                uy = vel(2)
-                uz = vel(3)
-             endif
-#endif
 
              c = eos_state % cs
 

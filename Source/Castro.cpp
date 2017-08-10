@@ -59,10 +59,6 @@ int          Castro::FirstAux      = -1;
 int          Castro::NumAdv        = 0;
 int          Castro::FirstAdv      = -1;
 
-#ifdef SHOCK_VAR
-int          Castro::Shock         = -1;
-#endif
-
 int          Castro::QVAR          = -1;
 int          Castro::QRADVAR       = 0;
 int          Castro::NQAUX         = -1;
@@ -255,22 +251,6 @@ Castro::read_params ()
     	            amrex::Error();
           }
 
-#ifdef ROTATION
-    if (do_rotation) {
-      if (rotational_period <= 0.0) {
-	         std::cerr << "Error:Castro::Rotation enabled but rotation period less than zero\n";
-	            amrex::Error();
-      }
-    }
-    if (Geometry::IsRZ())
-      rot_axis = 2;
-#if (BL_SPACEDIM == 1)
-      if (do_rotation) {
-	         std::cerr << "ERROR:Castro::Rotation not implemented in 1d\n";
-	            amrex::Error();
-      }
-#endif
-#endif
 
    StateDescriptor::setBndryFuncThreadSafety(bndry_func_thread_safe);
 
@@ -314,17 +294,6 @@ Castro::Castro (Amr&            papa,
       material_lost_through_boundary_temp[i] = 0.0;
     }
 
-#ifdef ROTATION
-
-   // Initialize rotation data to zero.
-
-   MultiFab& phirot_new = get_new_data(PhiRot_Type);
-   phirot_new.setVal(0.0);
-
-   MultiFab& rot_new = get_new_data(Rotation_Type);
-   rot_new.setVal(0.0);
-
-#endif
 
    // Initialize source term data to zero.
 
@@ -656,14 +625,6 @@ Castro::initData ()
 
     MultiFab& dSdt_new = get_new_data(Source_Type);
     dSdt_new.setVal(0.);
-
-#ifdef ROTATION
-    MultiFab& rot_new = get_new_data(Rotation_Type);
-    rot_new.setVal(0.);
-
-    MultiFab& phirot_new = get_new_data(PhiRot_Type);
-    phirot_new.setVal(0.);
-#endif
 
     if (verbose && ParallelDescriptor::IOProcessor())
        std::cout << "Done initializing the level " << level << " data " << std::endl;
@@ -1039,18 +1000,6 @@ Castro::post_restart ()
 
    Real cur_time = state[State_Type].curTime();
 
-#ifdef ROTATION
-    MultiFab& phirot_new = get_new_data(PhiRot_Type);
-    MultiFab& rot_new = get_new_data(Rotation_Type);
-    MultiFab& S_new = get_new_data(State_Type);
-    if (do_rotation)
-      fill_rotation_field(phirot_new, rot_new, S_new, cur_time);
-    else {
-      phirot_new.setVal(0.0);
-      rot_new.setVal(0.0);
-    }
-#endif
-
     set_special_tagging_flag(cur_time);
 
     // initialize the Godunov state array used in hydro -- we wait
@@ -1106,20 +1055,6 @@ Castro::post_init (Real stop_time)
     for (int k = finest_level-1; k>= 0; k--)
         getLevel(k).avgDown();
 
-#ifdef ROTATION
-    MultiFab& phirot_new = get_new_data(PhiRot_Type);
-    MultiFab& rot_new = get_new_data(Rotation_Type);
-    MultiFab& S_new = get_new_data(State_Type);
-    if (do_rotation) {
-      Real cur_time = state[State_Type].curTime();
-      fill_rotation_field(phirot_new, rot_new, S_new, cur_time);
-    }
-    else {
-      phirot_new.setVal(0.0);
-      rot_new.setVal(0.0);
-    }
-#endif
-
 // Allow the user to define their own post_init functions.
 
 #ifdef DO_PROBLEM_POST_INIT
@@ -1163,20 +1098,6 @@ Castro::post_grown_restart ()
 {
     if (level > 0)
         return;
-
-#ifdef ROTATION
-    MultiFab& phirot_new = get_new_data(PhiRot_Type);
-    MultiFab& rot_new = get_new_data(Rotation_Type);
-    MultiFab& S_new = get_new_data(State_Type);
-    if (do_rotation) {
-      Real cur_time = state[State_Type].curTime();
-      fill_rotation_field(phirot_new, rot_new, S_new, cur_time);
-    }
-    else {
-      phirot_new.setVal(0.0);
-      rot_new.setVal(0.0);
-    }
-#endif
 }
 
 int
@@ -1429,12 +1350,6 @@ Castro::avgDown ()
   if (level == parent->finestLevel()) return;
 
   avgDown(State_Type);
-
-#ifdef ROTATION
-  avgDown(Rotation_Type);
-  avgDown(PhiRot_Type);
-#endif
-
   avgDown(Source_Type);
 }
 

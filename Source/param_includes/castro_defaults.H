@@ -15,7 +15,7 @@ amrex::Real Castro::small_temp = -1.e200;
 amrex::Real Castro::small_pres = -1.e200;
 amrex::Real Castro::small_ener = -1.e200;
 int         Castro::do_hydro = -1;
-int         Castro::do_ctu = 1;
+int         Castro::do_ctu = 0;
 int         Castro::add_ext_src = 0;
 int         Castro::hybrid_hydro = 0;
 int         Castro::ppm_type = 1;
@@ -87,33 +87,6 @@ int         Castro::do_grav = -1;
 int         Castro::moving_center = 0;
 int         Castro::grav_source_type = 4;
 int         Castro::do_rotation = -1;
-#ifdef ROTATION
-amrex::Real Castro::rotational_period = -1.e200;
-#endif
-#ifdef ROTATION
-amrex::Real Castro::rotational_dPdt = 0.0;
-#endif
-#ifdef ROTATION
-int         Castro::rotation_include_centrifugal = 1;
-#endif
-#ifdef ROTATION
-int         Castro::rotation_include_coriolis = 1;
-#endif
-#ifdef ROTATION
-int         Castro::rotation_include_domegadt = 1;
-#endif
-#ifdef ROTATION
-int         Castro::state_in_rotating_frame = 1;
-#endif
-#ifdef ROTATION
-int         Castro::rot_source_type = 4;
-#endif
-#ifdef ROTATION
-int         Castro::implicit_rotation_update = 1;
-#endif
-#ifdef ROTATION
-int         Castro::rot_axis = 3;
-#endif
 int         Castro::do_acc = -1;
 int         Castro::bndry_func_thread_safe = 1;
 int         Castro::grown_factor = 1;

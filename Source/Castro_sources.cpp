@@ -42,14 +42,6 @@ Castro::source_flag(int src)
 	    return false;
 #endif
 
-#ifdef ROTATION
-    case rot_src:
-	if (do_rotation)
-	    return true;
-	else
-	    return false;
-#endif
-
     default:
 	return false;
 
@@ -153,13 +145,6 @@ Castro::construct_old_source(int src, Real time, Real dt, int amr_iteration, int
     	construct_old_gravity_source(time, dt);
     	break;
 #endif
-
-#ifdef ROTATION
-        case rot_src:
-    	construct_old_rotation_source(time, dt);
-    	break;
-#endif
-
         default:
     	break;
 
@@ -180,12 +165,6 @@ Castro::construct_new_source(int src, Real time, Real dt, int amr_iteration, int
 #ifdef GRAVITY
         case grav_src:
     	construct_new_gravity_source(time, dt);
-    	break;
-#endif
-
-#ifdef ROTATION
-        case rot_src:
-    	construct_new_rotation_source(time, dt);
     	break;
 #endif
 

@@ -27,7 +27,3 @@ FEXE_headers += Castro_error_F.H
 ifeq ($(USE_GRAV), TRUE)
 CEXE_sources += Castro_gravity.cpp
 endif
-
-ifeq ($(USE_ROTATION), TRUE)
-CEXE_sources += Castro_rotation.cpp
-endif

@@ -14,11 +14,9 @@ ca_F90EXE_sources += timestep.F90
 ca_F90EXE_sources += Derive_nd.F90
 ca_f90EXE_sources += problem_derive_nd.f90
 ca_f90EXE_sources += riemann_util.f90
-ca_F90EXE_sources += ppm_nd.F90
+ca_F90EXE_sources += reconstruct_nd.F90
 ca_F90EXE_sources += slope_nd.F90
 ca_F90EXE_sources += riemann_nd.F90
-
-ca_F90EXE_sources += flatten_nd.F90
 
 ca_f90EXE_sources += math.f90
 
@@ -29,11 +27,6 @@ ca_F90EXE_sources += prescribe_phi_nd.F90
 ca_f90EXE_sources += prescribe_grav_nd.f90
 ca_f90EXE_sources += Gravity_nd.f90
 ca_F90EXE_sources += gravity_sources_nd.F90
-endif
-ifeq ($(USE_ROTATION), TRUE)
-ca_f90EXE_sources += Rotation_nd.f90
-ca_F90EXE_sources += Rotation_frequency.F90
-ca_F90EXE_sources += rotation_sources_nd.F90
 endif
 
 ifeq ($(DIMENSION_AGNOSTIC), TRUE)

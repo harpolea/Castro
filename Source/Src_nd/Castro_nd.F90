@@ -351,9 +351,6 @@ end subroutine swap_outflow_data
 
 subroutine ca_set_method_params(dm,Density,Xmom,Eden,Eint,Temp, &
                                 FirstAdv,FirstSpec,FirstAux,numadv, &
-#ifdef SHOCK_VAR
-                                Shock, &
-#endif
                                 gravity_type_in, gravity_type_len) &
                                 bind(C, name="ca_set_method_params")
 
@@ -371,9 +368,6 @@ subroutine ca_set_method_params(dm,Density,Xmom,Eden,Eint,Temp, &
   integer, intent(in) :: Density, Xmom, Eden, Eint, Temp, &
        FirstAdv, FirstSpec, FirstAux
   integer, intent(in) :: numadv
-#ifdef SHOCK_VAR
-  integer, intent(in) :: Shock
-#endif
   integer, intent(in) :: gravity_type_len
   integer, intent(in) :: gravity_type_in(gravity_type_len)
   integer :: iadv, ispec
@@ -419,12 +413,7 @@ subroutine ca_set_method_params(dm,Density,Xmom,Eden,Eint,Temp, &
      UFX = 1
   end if
 
-#ifdef SHOCK_VAR
-  USHK  = Shock + 1
-  NVAR  = NVAR + 1
-#else
   USHK  = -1
-#endif
 
   !---------------------------------------------------------------------
   ! primitive state components
@@ -544,12 +533,6 @@ subroutine ca_set_method_params(dm,Density,Xmom,Eden,Eint,Temp, &
      gravity_type(i:i) = char(gravity_type_in(i))
   enddo
 
-#ifdef ROTATION
-  rot_vec = ZERO
-  rot_vec(rot_axis) = ONE
-#endif
-
-
   !---------------------------------------------------------------------
   ! safety checks
   !---------------------------------------------------------------------
@@ -637,9 +620,6 @@ subroutine ca_set_problem_params(dm,physbc_lo_in,physbc_hi_in,&
   use bl_constants_module, only: ZERO
   use prob_params_module
   use meth_params_module, only: UMX, UMY, UMZ
-#ifdef ROTATION
-  use meth_params_module, only: rot_axis
-#endif
   use amrex_fort_module, only: rt => amrex_real
 
   implicit none
@@ -681,13 +661,6 @@ subroutine ca_set_problem_params(dm,physbc_lo_in,physbc_hi_in,&
   if (dim .lt. 3) then
      dg(3) = 0
   endif
-
-#ifdef ROTATION
-  if (coord_type == 1) then
-     rot_axis = 2
-  endif
-#endif
-
 
   ! sanity check on our allocations
   if (UMZ > MAX_MOM_INDEX) then

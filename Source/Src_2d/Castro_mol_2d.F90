@@ -21,17 +21,16 @@ subroutine ca_mol_single_stage(time, &
                                courno, verbose) bind(C, name="ca_mol_single_stage")
 
   use meth_params_module, only : NQ, QVAR, NVAR, NGDNV, GDPRES, &
-                                 UTEMP, UEINT, USHK, UMX, GDU, GDV, &
-                                 use_flattening, QPRES, NQAUX, &
+                                 UTEMP, UEINT, UMX, GDU, GDV, &
+                                 QPRES, NQAUX, &
                                  QTEMP, QFS, QFX, QREINT, QRHO, &
-                                 first_order_hydro, difmag, hybrid_riemann, ppm_temp_fix
+                                 first_order_hydro, difmag
   use advection_util_2d_module, only : divu, normalize_species_fluxes
   use advection_util_module, only : compute_cfl, shock
   use bl_constants_module, only : ZERO, HALF, ONE
-  use flatten_module, only : uflatten
   use prob_params_module, only : coord_type
   use riemann_module, only: cmpflx
-  use ppm_module, only : ppm_reconstruct
+  use reconstruct_module, only : compute_reconstruction_tvd
   use amrex_fort_module, only : rt => amrex_real
   use eos_type_module, only : eos_t, eos_input_rt
   use eos_module, only : eos
@@ -74,17 +73,6 @@ subroutine ca_mol_single_stage(time, &
   real(rt)        , intent(in) :: delta(2), dt, time
   real(rt)        , intent(inout) :: courno
 
-  ! Automatic arrays for workspace
-  real(rt)        , allocatable :: flatn(:,:)
-  real(rt)        , allocatable :: div(:,:)
-  real(rt)        , allocatable :: pdivu(:,:)
-
-  ! Edge-centered primitive variables (Riemann state)
-  real(rt)        , allocatable :: q1(:,:,:)
-  real(rt)        , allocatable :: q2(:,:,:)
-
-  real(rt)        , allocatable :: shk(:,:)
-
   ! temporary interface values of the parabola
   real(rt), allocatable :: sxm(:,:), sxp(:,:), sym(:,:), syp(:,:)
 
@@ -95,7 +83,6 @@ subroutine ca_mol_single_stage(time, &
   real(rt) :: dx, dy
 
   integer :: lo_3D(3), hi_3D(3)
-  integer :: shk_lo(3), shk_hi(3)
   integer :: qs_lo(3), qs_hi(3)
   real(rt) :: dx_3D(3)
 
@@ -112,65 +99,16 @@ subroutine ca_mol_single_stage(time, &
 
   dx_3D  = [delta(1), delta(2), ZERO]
 
-  shk_lo = [lo(1)-1, lo(2)-1, 0]
-  shk_hi = [hi(1)+1, hi(2)+1, 0]
-
   qs_lo = [lo(1)-1, lo(2)-1, 0]
   qs_hi = [hi(1)+2, hi(2)+2, 0]
 
-  allocate(flatn(q_lo(1):q_hi(1), q_lo(2):q_hi(2)))
-
-  allocate(q1(flux1_lo(1):flux1_hi(1), flux1_lo(2):flux1_hi(2), NGDNV))
-  allocate(q2(flux2_lo(1):flux2_hi(1), flux2_lo(2):flux2_hi(2), NGDNV))
-
-  allocate(shk(shk_lo(1):shk_hi(1), shk_lo(2):shk_hi(2)))
-  allocate(pdivu(lo(1):hi(1), lo(2):hi(2)))
-
   dx = delta(1)
   dy = delta(2)
-
-
-#ifdef SHOCK_VAR
-    uout(lo(1):hi(1),lo(2):hi(2),USHK) = ZERO
-
-    call shock(q, q_lo, q_hi, &
-               shk, shk_lo, shk_hi, &
-               lo_3D, hi_3D, dx_3D)
-
-    ! Store the shock data for future use in the burning step.
-    do j = lo(2), hi(2)
-       do i = lo(1), hi(1)
-          uout(i,j,USHK) = shk(i,j)
-       enddo
-    enddo
-
-    ! Discard it locally if we don't need it in the hydro update.
-
-    if (hybrid_riemann /= 1) then
-       shk(:,:) = ZERO
-    endif
-#else
-    ! multidimensional shock detection -- this will be used to do the
-    ! hybrid Riemann solver
-     shk(:,:) = ZERO
-#endif
 
   ! Check if we have violated the CFL criterion.
   call compute_cfl(q, q_lo, q_hi, &
                    qaux, qa_lo, qa_hi, &
                    lo_3D, hi_3D, dt, dx_3D, courno)
-
-  ! Compute flattening coefficient for slope calculations.
-  if (first_order_hydro == 1) then
-     flatn = ZERO
-
-  elseif (use_flattening == 1) then
-     call uflatten([lo(1) - ngf, lo(2) - ngf, 0], [hi(1) + ngf, hi(2) + ngf, 0], &
-                   q, flatn, q_lo, q_hi,QPRES)
-  else
-     flatn = ONE
-  endif
-
 
   ! sm and sp are the minus and plus parts of the parabola -- they are
   ! defined for a single zone, so for zone i, sm is the left value of
@@ -188,12 +126,12 @@ subroutine ca_mol_single_stage(time, &
   allocate ( qym(qs_lo(1):qs_hi(1),qs_lo(2):qs_hi(2),NQ) )
   allocate ( qyp(qs_lo(1):qs_hi(1),qs_lo(2):qs_hi(2),NQ) )
 
-  ! Do PPM reconstruction
+  ! Do reconstruction
   do n = 1, QVAR
-     call ppm_reconstruct(q(:,:,n), q_lo, q_hi, &
-                          flatn, q_lo, q_hi, &
-                          sxm, sxp, sym, syp, sxm, sxp, q_lo, q_hi, &   ! extra sxm, sxp are dummy
-                          lo(1), lo(2), hi(1), hi(2), [dx, dy, ZERO], 0, 0)
+
+     call compute_reconstruction_tvd(q(:,:,n), q_lo, q_hi, &
+                                    sxm, sxp, sym, syp, sxm, sxp, q_lo, q_hi, & ! extra sxm, sxp are dummy
+                                    lo_3D, hi_3D, [dx, dy, ZERO], 0, 0)
 
      ! Construct the interface states -- this is essentially just a
      ! reshuffling of interface states from zone-center indexing to
@@ -226,74 +164,16 @@ subroutine ca_mol_single_stage(time, &
   ! Get the fluxes from the Riemann solver
   call cmpflx(qxm, qxp, qs_lo, qs_hi, &
               flux1, flux1_lo, flux1_hi, &
-              q1, flux1_lo, flux1_hi, &
               qaux, qa_lo, qa_hi, &
-              shk, shk_lo, shk_hi, &
               1, lo(1), hi(1), lo(2), hi(2), domlo, domhi)
 
 
   call cmpflx(qym, qyp, qs_lo, qs_hi, &
               flux2, flux2_lo, flux2_hi, &
-              q2, flux2_lo, flux2_hi, &
               qaux, qa_lo, qa_hi, &
-              shk, shk_lo, shk_hi, &
               2, lo(1), hi(1), lo(2), hi(2), domlo, domhi)
 
   deallocate(qxm, qxp, qym, qyp)
-
-  ! construct p div{U}
-  do j = lo(2), hi(2)
-     do i = lo(1), hi(1)
-        pdivu(i,j) = HALF*( &
-             (q1(i+1,j,GDPRES) + q1(i,j,GDPRES)) * &
-             (q1(i+1,j,GDU)*area1(i+1,j) - q1(i,j,GDU)*area1(i,j)) + &
-             (q2(i,j+1,GDPRES) + q2(i,j,GDPRES)) * &
-             (q2(i,j+1,GDV)*area2(i,j+1) - q2(i,j,GDV)*area2(i,j)) ) / vol(i,j)
-     enddo
-  enddo
-
-  ! Compute the artifical viscosity
-
-  ! Compute divergence of velocity field (on surrounding nodes(lo,hi))
-  ! this is used for the artifical viscosity
-  allocate(div(lo(1):hi(1)+1 ,lo(2):hi(2)+1))
-
-  call divu(lo, hi, q, q_lo(1), q_lo(2), q_hi(1), q_hi(2), &
-            delta, div, lo(1), lo(2), hi(1)+1, hi(2)+1)
-
-  do n = 1, NVAR
-     if (n == UTEMP) then
-        flux1(lo(1):hi(1)+1,lo(2):hi(2),n) = ZERO
-        flux2(lo(1):hi(1),lo(2):hi(2)+1,n) = ZERO
-#ifdef SHOCK_VAR
-     else if (n == USHK) then
-        flux1(lo(1):hi(1)+1,lo(2):hi(2),n) = ZERO
-        flux2(lo(1):hi(1),lo(2):hi(2)+1,n) = ZERO
-#endif
-     else
-        do j = lo(2), hi(2)
-           do i = lo(1), hi(1)+1
-              div1 = HALF*(div(i,j) + div(i,j+1))
-              div1 = difmag*min(ZERO, div1)
-
-              flux1(i,j,n) = flux1(i,j,n) + &
-                   dx*div1*(uin(i,j,n) - uin(i-1,j,n))
-           enddo
-        enddo
-
-        do j = lo(2), hi(2)+1
-           do i = lo(1), hi(1)
-              div1 = HALF*(div(i,j) + div(i+1,j))
-              div1 = difmag*min(ZERO,div1)
-
-              flux2(i,j,n) = flux2(i,j,n) + &
-                   dy*div1*(uin(i,j,n) - uin(i,j-1,n))
-           enddo
-        enddo
-
-     endif
-  enddo
-
 
   ! Normalize the species fluxes
   call normalize_species_fluxes(flux1, flux1_lo, flux1_hi, &
@@ -314,17 +194,6 @@ subroutine ca_mol_single_stage(time, &
            update(i,j,n) = update(i,j,n) + &
                 ( flux1(i,j,n) * area1(i,j) - flux1(i+1,j,n) * area1(i+1,j) + &
                   flux2(i,j,n) * area2(i,j) - flux2(i,j+1,n) * area2(i,j+1) ) / vol(i,j)
-
-           if (n == UEINT) then
-              ! Add p div(u) source term to (rho e)
-              update(i,j,n) = update(i,j,n) - pdivu(i,j)
-
-           else if (n == UMX) then
-              ! add the pressure source term for axisummetry
-              if (coord_type == 1) then
-                 update(i,j,n) = update(i,j,n) - (q1(i+1,j,GDPRES) - q1(i,j,GDPRES))/ dx
-              endif
-           endif
 
            ! for storage
            update_flux(i,j,n) = update_flux(i,j,n) + stage_weight * update(i,j,n)
@@ -352,12 +221,5 @@ subroutine ca_mol_single_stage(time, &
         enddo
      enddo
   enddo
-
-  ! Store fluxes for flux correction
-  if (coord_type .eq. 1) then
-     pradial(lo(1):hi(1)+1,lo(2):hi(2)) = q1(lo(1):hi(1)+1,lo(2):hi(2),GDPRES) * dt
-  end if
-
-  deallocate(flatn,div,q1,q2,pdivu)
 
 end subroutine ca_mol_single_stage

@@ -3,7 +3,7 @@
 ! or add runtime parameters, please edit _cpp_parameters and then run
 ! mk_params.sh
 
-! This module stores the runtime parameters and integer names for 
+! This module stores the runtime parameters and integer names for
 ! indexing arrays.
 !
 ! The Fortran-specific parameters are initialized in set_method_params(),
@@ -29,24 +29,12 @@ module meth_params_module
   integer, save :: QTHERM, QVAR
   integer, save :: QRHO, QU, QV, QW, QPRES, QREINT, QTEMP, QGAME
   integer, save :: NQAUX, QGAMC, QC, QCSML, QDPDR, QDPDE
-#ifdef RADIATION
-  integer, save :: QGAMCG, QCG, QLAMS
-#endif
   integer, save :: QFA, QFS, QFX
 
   integer, save :: nadv
 
   ! NQ will be the total number of primitive variables, hydro + radiation
-  integer, save :: NQ         
-
-#ifdef RADIATION
-  integer, save :: QRADVAR, QRAD, QRADHI, QPTOT, QREITOT
-  integer, save :: fspace_type
-  logical, save :: do_inelastic_scattering
-  logical, save :: comoving
-
-  real(rt)        , save :: flatten_pp_threshold = -1.e0_rt
-#endif
+  integer, save :: NQ
 
   integer, save :: npassive
   integer, save, allocatable :: qpass_map(:), upass_map(:)
@@ -55,9 +43,6 @@ module meth_params_module
   ! Note that the velocity indices here are picked to be the same value
   ! as in the primitive variable array
   integer, save :: NGDNV, GDRHO, GDU, GDV, GDW, GDPRES, GDGAME
-#ifdef RADIATION
-  integer, save :: GDLAMS, GDERADS
-#endif
 
   integer         , save :: numpts_1d
 
@@ -73,8 +58,8 @@ module meth_params_module
   ! these flags are for interpreting the EXT_DIR BCs
   integer, parameter :: EXT_UNDEFINED = -1
   integer, parameter :: EXT_HSE = 1
-  integer, parameter :: EXT_INTERP = 2 
-  
+  integer, parameter :: EXT_INTERP = 2
+
   integer, save :: xl_ext, yl_ext, zl_ext, xr_ext, yr_ext, zr_ext
 
   ! Create versions of these variables on the GPU
@@ -88,11 +73,6 @@ module meth_params_module
   !$acc create(QRHO, QU, QV, QW, QPRES, QREINT, QTEMP) &
   !$acc create(QGAMC, QGAME) &
   !$acc create(NQ) &
-#ifdef RADIATION
-  !$acc create(QGAMCG, QCG, QLAMS) &
-  !$acc create(QRADVAR, QRAD, QRADHI, QPTOT, QREITOT) &
-  !$acc create(fspace_type, do_inelastic_scattering, comoving) &
-#endif
   !$acc create(QFA, QFS, QFX) &
   !$acc create(xl_ext, yl_ext, zl_ext, xr_ext, yr_ext, zr_ext)
 
@@ -369,48 +349,9 @@ contains
     call pp%query("react_rho_min", react_rho_min)
     call pp%query("react_rho_max", react_rho_max)
     call pp%query("disable_shock_burning", disable_shock_burning)
-#ifdef DIFFUSION
-    call pp%query("diffuse_cutoff_density", diffuse_cutoff_density)
-#endif
-#ifdef DIFFUSION
-    call pp%query("diffuse_cond_scale_fac", diffuse_cond_scale_fac)
-#endif
     call pp%query("do_grav", do_grav)
     call pp%query("grav_source_type", grav_source_type)
     call pp%query("do_rotation", do_rotation)
-#ifdef ROTATION
-    call pp%query("rotational_period", rot_period)
-#endif
-#ifdef ROTATION
-    call pp%query("rotational_dPdt", rot_period_dot)
-#endif
-#ifdef ROTATION
-    call pp%query("rotation_include_centrifugal", rotation_include_centrifugal)
-#endif
-#ifdef ROTATION
-    call pp%query("rotation_include_coriolis", rotation_include_coriolis)
-#endif
-#ifdef ROTATION
-    call pp%query("rotation_include_domegadt", rotation_include_domegadt)
-#endif
-#ifdef ROTATION
-    call pp%query("state_in_rotating_frame", state_in_rotating_frame)
-#endif
-#ifdef ROTATION
-    call pp%query("rot_source_type", rot_source_type)
-#endif
-#ifdef ROTATION
-    call pp%query("implicit_rotation_update", implicit_rotation_update)
-#endif
-#ifdef ROTATION
-    call pp%query("rot_axis", rot_axis)
-#endif
-#ifdef POINTMASS
-    call pp%query("point_mass", point_mass)
-#endif
-#ifdef POINTMASS
-    call pp%query("point_mass_fix_solution", point_mass_fix_solution)
-#endif
     call pp%query("do_acc", do_acc)
     call pp%query("grown_factor", grown_factor)
     call pp%query("track_grid_losses", track_grid_losses)
@@ -449,7 +390,7 @@ contains
     select case (xl_ext_bc_type)
     case ("hse", "HSE")
        xl_ext = EXT_HSE
-    case ("interp", "INTERP")       
+    case ("interp", "INTERP")
        xl_ext = EXT_INTERP
     case default
        xl_ext = EXT_UNDEFINED
@@ -458,7 +399,7 @@ contains
     select case (yl_ext_bc_type)
     case ("hse", "HSE")
        yl_ext = EXT_HSE
-    case ("interp", "INTERP")       
+    case ("interp", "INTERP")
        yl_ext = EXT_INTERP
     case default
        yl_ext = EXT_UNDEFINED
@@ -467,7 +408,7 @@ contains
     select case (zl_ext_bc_type)
     case ("hse", "HSE")
        zl_ext = EXT_HSE
-    case ("interp", "INTERP")       
+    case ("interp", "INTERP")
        zl_ext = EXT_INTERP
     case default
        zl_ext = EXT_UNDEFINED
@@ -476,7 +417,7 @@ contains
     select case (xr_ext_bc_type)
     case ("hse", "HSE")
        xr_ext = EXT_HSE
-    case ("interp", "INTERP")       
+    case ("interp", "INTERP")
        xr_ext = EXT_INTERP
     case default
        xr_ext = EXT_UNDEFINED
@@ -485,7 +426,7 @@ contains
     select case (yr_ext_bc_type)
     case ("hse", "HSE")
        yr_ext = EXT_HSE
-    case ("interp", "INTERP")       
+    case ("interp", "INTERP")
        yr_ext = EXT_INTERP
     case default
        yr_ext = EXT_UNDEFINED
@@ -494,7 +435,7 @@ contains
     select case (zr_ext_bc_type)
     case ("hse", "HSE")
        zr_ext = EXT_HSE
-    case ("interp", "INTERP")       
+    case ("interp", "INTERP")
        zr_ext = EXT_INTERP
     case default
        zr_ext = EXT_UNDEFINED
@@ -516,69 +457,7 @@ contains
     deallocate(zl_ext_bc_type)
     deallocate(zr_ext_bc_type)
 
-
-    
   end subroutine ca_finalize_meth_params
 
-
-#ifdef RADIATION
-  subroutine ca_init_radhydro_pars(fsp_type_in, do_is_in, com_in,fppt) &
-       bind(C, name="ca_init_radhydro_pars")
-
-    use rad_params_module, only : ngroups
-
-    use amrex_fort_module, only : rt => amrex_real
-
-    implicit none
-
-    integer, intent(in) :: fsp_type_in, do_is_in, com_in
-    real(rt)        , intent(in) :: fppt
-
-    QPTOT  = QVAR+1
-    QREITOT = QVAR+2
-    QRAD = QVAR+3
-    QRADHI = qrad+ngroups-1
-  
-    QRADVAR = QVAR + 2 + ngroups
-  
-    ! update NQ -- it was already initialized in the hydro
-    NQ = QRADVAR
-
-    ! NQAUX already knows about the hydro and the non-group-dependent
-    ! rad variables, update it here
-    NQAUX = NQAUX + ngroups
-
-    if (ngroups .eq. 1) then
-       fspace_type = 1
-    else
-       fspace_type = fsp_type_in
-    end if
-    
-    if (fsp_type_in .ne. 1 .and. fsp_type_in .ne. 2) then
-       call bl_error("Unknown fspace_type", fspace_type)
-    end if
-    
-    do_inelastic_scattering = (do_is_in .ne. 0)
-    
-    if (com_in .eq. 1) then
-       comoving = .true.
-    else if (com_in .eq. 0) then
-       comoving = .false.
-    else
-       call bl_error("Wrong value for comoving", fspace_type)
-    end if
-    
-    flatten_pp_threshold = fppt
-    
-    !$acc update &
-    !$acc device(NQ,NQAUX) &
-    !$acc device(QRADVAR, QRAD, QRADHI, QPTOT, QREITOT) &
-    !$acc device(fspace_type) &
-    !$acc device(do_inelastic_scattering) &
-    !$acc device(comoving)
-    !$acc device(flatten_pp_threshold = -1.e0_rt)
-
-  end subroutine ca_init_radhydro_pars
-#endif
 
 end module meth_params_module

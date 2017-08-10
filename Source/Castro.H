@@ -21,10 +21,6 @@ using std::ostream;
 
 enum StateType { State_Type = 0,
 
-#ifdef ROTATION
-		 PhiRot_Type,
-		 Rotation_Type,
-#endif
 		 Source_Type
 };
 
@@ -34,9 +30,6 @@ enum sources { ext_src = 0,
 
 #ifdef GRAVITY
                grav_src,
-#endif
-#ifdef ROTATION
-               rot_src,
 #endif
 	       num_src };
 
@@ -331,26 +324,9 @@ public:
 
     static int numGrow();
 
-#ifdef ROTATION
-    void construct_old_rotation(int amr_iteration, int amr_ncycle, amrex::Real time);
-
-    void construct_new_rotation(int amr_iteration, int amr_ncycle, amrex::Real time);
-
-    void construct_old_rotation_source(amrex::Real time, amrex::Real dt);
-
-    void construct_new_rotation_source(amrex::Real time, amrex::Real dt);
-
-    void fill_rotation_field(amrex::MultiFab& phi, amrex::MultiFab& rot, amrex::MultiFab& state, amrex::Real time);
-#endif
-
     void reset_internal_energy (amrex::MultiFab& State);
 
     void computeTemp (amrex::MultiFab& State);
-
-#ifdef ROTATION
-  void add_rotation_to_source(amrex::MultiFab& ext_src, amrex::MultiFab& RotationTerm, amrex::Real old_time);
-  void time_center_rotation(amrex::MultiFab& S_new, amrex::MultiFab& OldRotationTerm, amrex::Real cur_time, amrex::Real dt);
-#endif
 
     amrex::Real volWgtSum (const std::string& name, amrex::Real time, bool local=false, bool finemask=true);
 
@@ -386,9 +362,6 @@ public:
 
     static int       NUM_STATE;
     static int       Density, Xmom, Ymom, Zmom, Eden, Eint, Temp;
-#ifdef SHOCK_VAR
-    static int       Shock;
-#endif
     static int       QVAR;
     static int       QRADVAR;
     static int       NQAUX;
