@@ -345,57 +345,25 @@ contains
              courmy = max( courmy, coury )
              courmz = max( courmz, courz )
 
-             if (do_ctu == 1) then
-                ! CTU integration constraint
+            ! method-of-lines constraint
+            courtmp = courx
+            if (dim >= 2) then
+               courtmp = courtmp + coury
+            endif
+            if (dim == 3) then
+               courtmp = courtmp + courz
+            endif
 
-                if (courx .gt. ONE) then
-                   print *,'   '
-                   call bl_warning("Warning:: advection_util_nd.F90 :: CFL violation in compute_cfl")
-                   print *,'>>> ... (u+c) * dt / dx > 1 ', courx
-                   print *,'>>> ... at cell (i,j,k)   : ', i, j, k
-                   print *,'>>> ... u, c                ', q(i,j,k,QU), qaux(i,j,k,QC)
-                   print *,'>>> ... density             ', q(i,j,k,QRHO)
-                end if
+            ! note: it might not be 1 for all RK integrators
+            if (courtmp > ONE) then
+               print *,'   '
+               call bl_warning("Warning:: advection_util_nd.F90 :: CFL violation in compute_cfl")
+               print *,'>>> ... at cell (i,j,k)   : ', i, j, k
+               print *,'>>> ... u,v,w, c            ', q(i,j,k,QU), q(i,j,k,QV), q(i,j,k,QW), qaux(i,j,k,QC)
+               print *,'>>> ... density             ', q(i,j,k,QRHO)
+            endif
 
-                if (coury .gt. ONE) then
-                   print *,'   '
-                   call bl_warning("Warning:: advection_util_nd.F90 :: CFL violation in compute_cfl")
-                   print *,'>>> ... (v+c) * dt / dx > 1 ', coury
-                   print *,'>>> ... at cell (i,j,k)   : ', i,j,k
-                   print *,'>>> ... v, c                ', q(i,j,k,QV), qaux(i,j,k,QC)
-                   print *,'>>> ... density             ', q(i,j,k,QRHO)
-                end if
-
-                if (courz .gt. ONE) then
-                   print *,'   '
-                   call bl_warning("Warning:: advection_util_nd.F90 :: CFL violation in compute_cfl")
-                   print *,'>>> ... (w+c) * dt / dx > 1 ', courz
-                   print *,'>>> ... at cell (i,j,k)   : ', i, j, k
-                   print *,'>>> ... w, c                ', q(i,j,k,QW), qaux(i,j,k,QC)
-                   print *,'>>> ... density             ', q(i,j,k,QRHO)
-                end if
-             else
-
-                ! method-of-lines constraint
-                courtmp = courx
-                if (dim >= 2) then
-                   courtmp = courtmp + coury
-                endif
-                if (dim == 3) then
-                   courtmp = courtmp + courz
-                endif
-
-                ! note: it might not be 1 for all RK integrators
-                if (courtmp > ONE) then
-                   print *,'   '
-                   call bl_warning("Warning:: advection_util_nd.F90 :: CFL violation in compute_cfl")
-                   print *,'>>> ... at cell (i,j,k)   : ', i, j, k
-                   print *,'>>> ... u,v,w, c            ', q(i,j,k,QU), q(i,j,k,QV), q(i,j,k,QW), qaux(i,j,k,QC)
-                   print *,'>>> ... density             ', q(i,j,k,QRHO)
-                endif
-
-                courno = max(courno, courtmp)
-             endif
+            courno = max(courno, courtmp)
           enddo
        enddo
     enddo
@@ -538,7 +506,7 @@ contains
              call eos(eos_input_re, eos_state)
 
              q(i,j,k,QTEMP)  = eos_state % T
-             q(i,j,k,QREINT) = eos_state % e * q(i,j,k,QRHO)
+             q(i,j,k,QREINT) = q(i,j,k,QREINT) * q(i,j,k,QRHO)!eos_state % e * q(i,j,k,QRHO)
              q(i,j,k,QPRES)  = eos_state % p
              q(i,j,k,QGAME)  = q(i,j,k,QPRES) / q(i,j,k,QREINT) + ONE
 
@@ -603,7 +571,6 @@ contains
 
     integer          :: i, j, k, g
     integer          :: n, iq, ipassive
-    real(rt)         :: kineng, rhoinv
     real(rt)         :: vel(3)
     real(rt)         :: gamma_down(9)
     real(rt)         :: pmin, pmax, ssq, p, fmin, fmax, sq, h, W2
@@ -632,8 +599,8 @@ contains
               ! calculate gamma_down. Assume for now that it's diagonal.
 
               gamma_down(:) = 0.0d0
-              gamma_down(1) = 1.0d0
-              gamma_down(5) = 1.0d0
+              gamma_down(1) = 1.0d0 / gamma_up(i,j,k,1)
+              gamma_down(5) = 1.0d0 / gamma_up(i,j,k,5)
               gamma_down(9) = 1.0d0 / gamma_up(i,j,k,9)
 
               ssq = uin(i,j,k,UMX)**2 * gamma_up(i,j,k,1) + &
@@ -682,49 +649,37 @@ contains
                   sq = uin(i,j,k,UEDEN) + p + uin(i,j,k,URHO)
               end if
 
-              h = 1.0d0 + gamma * (sq - p * (uin(i,j,k,UEDEN) + p + uin(i,j,k,URHO)) / sq - uin(i,j,k,URHO)) / uin(i,j,k,URHO)
+              h = 1.0d0 + gamma * &
+                (sq - p * (uin(i,j,k,UEDEN) + p + uin(i,j,k,URHO)) / sq - uin(i,j,k,URHO)) / uin(i,j,k,URHO)
               W2 = 1.0d0 + ssq / (uin(i,j,k,URHO) * h)**2
 
-              !write(*,*) "p, sq", p(i,j), sq
+              !write(*,*) "p, sq, eden", p, sq, uin(i,j,k,UEDEN)
+              !return
 
-              q(i,j,k,QRHO) = uin(i,j,k,URHO) * sq / (uin(i,j,k,UEDEN) + p + uin(i,j,k,URHO))
+              q(i,j,k,QRHO) = uin(i,j,k,URHO) * sq / (uin(i,j,k,UEDEN) + &
+                p + uin(i,j,k,URHO))
+
               vel(1) = (gamma_up(i,j,k,1) * uin(i,j,k,UMX) + &
-                  gamma_up(i,j,k,2) * uin(i,j,k,UMY) + gamma_up(i,j,k,3) * uin(i,j,k,UMZ)) /&
+                  gamma_up(i,j,k,2) * uin(i,j,k,UMY) + &
+                  gamma_up(i,j,k,3) * uin(i,j,k,UMZ)) /&
                   (W2 * h * q(i,j,k,QRHO))
               vel(2) = (gamma_up(i,j,k,2) * uin(i,j,k,UMX) + &
-                  gamma_up(i,j,k,5) * uin(i,j,k,UMY) + gamma_up(i,j,k,6) * uin(i,j,k,UMZ)) /&
+                  gamma_up(i,j,k,5) * uin(i,j,k,UMY) + &
+                    gamma_up(i,j,k,6) * uin(i,j,k,UMZ)) /&
                   (W2 * h * q(i,j,k,QRHO))
               vel(3) = (gamma_up(i,j,k,3) * uin(i,j,k,UMX) + &
-                  gamma_up(i,j,k,6) * uin(i,j,k,UMY) + gamma_up(i,j,k,9) * uin(i,j,k,UMZ)) /&
+                  gamma_up(i,j,k,6) * uin(i,j,k,UMY) + &
+                    gamma_up(i,j,k,9) * uin(i,j,k,UMZ)) /&
                   (W2 * h * q(i,j,k,QRHO))
 
-              q(i,j,k,QU) = gamma_down(1) * vel(1) + gamma_down(2) * vel(2) + gamma_down(3) * vel(3)
-              q(i,j,k,QV) = gamma_down(2) * vel(1) + gamma_down(5) * vel(2) + gamma_down(6) * vel(3)
-              q(i,j,k,QW) = gamma_down(3) * vel(1) + gamma_down(6) * vel(2) + gamma_down(9) * vel(3)
-              q(i,j,k,QREINT) = q(i,j,k,QRHO) * (h - 1.0d0) / gamma
-
-             !q(i,j,k,QRHO) = uin(i,j,k,URHO)
-             rhoinv = ONE/q(i,j,k,QRHO)
-
-             !vel = uin(i,j,k,UMX:UMZ) * rhoinv
-
-             !q(i,j,k,QU:QW) = vel
-
-             ! Get the internal energy, which we'll use for
-             ! determining the pressure.  We use a dual energy
-             ! formalism. If (E - K) < eta1 and eta1 is suitably
-             ! small, then we risk serious numerical truncation error
-             ! in the internal energy.  Therefore we'll use the result
-             ! of the separately updated internal energy equation.
-             ! Otherwise, we'll set e = E - K.
-
-             kineng = HALF * q(i,j,k,QRHO) * (q(i,j,k,QU)**2 + q(i,j,k,QV)**2 + q(i,j,k,QW)**2)
-
-             !if ( (uin(i,j,k,UEDEN) - kineng) / uin(i,j,k,UEDEN) .gt. dual_energy_eta1) then
-                !q(i,j,k,QREINT) = (uin(i,j,k,UEDEN) - kineng) * rhoinv
-             !else
-            !    q(i,j,k,QREINT) = uin(i,j,k,UEINT) * rhoinv
-             !endif
+              q(i,j,k,QU) = gamma_down(1) * vel(1) + &
+                gamma_down(2) * vel(2) + gamma_down(3) * vel(3)
+              q(i,j,k,QV) = gamma_down(2) * vel(1) + &
+                gamma_down(5) * vel(2) + gamma_down(6) * vel(3)
+              q(i,j,k,QW) = gamma_down(3) * vel(1) + &
+                gamma_down(6) * vel(2) + gamma_down(9) * vel(3)
+              q(i,j,k,QREINT) = q(i,j,k,QRHO) * h - p
+              !h - 1.0d0 - p / q(i,j,k,QRHO) !q(i,j,k,QRHO) * (h - 1.0d0) / gamma
 
              ! If we're advecting in the rotating reference frame,
              ! then subtract off the rotation component here.
@@ -737,6 +692,8 @@ contains
 
              q(i,j,k,QTEMP) = uin(i,j,k,UTEMP)
 
+             q(i,j,k,QPRES)  = p
+
           enddo
        enddo
     enddo
@@ -748,7 +705,7 @@ contains
        do k = lo(3),hi(3)
           do j = lo(2),hi(2)
              do i = lo(1),hi(1)
-                q(i,j,k,iq) = uin(i,j,k,n)/q(i,j,k,QRHO)
+                q(i,j,k,iq) = uin(i,j,k,n)/uin(i,j,k,URHO)
              enddo
           enddo
        enddo
@@ -768,8 +725,8 @@ contains
              call eos(eos_input_re, eos_state)
 
              q(i,j,k,QTEMP)  = eos_state % T
-             q(i,j,k,QREINT) = eos_state % e * q(i,j,k,QRHO)
-             q(i,j,k,QPRES)  = eos_state % p
+             q(i,j,k,QREINT) = q(i,j,k,QREINT) * q(i,j,k,QRHO) !eos_state % e * q(i,j,k,QRHO)
+             !q(i,j,k,QPRES)  = eos_state % p
              q(i,j,k,QGAME)  = q(i,j,k,QPRES) / q(i,j,k,QREINT) + ONE
 
              qaux(i,j,k,QDPDR)  = eos_state % dpdr_e
@@ -915,11 +872,11 @@ contains
                 2.0d0 * q(i,j,k,QV) * q(i,j,k,QW) * gamma_up(i,j,k,6) + &
                 q(i,j,k,QW)**2 * gamma_up(i,j,k,9)
 
-            W = 1.0d0 / sqrt(1.0d0 - W)
+             W = 1.0d0 / sqrt(1.0d0 - W)
 
              rhoinv = ONE / q(i,j,k,QRHO)
 
-             srcQ(i,j,k,QRHO  ) = src(i,j,k,URHO)
+             srcQ(i,j,k,QRHO  ) = q(i,j,k,QRHO)
              srcQ(i,j,k,QU    ) = (src(i,j,k,UMX) - q(i,j,k,QU) * srcQ(i,j,k,QRHO) * W**2) * rhoinv
              srcQ(i,j,k,QV    ) = (src(i,j,k,UMY) - q(i,j,k,QV) * srcQ(i,j,k,QRHO) * W**2) * rhoinv
              srcQ(i,j,k,QW    ) = (src(i,j,k,UMZ) - q(i,j,k,QW) * srcQ(i,j,k,QRHO) * W**2) * rhoinv

@@ -16,10 +16,6 @@ contains
     use prob_params_module, only: center
     use bl_constants_module
     use castro_util_module, only: position
-#ifdef HYBRID_MOMENTUM
-    use meth_params_module, only: UMR, UMP, state_in_rotating_frame
-    use hybrid_advection_module, only: add_hybrid_momentum_source
-#endif
 
     use amrex_fort_module, only : rt => amrex_real
     implicit none
@@ -71,14 +67,6 @@ contains
              src(UMX:UMZ) = Sr
 
              snew(UMX:UMZ) = snew(UMX:UMZ) + dt * src(UMX:UMZ)
-
-#ifdef HYBRID_MOMENTUM
-             if (state_in_rotating_frame == 1) then
-                call add_hybrid_momentum_source(loc, src(UMR:UMP), Sr)
-
-                snew(UMR:UMP) = snew(UMR:UMP) + dt * src(UMR:UMP)
-             endif
-#endif
 
              ! Kinetic energy source: this is v . the momentum source.
              ! We don't apply in the case of the conservative energy
@@ -155,11 +143,6 @@ contains
     use rotation_module, only: rotational_acceleration
     use rotation_frequency_module, only: get_omega, get_domegadt
     use castro_util_module, only: position
-#ifdef HYBRID_MOMENTUM
-    use meth_params_module, only : UMR, UMP
-    use hybrid_advection_module, only: add_hybrid_momentum_source
-#endif
-
     use amrex_fort_module, only : rt => amrex_real
     implicit none
 
@@ -372,14 +355,6 @@ contains
              src(UMX:UMZ) = Srcorr
 
              snew(UMX:UMZ) = snew(UMX:UMZ) + dt * src(UMX:UMZ)
-
-#ifdef HYBRID_MOMENTUM
-             if (state_in_rotating_frame == 1) then
-                call add_hybrid_momentum_source(loc, src(UMR:UMP), Srcorr)
-
-                snew(UMR:UMP) = snew(UMR:UMP) + dt * src(UMR:UMP)
-             endif
-#endif
 
              ! Correct energy
 

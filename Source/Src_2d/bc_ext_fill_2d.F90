@@ -74,7 +74,7 @@ contains
              if (n == URHO) then
 
                 do i = adv_l1, adv_h1
-                   
+
                    ! we are integrating along a column at constant i.
                    ! Make sure that our starting state is well-defined
                    dens_above = adv(i,domlo(2),URHO)
@@ -206,7 +206,7 @@ contains
                       eos_state%rho = dens_zone
                       eos_state%T = temp_zone
                       eos_state%xn(:) = X_zone
-                      
+
                       call eos(eos_input_rt, eos_state)
 
                       pres_zone = eos_state%p

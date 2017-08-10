@@ -2,9 +2,9 @@
 
    problem = 3
 
-   rho1 = 1.0e-3
-   rho2 = 2.0e-3
-   pressure = 2.5e-3
+   rho1 = 1.0e-1
+   rho2 = 2.0e-1
+   pressure = 2.5e-1
 
    bulk_velocity = 0.0
 

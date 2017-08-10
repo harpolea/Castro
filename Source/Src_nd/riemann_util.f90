@@ -394,8 +394,8 @@ contains
     W = 1.0d0 / sqrt(1.0d0 - sum(q(QU:QW)**2))
 
     U(URHO) = q(QRHO) * W
-    rhoh = W * (q(QRHO) + gamma * q(QREINT))
-    p = (gamma - 1.0d0) * q(QREINT)
+    rhoh = gamma * q(QREINT) / q(QRHO) + (1.0d0 - gamma) * q(QRHO) !W * (q(QRHO) + gamma * q(QREINT))
+    p = (gamma - 1.0d0) * (q(QREINT) / q(QRHO) - q(QRHO))
 
     ! since we advect all 3 velocity components regardless of dimension, this
     ! will be general
@@ -403,8 +403,8 @@ contains
     U(UMY)  = rhoh * q(QV) * W**2
     U(UMZ)  = rhoh * q(QW) * W**2
 
-    U(UEDEN) = rhoh * W**2 - p - q(QRHO) * W !q(QREINT) + HALF*q(QRHO)*(q(QU)**2 + q(QV)**2 + q(QW)**2)
-    U(UEINT) = q(QREINT) * W**2
+    U(UEDEN) = rhoh * W**2 - p - U(URHO) !q(QREINT) + HALF*q(QRHO)*(q(QU)**2 + q(QV)**2 + q(QW)**2)
+    U(UEINT) = q(QREINT)
 
     ! we don't care about T here, but initialize it to make NaN
     ! checking happy
@@ -630,7 +630,7 @@ contains
 end subroutine gr_compute_flux
 
 subroutine f_of_p(f, p, U, gamma, gamma_up)
-    use meth_params_module, only: NVAR, URHO, UMX, UMY, UMZ, UEDEN, UEINT
+    use meth_params_module, only: NVAR, URHO, UMX, UMY, UMZ, UEDEN
     implicit none
 
     double precision, intent(in)  :: U(NVAR), p, gamma, gamma_up(9)

@@ -81,9 +81,9 @@ contains
 
 
 
-  subroutine enforce_consistent_e(lo,hi,state,s_lo,s_hi)
+  subroutine enforce_consistent_e(lo,hi,state,q,s_lo,s_hi)
 
-    use meth_params_module, only: NVAR, URHO, UMX, UMY, UMZ, UEDEN, UEINT
+    use meth_params_module, only: NVAR, URHO, UEDEN, UEINT, NQ, QU, QV, QW, QPRES, QRHO, QREINT
     use bl_constants_module, only: HALF, ONE
     use amrex_fort_module, only: rt => amrex_real
 
@@ -92,10 +92,18 @@ contains
     integer,  intent(in   ) :: lo(3), hi(3)
     integer,  intent(in   ) :: s_lo(3), s_hi(3)
     real(rt), intent(inout) :: state(s_lo(1):s_hi(1),s_lo(2):s_hi(2),s_lo(3):s_hi(3),NVAR)
+    real(rt), intent(in   ) :: q(s_lo(1):s_hi(1),s_lo(2):s_hi(2),s_lo(3):s_hi(3),NQ)
+
+    real(rt) :: gamma_up(9)
 
     ! Local variables
     integer  :: i,j,k
-    real(rt) :: u, v, w, rhoInv
+    real(rt) :: u, v, w, rhoh, gamma = 5.0d0 / 3.0d0, W2, p
+
+    gamma_up(:) = 0.0d0
+    gamma_up(1) = 1.0d0
+    gamma_up(5) = 1.0d0
+    gamma_up(9) = 1.0d0
 
     !
     ! Enforces (rho E) = (rho e) + 1/2 rho (u^2 + v^2 + w^2)
@@ -104,13 +112,24 @@ contains
        do j = lo(2), hi(2)
           do i = lo(1), hi(1)
 
-             rhoInv = ONE / state(i,j,k,URHO)
-             u = state(i,j,k,UMX) * rhoInv
-             v = state(i,j,k,UMY) * rhoInv
-             w = state(i,j,k,UMZ) * rhoInv
+             u = q(i,j,k,QU)
+             v = q(i,j,k,QV)
+             w = q(i,j,k,QW)
 
-             state(i,j,k,UEDEN) = state(i,j,k,UEINT) + &
-                  HALF * state(i,j,k,URHO) * (u*u + v*v + w*w)
+             W2 = u**2 * gamma_up(1) + &
+              2.0d0 * u * v * gamma_up(2) + &
+              2.0d0 * u * w * gamma_up(3) + &
+              v**2 * gamma_up(5) + &
+              2.0d0 * v * w * gamma_up(6) + &
+              w**2 * gamma_up(9)
+             W2 = 1.0d0 / (1.0d0 - W2)
+
+             rhoh = gamma * state(i,j,k,UEINT) / q(i,j,k,QRHO) + (1.0d0 - gamma) * q(i,j,k,QRHO)
+             p = (gamma - 1.0d0) * (state(i,j,k,UEINT) / q(i,j,k,QRHO) - q(i,j,k,QRHO))
+
+             state(i,j,k,UEDEN) = rhoh * W2 - p - state(i,j,k,URHO)
+             !state(i,j,k,UEDEN) = state(i,j,k,UEINT) + &
+                  !HALF * state(i,j,k,URHO) * (u*u + v*v + w*w)
 
           end do
        end do
@@ -120,14 +139,14 @@ contains
 
 
 
-  subroutine reset_internal_e(lo,hi,u,u_lo,u_hi,verbose)
+  subroutine reset_internal_e(lo,hi,u,u_lo,u_hi,q,verbose)
 
     use eos_module, only: eos
     use eos_type_module, only: eos_t, eos_input_rt
     use network, only: nspec, naux
     use meth_params_module, only : NVAR, URHO, UMX, UMY, UMZ, UEDEN, UEINT, UFS, UFX, &
          UTEMP, small_temp, allow_negative_energy, allow_small_energy, &
-         dual_energy_eta2, dual_energy_update_E_from_e
+         dual_energy_eta2, dual_energy_update_E_from_e, NQ, QRHO, QU, QV, QW
     use bl_constants_module, only: ZERO, HALF, ONE
     use amrex_fort_module, only : rt => amrex_real
 
@@ -136,10 +155,12 @@ contains
     integer, intent(in) :: lo(3), hi(3), verbose
     integer, intent(in) :: u_lo(3), u_hi(3)
     real(rt), intent(inout) :: u(u_lo(1):u_hi(1),u_lo(2):u_hi(2),u_lo(3):u_hi(3),NVAR)
+    real(rt), intent(in   ) :: q(u_lo(1):u_hi(1),u_lo(2):u_hi(2),u_lo(3):u_hi(3),NQ)
 
     ! Local variables
     integer  :: i,j,k
-    real(rt) :: Up, Vp, Wp, ke, rho_eint, eden, small_e, eint_new, rhoInv
+    real(rt) :: up, v, w, ke, rho_eint, eden, small_e, eint_new, rhoInv
+    real(rt) :: gamma_up(9), rhoh, gamma = 5.0d0 / 3.0d0, W2, p
 
     type (eos_t) :: eos_state
 
@@ -154,6 +175,10 @@ contains
     ! allow_negative_energy .eq. 0 since a negative
     ! energy is of course smaller than the smallest
     ! allowed energy.
+    gamma_up(:) = 0.0d0
+    gamma_up(1) = 1.0d0
+    gamma_up(5) = 1.0d0
+    gamma_up(9) = 1.0d0
 
     if (allow_small_energy .eq. 0) then
 
@@ -161,14 +186,25 @@ contains
           do j = lo(2), hi(2)
              do i = lo(1), hi(1)
 
-                rhoInv = ONE / u(i,j,k,URHO)
-                Up = u(i,j,k,UMX) * rhoInv
-                Vp = u(i,j,k,UMY) * rhoInv
-                Wp = u(i,j,k,UMZ) * rhoInv
-                ke = HALF * (Up**2 + Vp**2 + Wp**2)
-                eden = u(i,j,k,UEDEN) * rhoInv
+                 up = q(i,j,k,QU)
+                 v = q(i,j,k,QV)
+                 w = q(i,j,k,QW)
 
-                eos_state % rho = u(i,j,k,URHO)
+                 W2 = up**2 * gamma_up(1) + &
+                  2.0d0 * up * v * gamma_up(2) + &
+                  2.0d0 * up * w * gamma_up(3) + &
+                  v**2 * gamma_up(5) + &
+                  2.0d0 * v * w * gamma_up(6) + &
+                  w**2 * gamma_up(9)
+                 W2 = 1.0d0 / (1.0d0 - W2)
+
+                 rhoh = gamma * u(i,j,k,UEINT) / q(i,j,k,QRHO) + (1.0d0 - gamma) * q(i,j,k,QRHO)
+                 p = (gamma - 1.0d0) * (u(i,j,k,UEINT) / q(i,j,k,QRHO) - q(i,j,k,QRHO))
+
+                rhoInv = ONE / q(i,j,k,QRHO)
+                eden = u(i,j,k,UEDEN) + u(i,j,k,URHO)
+
+                eos_state % rho = q(i,j,k,QRHO)
                 eos_state % T   = small_temp
                 eos_state % xn  = u(i,j,k,UFS:UFS+nspec-1) * rhoInv
                 eos_state % aux = u(i,j,k,UFX:UFX+naux-1) * rhoInv
@@ -187,15 +223,15 @@ contains
 
                       call eos(eos_input_rt, eos_state)
 
-                      u(i,j,k,UEINT) = u(i,j,k,URHO) * eos_state % e
+                      u(i,j,k,UEINT) = q(i,j,k,QRHO) * eos_state % e
 
                    endif
 
-                   u(i,j,k,UEDEN) = u(i,j,k,UEINT) + u(i,j,k,URHO) * ke
+                   u(i,j,k,UEDEN) = rhoh * W2 - p - u(i,j,k,URHO)
 
                 else
 
-                   rho_eint = u(i,j,k,UEDEN) - u(i,j,k,URHO) * ke
+                   rho_eint = q(i,j,k,QRHO) * (rhoh  - p)
 
                    ! Reset (e from e) if it's greater than eta * E.
 
@@ -212,10 +248,10 @@ contains
                       call eos(eos_input_rt, eos_state)
 
                       if (dual_energy_update_E_from_e == 1) then
-                         u(i,j,k,UEDEN) = u(i,j,k,UEDEN) + (u(i,j,k,URHO) * eos_state % e - u(i,j,k,UEINT))
+                         u(i,j,k,UEDEN) = rhoh * W2 - p - u(i,j,k,URHO)
                       endif
 
-                      u(i,j,k,UEINT) = u(i,j,k,URHO) * eos_state % e
+                      u(i,j,k,UEINT) = q(i,j,k,QRHO) * eos_state % e
 
                    endif
 
@@ -232,31 +268,32 @@ contains
              do i = lo(1), hi(1)
 
                 rhoInv = ONE/u(i,j,k,URHO)
-                Up = u(i,j,k,UMX) * rhoInv
-                Vp = u(i,j,k,UMY) * rhoInv
-                Wp = u(i,j,k,UMZ) * rhoInv
-                ke = HALF * (Up**2 + Vp**2 + Wp**2)
+                up = q(i,j,k,QU)
+                v = q(i,j,k,QV)
+                w = q(i,j,k,QW)
+                rhoh = gamma * u(i,j,k,UEINT) / q(i,j,k,QRHO) + (1.0d0 - gamma) * q(i,j,k,QRHO)
+                p = (gamma - 1.0d0) * (u(i,j,k,UEINT) / q(i,j,k,QRHO) - q(i,j,k,QRHO))
 
                 if (u(i,j,k,UEDEN) < ZERO) then
 
                    if (u(i,j,k,UEINT) < ZERO) then
 
-                      eos_state % rho   = u(i,j,k,URHO)
+                      eos_state % rho   = q(i,j,k,QRHO)
                       eos_state % T     = small_temp
                       eos_state % xn(:) = u(i,j,k,UFS:UFS+nspec-1) * rhoInv
                       eos_state % aux(1:naux) = u(i,j,k,UFX:UFX+naux-1) * rhoInv
 
                       call eos(eos_input_rt, eos_state)
 
-                      u(i,j,k,UEINT) = u(i,j,k,URHO) * eos_state % e
+                      u(i,j,k,UEINT) = q(i,j,k,QRHO) * eos_state % e
 
                    endif
 
-                   u(i,j,k,UEDEN) = u(i,j,k,UEINT) + u(i,j,k,URHO) * ke
+                   u(i,j,k,UEDEN) = rhoh * W2 - p - u(i,j,k,URHO)
 
                 else
 
-                   rho_eint = u(i,j,k,UEDEN) - u(i,j,k,URHO) * ke
+                   rho_eint = q(i,j,k,QRHO) * (rhoh  - p)
 
                    ! Reset (e from e) if it's greater than eta * E.
                    if (rho_eint .gt. ZERO .and. rho_eint / u(i,j,k,UEDEN) .gt. dual_energy_eta2) then
@@ -266,12 +303,12 @@ contains
                       ! If (e from E) < 0 or (e from E) < .0001*E but (e from e) > 0.
                    else if (u(i,j,k,UEINT) .gt. ZERO .and. dual_energy_update_E_from_e == 1) then
 
-                      u(i,j,k,UEDEN) = u(i,j,k,UEINT) + u(i,j,k,URHO) * ke
+                      u(i,j,k,UEDEN) = rhoh * W2 - p - u(i,j,k,URHO)
 
                       ! If not resetting and little e is negative ...
                    else if (u(i,j,k,UEINT) .le. ZERO) then
 
-                      eos_state % rho   = u(i,j,k,URHO)
+                      eos_state % rho   = q(i,j,k,QRHO)
                       eos_state % T     = small_temp
                       eos_state % xn(:) = u(i,j,k,UFS:UFS+nspec-1) * rhoInv
                       eos_state % aux(1:naux) = u(i,j,k,UFX:UFX+naux-1) * rhoInv
@@ -289,7 +326,7 @@ contains
                       end if
 
                       if (dual_energy_update_E_from_e == 1) then
-                         u(i,j,k,UEDEN) = u(i,j,k,UEDEN) + (u(i,j,k,URHO) * eint_new - u(i,j,k,UEINT))
+                         u(i,j,k,UEDEN) = rhoh * W2 - p - u(i,j,k,URHO)
                       endif
 
                       u(i,j,k,UEINT) = u(i,j,k,URHO) * eint_new
@@ -309,13 +346,10 @@ contains
           do j = lo(2), hi(2)
              do i = lo(1), hi(1)
 
-                rhoInv = ONE/u(i,j,k,URHO)
-                Up = u(i,j,k,UMX) * rhoInv
-                Vp = u(i,j,k,UMY) * rhoInv
-                Wp = u(i,j,k,UMZ) * rhoInv
-                ke = HALF * (Up**2 + Vp**2 + Wp**2)
+                rhoh = gamma * u(i,j,k,UEINT) / q(i,j,k,QRHO) + (1.0d0 - gamma) * q(i,j,k,QRHO)
+                p = (gamma - 1.0d0) * (u(i,j,k,UEINT) / q(i,j,k,QRHO) - q(i,j,k,QRHO))
 
-                u(i,j,k,UEINT) = u(i,j,k,UEDEN) - u(i,j,k,URHO) * ke
+                u(i,j,k,UEINT) = q(i,j,k,QRHO) * (rhoh  - p)
 
              enddo
           enddo
@@ -327,13 +361,13 @@ contains
 
 
 
-  subroutine compute_temp(lo,hi,state,s_lo,s_hi)
+  subroutine compute_temp(lo,hi,state,s_lo,s_hi,q)
 
     use network, only: nspec, naux
     use eos_module, only: eos
     use eos_type_module, only: eos_input_re, eos_t
     use meth_params_module, only: NVAR, URHO, UEDEN, UEINT, UTEMP, &
-         UFS, UFX, allow_negative_energy, dual_energy_update_E_from_e
+         UFS, UFX, allow_negative_energy, dual_energy_update_E_from_e, NQ, QU, QV, QW, QRHO, QREINT
     use bl_constants_module, only: ZERO, ONE
     use amrex_fort_module, only: rt => amrex_real
 
@@ -342,11 +376,17 @@ contains
     integer , intent(in   ) :: lo(3),hi(3)
     integer , intent(in   ) :: s_lo(3),s_hi(3)
     real(rt), intent(inout) :: state(s_lo(1):s_hi(1),s_lo(2):s_hi(2),s_lo(3):s_hi(3),NVAR)
+    real(rt), intent(in   ) :: q(s_lo(1):s_hi(1),s_lo(2):s_hi(2),s_lo(3):s_hi(3),NQ)
 
     integer  :: i,j,k
-    real(rt) :: rhoInv
+    real(rt) :: rhoInv, u, v, w, p, rhoh, W2, gamma = 5.0d0 / 3.0d0, gamma_up(9)
 
     type (eos_t) :: eos_state
+
+    gamma_up(:) = 0.0d0
+    gamma_up(1) = 1.0d0
+    gamma_up(5) = 1.0d0
+    gamma_up(9) = 1.0d0
 
     ! First check the inputs for validity.
 
@@ -378,11 +418,11 @@ contains
        do j = lo(2), hi(2)
           do i = lo(1), hi(1)
 
-             rhoInv = ONE / state(i,j,k,URHO)
+             rhoInv = ONE / q(i,j,k,QRHO)
 
-             eos_state % rho = state(i,j,k,URHO)
+             eos_state % rho = q(i,j,k,QRHO)
              eos_state % T   = state(i,j,k,UTEMP) ! Initial guess for the EOS
-             eos_state % e   = state(i,j,k,UEINT) * rhoInv
+             eos_state % e   = q(i,j,k,QREINT) * rhoInv
              eos_state % xn  = state(i,j,k,UFS:UFS+nspec-1) * rhoInv
              eos_state % aux = state(i,j,k,UFX:UFX+naux-1) * rhoInv
 
@@ -393,17 +433,32 @@ contains
              ! In case we've floored, or otherwise allowed the energy to change, update the energy accordingly.
 
              if (dual_energy_update_E_from_e == 1) then
-                state(i,j,k,UEDEN) = state(i,j,k,UEDEN) + (state(i,j,k,URHO) * eos_state % e - state(i,j,k,UEINT))
+
+                 u = q(i,j,k,QU)
+                 v = q(i,j,k,QV)
+                 w = q(i,j,k,QW)
+                 W2 = u**2 * gamma_up(1) + &
+                  2.0d0 * u * v * gamma_up(2) + &
+                  2.0d0 * u * w * gamma_up(3) + &
+                  v**2 * gamma_up(5) + &
+                  2.0d0 * v * w * gamma_up(6) + &
+                  w**2 * gamma_up(9)
+                 W2 = 1.0d0 / (1.0d0 - W2)
+
+                 rhoh = gamma * q(i,j,k,UEINT) / q(i,j,k,QRHO) + (1.0d0 - gamma) * q(i,j,k,QRHO)
+                 p = (gamma - 1.0d0) * (q(i,j,k,UEINT) / q(i,j,k,QRHO) - q(i,j,k,QRHO))
+
+                !state(i,j,k,UEDEN) = rhoh * W2 - p - state(i,j,k,URHO)
              endif
 
-             state(i,j,k,UEINT) = state(i,j,k,URHO) * eos_state % e
+             !state(i,j,k,UEINT) = q(i,j,k,QRHO) * eos_state % e
 
           enddo
        enddo
     enddo
 
   end subroutine compute_temp
-  
+
 
 
   subroutine check_initial_species(lo, hi, state, state_lo, state_hi)
@@ -484,7 +539,7 @@ contains
 
   ! Given 3D spatial coordinates, return the cell-centered zone indices closest to it.
   ! Optionally we can also be edge-centered in any of the directions.
-  
+
   function position_to_index(loc) result(index)
 
     use amrinfo_module, only: amr_level
@@ -497,15 +552,15 @@ contains
 
     index(1:dim)   = NINT(loc(1:dim) / dx_level(1:dim,amr_level))
     index(dim+1:3) = 0
-    
-  end function position_to_index  
+
+  end function position_to_index
 
 
 
   ! Given 3D indices (i,j,k) and a direction dir, return the
   ! area of the face perpendicular to direction d. We assume
   ! the coordinates perpendicular to the dir axies are edge-centered.
-  ! Note that Castro has no support for angular coordinates, so 
+  ! Note that Castro has no support for angular coordinates, so
   ! this function only provides Cartesian in 1D/2D/3D, Cylindrical (R-Z)
   ! in 2D, and Spherical in 1D.
 
@@ -635,7 +690,7 @@ contains
 
 
   ! Given 3D cell-centered indices (i,j,k), return the volume of the zone.
-  ! Note that Castro has no support for angular coordinates, so 
+  ! Note that Castro has no support for angular coordinates, so
   ! this function only provides Cartesian in 1D/2D/3D, Cylindrical (R-Z)
   ! in 2D, and Spherical in 1D.
 
@@ -777,7 +832,7 @@ contains
        do k = -1*dg(3),1*dg(3)
           do j = -1*dg(2),1*dg(2)
              do i = -1*dg(1),1*dg(1)
-                data(i,j,k) = data(i,j,k) - cen 
+                data(i,j,k) = data(i,j,k) - cen
              end do
           end do
        end do
@@ -870,7 +925,7 @@ contains
              radial_state(URHO,index) = radial_state(URHO,index) &
                                       + vol(i,j,k)*state(i,j,k,URHO)
              !
-             ! Store the radial component of the momentum in the 
+             ! Store the radial component of the momentum in the
              ! UMX, UMY and UMZ components for now.
              !
              x_mom = state(i,j,k,UMX)

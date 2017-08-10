@@ -142,7 +142,7 @@ subroutine ca_initdata(level,time,lo,hi,nscal, &
      delta_y = 0.05
   else if (problem .eq. 3) then
      sine_n = 4
-     w0 = 0.01d-1
+     w0 = 0.05
      delta_y = 0.025
   else if (problem .eq. 4) then
      sine_n = 2
@@ -241,7 +241,7 @@ subroutine ca_initdata(level,time,lo,hi,nscal, &
 
            rhoh = dens + pressure * gamma / (gamma - 1.0d0)
 
-           state(i,j,k,URHO) = dens
+           state(i,j,k,URHO) = dens * W
            state(i,j,k,UMX)  = rhoh * W**2 * velx !dens * velx
            state(i,j,k,UMY)  = rhoh * W**2 * vely
            state(i,j,k,UMZ)  = rhoh * W**2 * velz
@@ -252,7 +252,7 @@ subroutine ca_initdata(level,time,lo,hi,nscal, &
            state(i,j,k,UFS:UFS-1+nspec) = ONE / nspec
 
            eos_state % xn  = state(i,j,k,UFS:UFS-1+nspec)
-           eos_state % rho = state(i,j,k,URHO)
+           eos_state % rho = dens ! state(i,j,k,URHO)
            eos_state % p   = pressure
 
            call eos(eos_input_rp, eos_state)
@@ -260,7 +260,7 @@ subroutine ca_initdata(level,time,lo,hi,nscal, &
            state(i,j,k,UTEMP) = eos_state % T
 
            state(i,j,k,UEDEN) = rhoh * W**2 - pressure - dens * W !state(i,j,k,URHO) * eos_state % e
-           state(i,j,k,UEINT) = state(i,j,k,URHO) * eos_state % e * W**2
+           state(i,j,k,UEINT) = rhoh - pressure !state(i,j,k,URHO) * eos_state % e
 
            state(i,j,k,UEDEN) = state(i,j,k,UEDEN) + &
                 HALF * rhoh * W**2 * (velx**2 + vely**2 + velz**2)

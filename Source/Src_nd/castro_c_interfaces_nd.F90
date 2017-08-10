@@ -23,6 +23,9 @@ contains
     real(rt), intent(inout) :: state(s_lo(1):s_hi(1),s_lo(2):s_hi(2),s_lo(3):s_hi(3),NVAR)
     integer, intent(in)     :: idx
 
+    real(rt)     :: q(s_lo(1):s_hi(1),s_lo(2):s_hi(2),s_lo(3):s_hi(3),NQ)
+    real(rt)   :: qaux(s_lo(1):s_hi(1),s_lo(2):s_hi(2),s_lo(3):s_hi(3),NQAUX)
+
 #ifdef CUDA
 
     attributes(device) :: state
@@ -48,7 +51,12 @@ contains
 
 #else
 
-    call enforce_consistent_e(lo, hi, state, s_lo, s_hi)
+    call ca_ctoprim(lo, hi, &
+                      state, s_lo, s_hi, &
+                      q,     s_lo, s_hi, &
+                      qaux,  s_lo, s_hi, idx)
+
+    call enforce_consistent_e(lo, hi, state, q, s_lo, s_hi)
 
 #endif
 
@@ -67,7 +75,15 @@ contains
     real(rt), intent(inout) :: state(s_lo(1):s_hi(1),s_lo(2):s_hi(2),s_lo(3):s_hi(3),NVAR)
     integer, intent(in)     :: idx
 
-    call compute_temp(lo, hi, state, s_lo, s_hi)
+    real(rt)     :: q(s_lo(1):s_hi(1),s_lo(2):s_hi(2),s_lo(3):s_hi(3),NQ)
+    real(rt)   :: qaux(s_lo(1):s_hi(1),s_lo(2):s_hi(2),s_lo(3):s_hi(3),NQAUX)
+
+    call ca_ctoprim(lo, hi, &
+                      state, s_lo, s_hi, &
+                      q,     s_lo, s_hi, &
+                      qaux,  s_lo, s_hi, idx)
+
+    call compute_temp(lo, hi, state, s_lo, s_hi, q)
 
   end subroutine ca_compute_temp
 
@@ -84,7 +100,15 @@ contains
     real(rt), intent(inout) :: u(u_lo(1):u_hi(1),u_lo(2):u_hi(2),u_lo(3):u_hi(3),NVAR)
     integer, intent(in)     :: idx
 
-    call reset_internal_e(lo, hi, u, u_lo, u_hi, verbose)
+    real(rt)     :: q(u_lo(1):u_hi(1),u_lo(2):u_hi(2),u_lo(3):u_hi(3),NQ)
+    real(rt)   :: qaux(u_lo(1):u_hi(1),u_lo(2):u_hi(2),u_lo(3):u_hi(3),NQAUX)
+
+    call ca_ctoprim(lo, hi, &
+                      u, u_lo, u_hi, &
+                      q,     u_lo, u_hi, &
+                      qaux,  u_lo, u_hi, idx)
+
+    call reset_internal_e(lo, hi, u, u_lo, u_hi, q, verbose)
 
   end subroutine ca_reset_internal_e
 

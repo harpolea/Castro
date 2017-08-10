@@ -116,10 +116,9 @@ contains
                 call eos(eos_input_re, eos_state)
              endif
 
-             qm(i,j,QREINT) = qm(i,j,QRHO)*eos_state%e
+             qm(i,j,QREINT) = qm(i,j,QRHO)*qm(i,j,QREINT)!eos_state%e
              qm(i,j,QPRES) = eos_state%p
              !gamcm(i,j) = eos_state%gam1
-
 
              ! plus state
              eos_state % rho = qp(i,j,QRHO)
@@ -137,7 +136,7 @@ contains
                 call eos(eos_input_re, eos_state)
              endif
 
-             qp(i,j,QREINT) = qp(i,j,QRHO)*eos_state%e
+             qp(i,j,QREINT) = qp(i,j,QRHO)*qp(i,j,QREINT)!*eos_state%e
              qp(i,j,QPRES) = eos_state%p
              !gamcp(i,j) = eos_state%gam1
 
@@ -146,37 +145,16 @@ contains
     endif
 
     ! Solve Riemann problem (godunov state passed back, but only (u,p) saved)
-    if (riemann_solver == 0) then
-       ! Colella, Glaz, & Ferguson solver
-       call riemannus(qm, qp, qpd_lo, qpd_hi, &
-                      qaux, qa_lo, qa_hi, &
-                      flx, flx_lo, flx_hi, &
-                      qint, qg_lo, qg_hi, &
-                      idir, imin, imax, jmin, jmax, 0, 0, 0, &
-                      [domlo(1), domlo(2), 0], [domhi(1), domhi(2), 0])
 
-    elseif (riemann_solver == 1) then
-       ! Colella & Glaz solver
-       call riemanncg(qm, qp, qpd_lo, qpd_hi, &
-                      qaux, qa_lo, qa_hi, &
-                      flx, flx_lo, flx_hi, &
-                      qint, qg_lo, qg_hi, &
-                      idir, imin, imax, jmin, jmax, 0, 0, 0, &
-                      [domlo(1), domlo(2), 0], [domhi(1), domhi(2), 0])
-
-    elseif (riemann_solver == 2) then
        ! HLLC
        !call HLLC(qm, qp, qpd_lo, qpd_hi, &
-       call gr_HLL(qm, qp, qpd_lo, qpd_hi, &
-                 qaux, qa_lo, qa_hi, &
-                 flx, flx_lo, flx_hi, &
-                 qint, qg_lo, qg_hi, &
-                 idir, imin, imax, jmin, jmax, 0, 0, 0, &
-                 [domlo(1), domlo(2), 0], [domhi(1), domhi(2), 0])
+    call gr_HLL(qm, qp, qpd_lo, qpd_hi, &
+             qaux, qa_lo, qa_hi, &
+             flx, flx_lo, flx_hi, &
+             qint, qg_lo, qg_hi, &
+             idir, imin, imax, jmin, jmax, 0, 0, 0, &
+             [domlo(1), domlo(2), 0], [domhi(1), domhi(2), 0])
 
-    else
-       call bl_error("ERROR: invalid value of riemann_solver")
-    endif
 
   end subroutine cmpflx
 

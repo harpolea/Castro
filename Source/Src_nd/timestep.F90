@@ -1,6 +1,7 @@
 module timestep_module
 
   use amrex_fort_module, only : rt => amrex_real
+  use c_interface_modules, only : ca_ctoprim
 
   implicit none
 
@@ -13,7 +14,7 @@ contains
   subroutine ca_estdt(lo,hi,u,u_lo,u_hi,dx,dt) bind(C, name="ca_estdt")
 
     use network, only: nspec, naux
-    use meth_params_module, only: NVAR, URHO, UMX, UMY, UMZ, UEINT, UTEMP, UFS, UFX, do_ctu
+    use meth_params_module, only: NVAR, QRHO, QU, QV, QW, QREINT, UTEMP, QFS, QFX, do_ctu, NQ, NQAUX
     use eos_module, only: eos
     use eos_type_module, only: eos_t, eos_input_re
     use prob_params_module, only: dim
@@ -41,26 +42,34 @@ contains
     real(rt)         :: vel(3)
 #endif
 
+    real(rt)     :: q(u_lo(1):u_hi(1),u_lo(2):u_hi(2),u_lo(3):u_hi(3),NQ)
+    real(rt)   :: qaux(u_lo(1):u_hi(1),u_lo(2):u_hi(2),u_lo(3):u_hi(3),NQAUX)
+
+    call ca_ctoprim(lo, hi, &
+                      u, u_lo, u_hi, &
+                      q,     u_lo, u_hi, &
+                      qaux,  u_lo, u_hi, 0)
+
     ! Call EOS for the purpose of computing sound speed
 
     do k = lo(3), hi(3)
        do j = lo(2), hi(2)
           do i = lo(1), hi(1)
-             rhoInv = ONE / u(i,j,k,URHO)
+             rhoInv = ONE / q(i,j,k,QRHO)
 
-             eos_state % rho = u(i,j,k,URHO )
+             eos_state % rho = q(i,j,k,QRHO )
              eos_state % T   = u(i,j,k,UTEMP)
-             eos_state % e   = u(i,j,k,UEINT) * rhoInv
-             eos_state % xn  = u(i,j,k,UFS:UFS+nspec-1) * rhoInv
-             eos_state % aux = u(i,j,k,UFX:UFX+naux-1) * rhoInv
+             eos_state % e   = q(i,j,k,QREINT) * rhoInv
+             eos_state % xn  = q(i,j,k,QFS:QFS+nspec-1)
+             eos_state % aux = q(i,j,k,QFX:QFX+naux-1)
 
              call eos(eos_input_re, eos_state)
 
              ! Compute velocity and then calculate CFL timestep.
 
-             ux = u(i,j,k,UMX) * rhoInv
-             uy = u(i,j,k,UMY) * rhoInv
-             uz = u(i,j,k,UMZ) * rhoInv
+             ux = q(i,j,k,QU)
+             uy = q(i,j,k,QV)
+             uz = q(i,j,k,QW)
 
 #ifdef ROTATION
              if (do_rotation == 1 .and. state_in_rotating_frame /= 1) then
@@ -116,8 +125,8 @@ contains
                                bind(C, name="ca_check_timestep")
 
     use bl_constants_module, only: HALF, ONE
-    use meth_params_module, only: NVAR, URHO, UTEMP, UEINT, UFS, UFX, UMX, UMZ, &
-                                  cfl, do_hydro
+    use meth_params_module, only: NVAR, QRHO, UTEMP, QREINT, QFS, QFX, QU, QV, QW, &
+                                  cfl, do_hydro, NQ, NQAUX
     use prob_params_module, only: dim
     use network, only: nspec, naux
     use eos_module, only: eos
@@ -134,19 +143,33 @@ contains
     real(rt)         :: dx(3), dt_old, dt_new
 
     integer          :: i, j, k
-    real(rt)         :: rhooinv, rhoninv
+    real(rt)         :: rhoninv
     real(rt)         :: tau_CFL
 
 
     real(rt)         :: v(3), c
     type (eos_t)     :: eos_state
 
+    real(rt)     :: q_old(so_lo(1):so_hi(1),so_lo(2):so_hi(2),so_lo(3):so_hi(3),NQ)
+    real(rt)     :: q_new(sn_lo(1):sn_hi(1),sn_lo(2):sn_hi(2),sn_lo(3):sn_hi(3),NQ)
+    real(rt)   :: qoaux(so_lo(1):so_hi(1),so_lo(2):so_hi(2),so_lo(3):so_hi(3),NQAUX)
+    real(rt)   :: qnaux(sn_lo(1):sn_hi(1),sn_lo(2):sn_hi(2),sn_lo(3):sn_hi(3),NQAUX)
+
+
+    call ca_ctoprim(lo, hi, &
+                      s_old, so_lo, so_hi, &
+                      q_old,     so_lo, so_hi, &
+                      qoaux,  so_lo, so_hi, 0)
+    call ca_ctoprim(lo, hi, &
+                    s_new, sn_lo, sn_hi, &
+                    q_new,     sn_lo, sn_hi, &
+                    qnaux,  sn_lo, sn_hi, 0)
+
     do k = lo(3), hi(3)
        do j = lo(2), hi(2)
           do i = lo(1), hi(1)
 
-             rhooinv = ONE / s_old(i,j,k,URHO)
-             rhoninv = ONE / s_new(i,j,k,URHO)
+             rhoninv = ONE / q_new(i,j,k,QRHO)
 
              ! CFL hydrodynamic stability criterion
 
@@ -166,15 +189,15 @@ contains
 
              if (do_hydro .eq. 1) then
 
-                eos_state % rho = s_new(i,j,k,URHO )
+                eos_state % rho = q_new(i,j,k,QRHO )
                 eos_state % T   = s_new(i,j,k,UTEMP)
-                eos_state % e   = s_new(i,j,k,UEINT) * rhoninv
-                eos_state % xn  = s_new(i,j,k,UFS:UFS+nspec-1) * rhoninv
-                eos_state % aux = s_new(i,j,k,UFX:UFX+naux-1) * rhoninv
+                eos_state % e   = q_new(i,j,k,QREINT) * rhoninv
+                eos_state % xn  = q_new(i,j,k,QFS:QFS+nspec-1)
+                eos_state % aux = q_new(i,j,k,QFX:QFX+naux-1)
 
                 call eos(eos_input_re, eos_state)
 
-                v = HALF * (s_old(i,j,k,UMX:UMZ) * rhooinv + s_new(i,j,k,UMX:UMZ) * rhoninv)
+                v = HALF * (q_old(i,j,k,QU:QW) + q_new(i,j,k,QU:QW))
 
                 c = eos_state % cs
 
