@@ -4,7 +4,7 @@ module actual_riemann_module
   use bl_constants_module
   use meth_params_module, only : NQ, NVAR, NQAUX, &
                                  URHO, UMX, UMY, UMZ, &
-                                 UEDEN, UEINT, UFS, UFX, &
+                                 UEDEN, UFS, UFX, &
                                  QRHO, QU, QV, QW, &
                                  QPRES, QGAME, QREINT, QFS, QFX, &
                                  QC, QGAMC, QCSML, &
@@ -89,7 +89,7 @@ contains
     logical :: special_bnd_lo, special_bnd_hi, special_bnd_lo_x, special_bnd_hi_x
     integer :: bnd_fac_x, bnd_fac_y, bnd_fac_z, bnd_fac
 
-    real(rt) :: U_hll_state(nvar), U_state(nvar), F_state(nvar), Fr_state(nvar)
+    real(rt) :: U_hll_state(NVAR), U_state(NVAR), F_state(NVAR), Fr_state(NVAR)
     real(rt) :: S_l, S_r, S_c
     real(rt) :: beta(3), alpha
     real(rt) :: sigmal, sigmar, l1, l2

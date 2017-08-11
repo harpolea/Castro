@@ -14,7 +14,7 @@ contains
   subroutine ca_estdt(lo,hi,u,u_lo,u_hi,dx,dt) bind(C, name="ca_estdt")
 
     use network, only: nspec, naux
-    use meth_params_module, only: NVAR, QRHO, QU, QV, QW, QREINT, UTEMP, QFS, QFX, do_ctu, NQ, NQAUX
+    use meth_params_module, only: NVAR, QRHO, QU, QV, QW, QREINT, UTEMP, QFS, QFX, NQ, NQAUX
     use eos_module, only: eos
     use eos_type_module, only: eos_t, eos_input_re
     use prob_params_module, only: dim
@@ -76,19 +76,15 @@ contains
                 dt3 = dt1
              endif
 
-             if (do_ctu == 1) then
-                dt  = min(dt,dt1,dt2,dt3)
-             else
-                ! method of lines constraint is tougher
-                dt_tmp = ONE/dt1
-                if (dim >= 2) then
-                   dt_tmp = dt_tmp + ONE/dt2
-                endif
-                if (dim == 3) then
-                   dt_tmp = dt_tmp + ONE/dt3
-                endif
-                dt = min(dt, ONE/dt_tmp)
-             endif
+            ! method of lines constraint is tougher
+            dt_tmp = ONE/dt1
+            if (dim >= 2) then
+               dt_tmp = dt_tmp + ONE/dt2
+            endif
+            if (dim == 3) then
+               dt_tmp = dt_tmp + ONE/dt3
+            endif
+            dt = min(dt, ONE/dt_tmp)
 
           enddo
        enddo
@@ -138,13 +134,13 @@ contains
 
 
     call ca_ctoprim(lo, hi, &
-                      s_old, so_lo, so_hi, &
-                      q_old,     so_lo, so_hi, &
-                      qoaux,  so_lo, so_hi, 0)
+                  s_old, so_lo, so_hi, &
+                  q_old, so_lo, so_hi, &
+                  qoaux, so_lo, so_hi, 0)
     call ca_ctoprim(lo, hi, &
                     s_new, sn_lo, sn_hi, &
-                    q_new,     sn_lo, sn_hi, &
-                    qnaux,  sn_lo, sn_hi, 0)
+                    q_new, sn_lo, sn_hi, &
+                    qnaux, sn_lo, sn_hi, 0)
 
     do k = lo(3), hi(3)
        do j = lo(2), hi(2)

@@ -181,7 +181,7 @@ contains
                         q,     q_lo,   q_hi, &
                         qaux, qa_lo,  qa_hi, idx) bind(C, name = "ca_ctoprim")
 
-    use advection_util_module, only: ctoprim, grctoprim
+    use advection_util_module, only: grctoprim
 
     implicit none
 
@@ -195,88 +195,23 @@ contains
     real(rt)        , intent(inout) :: q(q_lo(1):q_hi(1),q_lo(2):q_hi(2),q_lo(3):q_hi(3),NQ)
     real(rt)        , intent(inout) :: qaux(qa_lo(1):qa_hi(1),qa_lo(2):qa_hi(2),qa_lo(3):qa_hi(3),NQAUX)
     integer, intent(in)     :: idx
-
-    logical :: do_gr = .true.
     real(rt) :: gamma_up(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),9)
     real(rt) :: alpha(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3))
 
-    if (do_gr) then
+    gamma_up(:,:,:,:) = 0.0d0
+    gamma_up(:,:,:,1) = 1.0d0
+    gamma_up(:,:,:,5) = 1.0d0
+    gamma_up(:,:,:,9) = 1.0d0
+    alpha(:,:,:) = 1.0d0
 
-        gamma_up(:,:,:,:) = 0.0d0
-        gamma_up(:,:,:,1) = 1.0d0
-        gamma_up(:,:,:,5) = 1.0d0
-        gamma_up(:,:,:,9) = 1.0d0
-        alpha(:,:,:) = 1.0d0
-
-        call grctoprim(lo, hi, &
-                     uin, uin_lo, uin_hi, &
-                     q,     q_lo,   q_hi, &
-                     qaux, qa_lo,  qa_hi, &
-                     gamma_up, lo, hi, &
-                     alpha, lo, hi)
-    else
-
-        call ctoprim(lo, hi, &
-                     uin, uin_lo, uin_hi, &
-                     q,     q_lo,   q_hi, &
-                     qaux, qa_lo,  qa_hi)
-    endif
+    call grctoprim(lo, hi, &
+                 uin, uin_lo, uin_hi, &
+                 q,     q_lo,   q_hi, &
+                 qaux, qa_lo,  qa_hi, &
+                 gamma_up, lo, hi, &
+                 alpha, lo, hi)
 
   end subroutine ca_ctoprim
 
-
-  subroutine ca_srctoprim(lo, hi, &
-                          q,     q_lo,   q_hi, &
-                          qaux, qa_lo,  qa_hi, &
-                          src, src_lo, src_hi, &
-                          srcQ,srQ_lo, srQ_hi, idx) bind(C, name = "ca_srctoprim")
-
-    use advection_util_module, only: srctoprim, gr_srctoprim
-
-    implicit none
-
-    integer, intent(in) :: lo(3), hi(3)
-    integer, intent(in) :: q_lo(3), q_hi(3)
-    integer, intent(in) :: qa_lo(3),   qa_hi(3)
-    integer, intent(in) :: src_lo(3), src_hi(3)
-    integer, intent(in) :: srQ_lo(3), srQ_hi(3)
-
-    real(rt)        , intent(in   ) :: q(q_lo(1):q_hi(1),q_lo(2):q_hi(2),q_lo(3):q_hi(3),NQ)
-    real(rt)        , intent(in   ) :: qaux(qa_lo(1):qa_hi(1),qa_lo(2):qa_hi(2),qa_lo(3):qa_hi(3),NQAUX)
-    real(rt)        , intent(in   ) :: src(src_lo(1):src_hi(1),src_lo(2):src_hi(2),src_lo(3):src_hi(3),NVAR)
-    real(rt)        , intent(inout) :: srcQ(srQ_lo(1):srQ_hi(1),srQ_lo(2):srQ_hi(2),srQ_lo(3):srQ_hi(3),QVAR)
-    integer, intent(in)     :: idx
-
-    logical :: do_gr = .true.
-    real(rt) :: gamma_up(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),9)
-    real(rt) :: alpha(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3))
-
-    if (do_gr) then
-
-        gamma_up(:,:,:,:) = 0.0d0
-        gamma_up(:,:,:,1) = 1.0d0
-        gamma_up(:,:,:,5) = 1.0d0
-        gamma_up(:,:,:,9) = 1.0d0
-        alpha(:,:,:) = 1.0d0
-
-        call gr_srctoprim(lo, hi, &
-                       q,     q_lo,   q_hi, &
-                       qaux, qa_lo,  qa_hi, &
-                       src, src_lo, src_hi, &
-                       srcQ,srQ_lo, srQ_hi, &
-                       gamma_up, lo, hi, &
-                       alpha, lo, hi)
-
-    else
-
-        call srctoprim(lo, hi, &
-                       q,     q_lo,   q_hi, &
-                       qaux, qa_lo,  qa_hi, &
-                       src, src_lo, src_hi, &
-                       srcQ,srQ_lo, srQ_hi)
-
-    end if
-
-  end subroutine ca_srctoprim
 
 end module c_interface_modules

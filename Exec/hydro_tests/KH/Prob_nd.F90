@@ -142,7 +142,7 @@ subroutine ca_initdata(level,time,lo,hi,nscal, &
      delta_y = 0.05
   else if (problem .eq. 3) then
      sine_n = 4
-     w0 = 0.05
+     w0 = 0.01
      delta_y = 0.025
   else if (problem .eq. 4) then
      sine_n = 2
