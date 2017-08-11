@@ -1,6 +1,7 @@
 module derive_module
 
   use amrex_fort_module, only : rt => amrex_real
+  use c_interface_modules, only : ca_ctoprim
 
   implicit none
 
@@ -104,7 +105,7 @@ contains
     use network, only : nspec, naux
     use eos_module, only: eos
     use eos_type_module, only: eos_input_re, eos_t
-    use meth_params_module, only : URHO, UEINT, UTEMP, UFS, UFX
+    use meth_params_module, only : QRHO, QREINT, UTEMP, UFS, UFX, NQ, NQAUX
     use bl_constants_module
     use amrex_fort_module, only : rt => amrex_real
 
@@ -125,20 +126,28 @@ contains
 
     type (eos_t) :: eos_state
 
+    real(rt)     :: q(d_lo(1):d_hi(1),d_lo(2):d_hi(2),d_lo(3):d_hi(3),NQ)
+    real(rt)   :: qaux(d_lo(1):d_hi(1),d_lo(2):d_hi(2),d_lo(3):d_hi(3),NQAUX)
+
+    call ca_ctoprim(lo, hi, &
+                      dat, d_lo, d_hi, &
+                      q,     d_lo, d_hi, &
+                      qaux,  d_lo, d_hi, 0)
+
     do k = lo(3), hi(3)
        do j = lo(2), hi(2)
           do i = lo(1), hi(1)
-             rhoInv = ONE / dat(i,j,k,URHO)
+             rhoInv = ONE / q(i,j,k,QRHO)
 
-             eos_state % e     = dat(i,j,k,UEINT) * rhoInv
+             eos_state % e     = q(i,j,k,QREINT) * rhoInv
              eos_state % T     = dat(i,j,k,UTEMP)
-             eos_state % rho   = dat(i,j,k,URHO)
+             eos_state % rho   = q(i,j,k,QRHO)
              eos_state % xn  = dat(i,j,k,UFS:UFS+nspec-1) * rhoInv
              eos_state % aux = dat(i,j,k,UFX:UFX+naux-1) * rhoInv
 
              call eos(eos_input_re, eos_state)
 
-             vel(i,j,k,1) = dat(i,j,k,2) / dat(i,j,k,1) + eos_state % cs
+             vel(i,j,k,1) = q(i,j,k,2) + eos_state % cs
           enddo
        enddo
     enddo
@@ -155,7 +164,7 @@ contains
     use network, only : nspec, naux
     use eos_module, only: eos
     use eos_type_module, only: eos_input_re, eos_t
-    use meth_params_module, only : URHO, UEINT, UTEMP, UFS, UFX
+    use meth_params_module, only : QRHO, QREINT, UTEMP, UFS, UFX, NQ, NQAUX
     use bl_constants_module
     use amrex_fort_module, only : rt => amrex_real
 
@@ -176,20 +185,28 @@ contains
 
     type (eos_t) :: eos_state
 
+    real(rt)     :: q(d_lo(1):d_hi(1),d_lo(2):d_hi(2),d_lo(3):d_hi(3),NQ)
+    real(rt)   :: qaux(d_lo(1):d_hi(1),d_lo(2):d_hi(2),d_lo(3):d_hi(3),NQAUX)
+
+    call ca_ctoprim(lo, hi, &
+                      dat, d_lo, d_hi, &
+                      q,     d_lo, d_hi, &
+                      qaux,  d_lo, d_hi, 0)
+
     do k = lo(3), hi(3)
        do j = lo(2), hi(2)
           do i = lo(1), hi(1)
-             rhoInv = ONE / dat(i,j,k,URHO)
+             rhoInv = ONE / q(i,j,k,QRHO)
 
-             eos_state % e   = dat(i,j,k,UEINT) * rhoInv
+             eos_state % e   = q(i,j,k,QREINT) * rhoInv
              eos_state % T   = dat(i,j,k,UTEMP)
-             eos_state % rho = dat(i,j,k,URHO)
+             eos_state % rho = q(i,j,k,QRHO)
              eos_state % xn  = dat(i,j,k,UFS:UFS+nspec-1) * rhoInv
              eos_state % aux = dat(i,j,k,UFX:UFX+naux-1) * rhoInv
 
              call eos(eos_input_re, eos_state)
 
-             vel(i,j,k,1) = dat(i,j,k,2) / dat(i,j,k,1) - eos_state % cs
+             vel(i,j,k,1) = q(i,j,k,2) - eos_state % cs
           end do
        end do
     end do
@@ -206,6 +223,7 @@ contains
     ! This routine will derive magnitude of velocity.
     !
     use amrex_fort_module, only : rt => amrex_real
+    use meth_params_module, only: NQ, NQAUX
     implicit none
 
     integer          :: lo(3), hi(3)
@@ -219,15 +237,21 @@ contains
     integer          :: level, grid_no
 
     integer          :: i, j, k
-    real(rt)         :: dat1inv
+
+    real(rt)     :: q(d_lo(1):d_hi(1),d_lo(2):d_hi(2),d_lo(3):d_hi(3),NQ)
+    real(rt)   :: qaux(d_lo(1):d_hi(1),d_lo(2):d_hi(2),d_lo(3):d_hi(3),NQAUX)
+
+    call ca_ctoprim(lo, hi, &
+                      dat, d_lo, d_hi, &
+                      q,     d_lo, d_hi, &
+                      qaux,  d_lo, d_hi, 0)
 
     do k = lo(3), hi(3)
        do j = lo(2), hi(2)
           do i = lo(1), hi(1)
-             dat1inv = 1.e0_rt/dat(i,j,k,1)
-             magvel(i,j,k,1) = sqrt( (dat(i,j,k,2) * dat1inv)**2 + &
-                  (dat(i,j,k,3) * dat1inv)**2 + &
-                  (dat(i,j,k,4) * dat1inv)**2 )
+             magvel(i,j,k,1) = sqrt( q(i,j,k,2)**2 + &
+                  q(i,j,k,3)**2 + &
+                  q(i,j,k,4)**2 )
           end do
        end do
     end do
@@ -281,6 +305,7 @@ contains
     !
     use bl_constants_module
     use prob_params_module, only: center
+    use meth_params_module, only: NQ, NQAUX
 
     use amrex_fort_module, only : rt => amrex_real
     implicit none
@@ -298,6 +323,14 @@ contains
     integer          :: i, j, k
     real(rt)         :: x, y, z, r
 
+    real(rt)     :: q(d_lo(1):d_hi(1),d_lo(2):d_hi(2),d_lo(3):d_hi(3),NQ)
+    real(rt)   :: qaux(d_lo(1):d_hi(1),d_lo(2):d_hi(2),d_lo(3):d_hi(3),NQAUX)
+
+    call ca_ctoprim(lo, hi, &
+                      dat, d_lo, d_hi, &
+                      q,     d_lo, d_hi, &
+                      qaux,  d_lo, d_hi, 0)
+
     do k = lo(3), hi(3)
        z = xlo(3) + (dble(k-lo(3))+HALF) * delta(3) - center(3)
        do j = lo(2), hi(2)
@@ -305,9 +338,9 @@ contains
           do i = lo(1), hi(1)
              x = xlo(1) + (dble(i-lo(1))+HALF) * delta(1) - center(1)
              r = sqrt(x*x+y*y+z*z)
-             radvel(i,j,k,1) = ( dat(i,j,k,2)*x + &
-                  dat(i,j,k,3)*y + &
-                  dat(i,j,k,4)*z ) / ( dat(i,j,k,1)*r )
+             radvel(i,j,k,1) = ( q(i,j,k,2)*x + &
+                  q(i,j,k,3)*y + &
+                  q(i,j,k,4)*z ) / r
           end do
        end do
     end do
@@ -490,7 +523,7 @@ contains
     use network, only: nspec, naux
     use eos_module, only: eos
     use eos_type_module, only: eos_t, eos_input_re
-    use meth_params_module, only: URHO, UEINT, UTEMP, UFS, UFX
+    use meth_params_module, only: QRHO, QREINT, UTEMP, UFS, UFX, NQ, NQAUX
     use bl_constants_module
     use amrex_fort_module, only : rt => amrex_real
 
@@ -510,14 +543,22 @@ contains
 
     type (eos_t) :: eos_state
 
+    real(rt)     :: q(u_lo(1):u_hi(1),u_lo(2):u_hi(2),u_lo(3):u_hi(3),NQ)
+    real(rt)   :: qaux(u_lo(1):u_hi(1),u_lo(2):u_hi(2),u_lo(3):u_hi(3),NQAUX)
+
+    call ca_ctoprim(lo, hi, &
+                      u, u_lo, u_hi, &
+                      q,     u_lo, u_hi, &
+                      qaux,  u_lo, u_hi, 0)
+
     do k = lo(3), hi(3)
        do j = lo(2), hi(2)
           do i = lo(1), hi(1)
-             rhoInv = ONE / u(i,j,k,URHO)
+             rhoInv = ONE / q(i,j,k,QRHO)
 
-             eos_state % rho  = u(i,j,k,URHO)
+             eos_state % rho  = q(i,j,k,QRHO)
              eos_state % T    = u(i,j,k,UTEMP)
-             eos_state % e    = u(i,j,k,UEINT) * rhoInv
+             eos_state % e    = q(i,j,k,QREINT) * rhoInv
              eos_state % xn   = u(i,j,k,UFS:UFS+nspec-1) * rhoInv
              eos_state % aux  = u(i,j,k,UFX:UFX+naux-1) * rhoInv
 
@@ -538,7 +579,7 @@ contains
                          bind(C, name="ca_dereint1")
 
     use bl_constants_module
-    use meth_params_module, only: URHO, UMX, UMY, UMZ, UEDEN
+    use meth_params_module, only: QRHO, QREINT, NQ, NQAUX
     use amrex_fort_module, only : rt => amrex_real
 
     implicit none
@@ -554,17 +595,22 @@ contains
 
     real(rt)         :: rhoInv, ux, uy, uz
     integer          :: i, j, k
+
+    real(rt)     :: q(u_lo(1):u_hi(1),u_lo(2):u_hi(2),u_lo(3):u_hi(3),NQ)
+    real(rt)   :: qaux(u_lo(1):u_hi(1),u_lo(2):u_hi(2),u_lo(3):u_hi(3),NQAUX)
+
+    call ca_ctoprim(lo, hi, &
+                      u, u_lo, u_hi, &
+                      q,     u_lo, u_hi, &
+                      qaux,  u_lo, u_hi, 0)
     !
     ! Compute internal energy from (rho E).
     !
     do k = lo(3),hi(3)
        do j = lo(2),hi(2)
           do i = lo(1),hi(1)
-             rhoInv = ONE/u(i,j,k,URHO)
-             ux = u(i,j,k,UMX)*rhoInv
-             uy = u(i,j,k,UMY)*rhoInv
-             uz = u(i,j,k,UMZ)*rhoInv
-             e(i,j,k,1) = u(i,j,k,UEDEN)*rhoInv-HALF*(ux**2+uy**2+uz**2)
+             rhoInv = ONE/q(i,j,k,QRHO)
+             e(i,j,k,1) = q(i,j,k,QREINT) * rhoInv
           enddo
        enddo
     enddo
@@ -578,7 +624,7 @@ contains
                          domhi,dx,xlo,time,dt,bc,level,grid_no) &
                          bind(C, name="ca_dereint2")
 
-    use meth_params_module, only: URHO, UEINT
+    use meth_params_module, only: QRHO, QREINT, NQ, NQAUX
 
     use amrex_fort_module, only : rt => amrex_real
     implicit none
@@ -593,13 +639,20 @@ contains
     integer          :: bc(3,2,ncomp_u), level, grid_no
 
     integer          :: i, j, k
+    real(rt)     :: q(u_lo(1):u_hi(1),u_lo(2):u_hi(2),u_lo(3):u_hi(3),NQ)
+    real(rt)   :: qaux(u_lo(1):u_hi(1),u_lo(2):u_hi(2),u_lo(3):u_hi(3),NQAUX)
+
+    call ca_ctoprim(lo, hi, &
+                      u, u_lo, u_hi, &
+                      q,     u_lo, u_hi, &
+                      qaux,  u_lo, u_hi, 0)
     !
     ! Compute internal energy from (rho e).
     !
     do k = lo(3),hi(3)
        do j = lo(2),hi(2)
           do i = lo(1),hi(1)
-             e(i,j,k,1) = u(i,j,k,UEINT) / u(i,j,k,URHO)
+             e(i,j,k,1) = q(i,j,k,QREINT) / q(i,j,k,QRHO)
           enddo
        enddo
     enddo
@@ -616,7 +669,7 @@ contains
     use network, only: nspec, naux
     use eos_module, only: eos
     use eos_type_module, only: eos_t, eos_input_re
-    use meth_params_module, only: URHO, UEINT, UTEMP, UFS, UFX
+    use meth_params_module, only: QRHO, QREINT, UTEMP, UFS, UFX, NQ, NQAUX
     use bl_constants_module
     use amrex_fort_module, only : rt => amrex_real
 
@@ -636,14 +689,22 @@ contains
 
     type (eos_t) :: eos_state
 
+    real(rt)     :: q(u_lo(1):u_hi(1),u_lo(2):u_hi(2),u_lo(3):u_hi(3),NQ)
+    real(rt)   :: qaux(u_lo(1):u_hi(1),u_lo(2):u_hi(2),u_lo(3):u_hi(3),NQAUX)
+
+    call ca_ctoprim(lo, hi, &
+                      u, u_lo, u_hi, &
+                      q,     u_lo, u_hi, &
+                      qaux,  u_lo, u_hi, 0)
+
     do k = lo(3), hi(3)
        do j = lo(2), hi(2)
           do i = lo(1), hi(1)
-             rhoInv = ONE / u(i,j,k,URHO)
+             rhoInv = ONE / q(i,j,k,QRHO)
 
-             eos_state % rho  = u(i,j,k,URHO)
+             eos_state % rho  = q(i,j,k,QRHO)
              eos_state % T    = u(i,j,k,UTEMP)
-             eos_state % e    = u(i,j,k,UEINT) * rhoInv
+             eos_state % e    = q(i,j,k,QREINT) * rhoInv
              eos_state % xn = u(i,j,k,UFS:UFS+nspec-1) * rhoInv
              eos_state % aux = u(i,j,k,UFX:UFX+naux-1) * rhoInv
 
@@ -666,7 +727,7 @@ contains
     use network, only: nspec, naux
     use eos_module, only: eos
     use eos_type_module, only: eos_input_re, eos_t
-    use meth_params_module, only: URHO, UMX, UMZ, UEINT, UTEMP, UFS, UFX
+    use meth_params_module, only: QRHO, QU, QW, QREINT, UTEMP, UFS, UFX, NQ, NQAUX
     use bl_constants_module
     use amrex_fort_module, only : rt => amrex_real
 
@@ -686,20 +747,28 @@ contains
 
     type (eos_t) :: eos_state
 
+    real(rt)     :: q(u_lo(1):u_hi(1),u_lo(2):u_hi(2),u_lo(3):u_hi(3),NQ)
+    real(rt)   :: qaux(u_lo(1):u_hi(1),u_lo(2):u_hi(2),u_lo(3):u_hi(3),NQAUX)
+
+    call ca_ctoprim(lo, hi, &
+                      u, u_lo, u_hi, &
+                      q,     u_lo, u_hi, &
+                      qaux,  u_lo, u_hi, 0)
+
     do k = lo(3), hi(3)
        do j = lo(2), hi(2)
           do i = lo(1), hi(1)
-             rhoInv = ONE / u(i,j,k,URHO)
+             rhoInv = ONE / q(i,j,k,QRHO)
 
-             eos_state % rho  = u(i,j,k,URHO)
+             eos_state % rho  = q(i,j,k,QRHO)
              eos_state % T    = u(i,j,k,UTEMP)
-             eos_state % e    = u(i,j,k,UEINT) * rhoInv
+             eos_state % e    = q(i,j,k,QREINT) * rhoInv
              eos_state % xn = u(i,j,k,UFS:UFS+nspec-1) * rhoInv
              eos_state % aux = u(i,j,k,UFX:UFX+naux-1) * rhoInv
 
              call eos(eos_input_re, eos_state)
 
-             mach(i,j,k,1) = sum(u(i,j,k,UMX:UMZ)**2)**0.5 / u(i,j,k,URHO) / eos_state % cs
+             mach(i,j,k,1) = sum(q(i,j,k,QU:QW)**2)**0.5 / eos_state % cs
           enddo
        enddo
     enddo
@@ -716,7 +785,7 @@ contains
     use network, only: nspec, naux
     use eos_module, only: eos
     use eos_type_module, only: eos_input_re, eos_t
-    use meth_params_module, only: URHO, UEINT, UTEMP, UFS, UFX
+    use meth_params_module, only: QRHO, QREINT, UTEMP, UFS, UFX, NQ, NQAUX
     use bl_constants_module
     use amrex_fort_module, only : rt => amrex_real
 
@@ -733,17 +802,24 @@ contains
 
     real(rt)         :: rhoInv
     integer          :: i, j, k
-
     type (eos_t) :: eos_state
 
+
+    real(rt)     :: q(u_lo(1):u_hi(1),u_lo(2):u_hi(2),u_lo(3):u_hi(3),NQ)
+    real(rt)   :: qaux(u_lo(1):u_hi(1),u_lo(2):u_hi(2),u_lo(3):u_hi(3),NQAUX)
+
+    call ca_ctoprim(lo, hi, &
+                      u, u_lo, u_hi, &
+                      q,     u_lo, u_hi, &
+                      qaux,  u_lo, u_hi, 0)
     do k = lo(3), hi(3)
        do j = lo(2), hi(2)
           do i = lo(1), hi(1)
-             rhoInv = ONE / u(i,j,k,URHO)
+             rhoInv = ONE / q(i,j,k,QRHO)
 
-             eos_state % rho = u(i,j,k,URHO)
+             eos_state % rho = q(i,j,k,QRHO)
              eos_state % T   = u(i,j,k,UTEMP)
-             eos_state % e   = u(i,j,k,UEINT) * rhoInv
+             eos_state % e   = q(i,j,k,QREINT) * rhoInv
              eos_state % xn  = u(i,j,k,UFS:UFS+nspec-1) * rhoInv
              eos_state % aux = u(i,j,k,UFX:UFX+naux-1) * rhoInv
 
@@ -764,7 +840,7 @@ contains
                                  bind(C, name="ca_derenuctimescale")
 
     use bl_constants_module, only: ZERO, ONE
-    use meth_params_module, only: URHO, UEINT, UTEMP, UFS, UFX
+    use meth_params_module, only: QRHO, QREINT, UTEMP, UFS, UFX, NQ, NQAUX
     use network, only: nspec, naux
     use prob_params_module, only: dim
     use eos_module, only: eos
@@ -788,6 +864,14 @@ contains
 
     type (eos_t)     :: eos_state
 
+    real(rt)     :: q(u_lo(1):u_hi(1),u_lo(2):u_hi(2),u_lo(3):u_hi(3),NQ)
+    real(rt)   :: qaux(u_lo(1):u_hi(1),u_lo(2):u_hi(2),u_lo(3):u_hi(3),NQAUX)
+
+    call ca_ctoprim(lo, hi, &
+                      u, u_lo, u_hi, &
+                      q,     u_lo, u_hi, &
+                      qaux,  u_lo, u_hi, 0)
+
     do k = lo(3), hi(3)
        do j = lo(2), hi(2)
           do i = lo(1), hi(1)
@@ -796,15 +880,15 @@ contains
 
              if (enuc > 1.e-100_rt) then
 
-                rhoInv = ONE / u(i,j,k,URHO)
+                rhoInv = ONE / q(i,j,k,QRHO)
 
-                eint = u(i,j,k,UEINT) * rhoInv
+                eint = q(i,j,k,QREINT) * rhoInv
 
                 t_e = eint / enuc
 
                 ! Calculate sound-speed
 
-                eos_state % rho  = u(i,j,k,URHO)
+                eos_state % rho  = q(i,j,k,QRHO)
                 eos_state % T    = u(i,j,k,UTEMP)
                 eos_state % e    = eint
                 eos_state % xn   = u(i,j,k,UFS:UFS+nspec-1) * rhoInv
@@ -907,6 +991,7 @@ contains
 
     use bl_constants_module
     use prob_params_module, only: dg
+    use meth_params_module, only: NQ, NQAUX
 
     use amrex_fort_module, only : rt => amrex_real
     implicit none
@@ -924,6 +1009,14 @@ contains
     real(rt)         :: uy, uz, vx, vz, wx, wy, v1, v2, v3
     real(rt)         :: ldat(lo(1)-1:hi(1)+1,lo(2)-1:hi(2)+1,lo(3)-1:hi(3)+1,2:4)
 
+    real(rt)     :: q(d_lo(1):d_hi(1),d_lo(2):d_hi(2),d_lo(3):d_hi(3),NQ)
+    real(rt)   :: qaux(d_lo(1):d_hi(1),d_lo(2):d_hi(2),d_lo(3):d_hi(3),NQAUX)
+
+    call ca_ctoprim(lo, hi, &
+                      dat, d_lo, d_hi, &
+                      q,     d_lo, d_hi, &
+                      qaux,  d_lo, d_hi, 0)
+
     ldat = ZERO
 
     uy = ZERO
@@ -939,9 +1032,9 @@ contains
     do k = lo(3)-1*dg(3), hi(3)+1*dg(3)
        do j = lo(2)-1*dg(2), hi(2)+1*dg(2)
           do i = lo(1)-1*dg(1), hi(1)+1*dg(1)
-             ldat(i,j,k,2) = dat(i,j,k,2) / dat(i,j,k,1)
-             ldat(i,j,k,3) = dat(i,j,k,3) / dat(i,j,k,1)
-             ldat(i,j,k,4) = dat(i,j,k,4) / dat(i,j,k,1)
+             ldat(i,j,k,2) = q(i,j,k,2)
+             ldat(i,j,k,3) = q(i,j,k,3)
+             ldat(i,j,k,4) = q(i,j,k,4)
           end do
        end do
     end do
@@ -989,6 +1082,7 @@ contains
 
     use bl_constants_module
     use prob_params_module, only: dg
+    use meth_params_module, only: NQ, NQAUX
 
     use amrex_fort_module, only : rt => amrex_real
     implicit none
@@ -1006,15 +1100,23 @@ contains
     integer          :: i, j, k
     real(rt)         :: ulo, uhi, vlo, vhi, wlo, whi
 
+    real(rt)     :: q(d_lo(1):d_hi(1),d_lo(2):d_hi(2),d_lo(3):d_hi(3),NQ)
+    real(rt)   :: qaux(d_lo(1):d_hi(1),d_lo(2):d_hi(2),d_lo(3):u_hi(3),NQAUX)
+
+    call ca_ctoprim(lo, hi, &
+                      dat, d_lo, d_hi, &
+                      q,     d_lo, d_hi, &
+                      qaux,  d_lo, d_hi, 0)
+
     do k = lo(3), hi(3)
        do j = lo(2), hi(2)
           do i = lo(1), hi(1)
-             uhi = dat(i+1*dg(1),j,k,2) / dat(i+1*dg(1),j,k,1)
-             ulo = dat(i-1*dg(1),j,k,2) / dat(i-1*dg(1),j,k,1)
-             vhi = dat(i,j+1*dg(2),k,3) / dat(i,j+1*dg(2),k,1)
-             vlo = dat(i,j-1*dg(2),k,3) / dat(i,j-1*dg(2),k,1)
-             whi = dat(i,j,k+1*dg(3),4) / dat(i,j,k+1*dg(3),1)
-             wlo = dat(i,j,k-1*dg(3),4) / dat(i,j,k-1*dg(3),1)
+             uhi = q(i+1*dg(1),j,k,2)
+             ulo = q(i-1*dg(1),j,k,2)
+             vhi = q(i,j+1*dg(2),k,3)
+             vlo = q(i,j-1*dg(2),k,3)
+             whi = q(i,j,k+1*dg(3),4)
+             wlo = q(i,j,k-1*dg(3),4)
              divu(i,j,k,1) = HALF * (uhi-ulo) / delta(1)
              if (delta(2) > ZERO) then
                 divu(i,j,k,1) = divu(i,j,k,1) + HALF * (vhi-vlo) / delta(2)
@@ -1040,6 +1142,7 @@ contains
     !
 
     use bl_constants_module
+    use meth_params_module, only: NQ, NQAUX
 
     use amrex_fort_module, only : rt => amrex_real
     implicit none
@@ -1056,12 +1159,20 @@ contains
 
     integer          :: i, j, k
 
+    real(rt)     :: q(d_lo(1):d_hi(1),d_lo(2):d_hi(2),d_lo(3):d_hi(3),NQ)
+    real(rt)   :: qaux(d_lo(1):d_hi(1),d_lo(2):d_hi(2),d_lo(3):d_hi(3),NQAUX)
+
+    call ca_ctoprim(lo, hi, &
+                      dat, d_lo, d_hi, &
+                      q,     d_lo, d_hi, &
+                      qaux,  d_lo, d_hi, 0)
+
     do k = lo(3), hi(3)
        do j = lo(2), hi(2)
           do i = lo(1), hi(1)
-             kineng(i,j,k,1) = HALF / dat(i,j,k,1) * ( dat(i,j,k,2)**2 + &
-                  dat(i,j,k,3)**2 + &
-                  dat(i,j,k,4)**2 )
+             kineng(i,j,k,1) = HALF * ( q(i,j,k,2)**2 + &
+                  q(i,j,k,3)**2 + &
+                  q(i,j,k,4)**2 )
           end do
        end do
     end do

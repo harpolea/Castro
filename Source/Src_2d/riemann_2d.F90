@@ -3,14 +3,10 @@ module riemann_module
   use bl_types
   use bl_constants_module
   use riemann_util_module
-  use meth_params_module, only : NQ, NQAUX, NVAR, QRHO, QU, QV, QW, &
-                                 QPRES, QREINT, QFS, &
-                                 QFX, URHO, UMX, UMY, UEDEN, UEINT, &
-                                 GDPRES, GDGAME, QGAMC, QC, QCSML, &
+  use meth_params_module, only : NQ, NQAUX, NVAR, &
                                  small_dens, small_pres, small_temp, &
                                  cg_maxiter, cg_tol, cg_blend, &
                                  npassive, upass_map, qpass_map, &
-                                 riemann_solver, ppm_temp_fix, hybrid_riemann, &
                                  allow_negative_energy
 
   use amrex_fort_module, only : rt => amrex_real

@@ -21,9 +21,9 @@ subroutine ca_mol_single_stage(time, &
                                courno, verbose) bind(C, name="ca_mol_single_stage")
 
   use meth_params_module, only : NQ, QVAR, NVAR, NGDNV, GDPRES, &
-                                 UTEMP, UEINT, UMX, GDU, GDV, &
+                                 UTEMP, UMX, GDU, GDV, &
                                  QPRES, NQAUX, &
-                                 QTEMP, QFS, QFX, QREINT, QRHO, &
+                                 QTEMP, QFS, QFX, QRHO, &
                                  first_order_hydro, difmag
   use advection_util_2d_module, only : divu, normalize_species_fluxes
   use advection_util_module, only : compute_cfl, shock

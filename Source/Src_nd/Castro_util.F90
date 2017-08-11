@@ -83,7 +83,7 @@ contains
 
   subroutine enforce_consistent_e(lo,hi,state,q,s_lo,s_hi)
 
-    use meth_params_module, only: NVAR, URHO, UEDEN, UEINT, NQ, QU, QV, QW, QPRES, QRHO, QREINT
+    use meth_params_module, only: NVAR, URHO, UEDEN, NQ, QU, QV, QW, QPRES, QRHO, QREINT
     use bl_constants_module, only: HALF, ONE
     use amrex_fort_module, only: rt => amrex_real
 
@@ -124,12 +124,10 @@ contains
               w**2 * gamma_up(9)
              W2 = 1.0d0 / (1.0d0 - W2)
 
-             rhoh = gamma * state(i,j,k,UEINT) / q(i,j,k,QRHO) + (1.0d0 - gamma) * q(i,j,k,QRHO)
-             p = (gamma - 1.0d0) * (state(i,j,k,UEINT) / q(i,j,k,QRHO) - q(i,j,k,QRHO))
+             rhoh = gamma * q(i,j,k,QREINT) / q(i,j,k,QRHO) + (1.0d0 - gamma) * q(i,j,k,QRHO)
+             p = (gamma - 1.0d0) * (q(i,j,k,QREINT) / q(i,j,k,QRHO) - q(i,j,k,QRHO))
 
              state(i,j,k,UEDEN) = rhoh * W2 - p - state(i,j,k,URHO)
-             !state(i,j,k,UEDEN) = state(i,j,k,UEINT) + &
-                  !HALF * state(i,j,k,URHO) * (u*u + v*v + w*w)
 
           end do
        end do
@@ -144,7 +142,7 @@ contains
     use eos_module, only: eos
     use eos_type_module, only: eos_t, eos_input_rt
     use network, only: nspec, naux
-    use meth_params_module, only : NVAR, URHO, UMX, UMY, UMZ, UEDEN, UEINT, UFS, UFX, &
+    use meth_params_module, only : NVAR, URHO, UMX, UMY, UMZ, UEDEN, QREINT, UFS, UFX, &
          UTEMP, small_temp, allow_negative_energy, allow_small_energy, &
          dual_energy_eta2, dual_energy_update_E_from_e, NQ, QRHO, QU, QV, QW
     use bl_constants_module, only: ZERO, HALF, ONE
@@ -155,7 +153,7 @@ contains
     integer, intent(in) :: lo(3), hi(3), verbose
     integer, intent(in) :: u_lo(3), u_hi(3)
     real(rt), intent(inout) :: u(u_lo(1):u_hi(1),u_lo(2):u_hi(2),u_lo(3):u_hi(3),NVAR)
-    real(rt), intent(in   ) :: q(u_lo(1):u_hi(1),u_lo(2):u_hi(2),u_lo(3):u_hi(3),NQ)
+    real(rt), intent(inout) :: q(u_lo(1):u_hi(1),u_lo(2):u_hi(2),u_lo(3):u_hi(3),NQ)
 
     ! Local variables
     integer  :: i,j,k
@@ -198,8 +196,8 @@ contains
                   w**2 * gamma_up(9)
                  W2 = 1.0d0 / (1.0d0 - W2)
 
-                 rhoh = gamma * u(i,j,k,UEINT) / q(i,j,k,QRHO) + (1.0d0 - gamma) * q(i,j,k,QRHO)
-                 p = (gamma - 1.0d0) * (u(i,j,k,UEINT) / q(i,j,k,QRHO) - q(i,j,k,QRHO))
+                 rhoh = gamma * q(i,j,k,QREINT) / q(i,j,k,QRHO) + (1.0d0 - gamma) * q(i,j,k,QRHO)
+                 p = (gamma - 1.0d0) * (q(i,j,k,QREINT) / q(i,j,k,QRHO) - q(i,j,k,QRHO))
 
                 rhoInv = ONE / q(i,j,k,QRHO)
                 eden = u(i,j,k,UEDEN) + u(i,j,k,URHO)
@@ -217,13 +215,13 @@ contains
 
                 if (eden < small_e) then
 
-                   if (u(i,j,k,UEINT) * rhoInv < small_e) then
+                   if (q(i,j,k,QREINT) * rhoInv < small_e) then
 
                       eos_state % T = max(u(i,j,k,UTEMP), small_temp)
 
                       call eos(eos_input_rt, eos_state)
 
-                      u(i,j,k,UEINT) = q(i,j,k,QRHO) * eos_state % e
+                      q(i,j,k,QREINT) = q(i,j,k,QRHO) * eos_state % e
 
                    endif
 
@@ -237,11 +235,11 @@ contains
 
                    if (rho_eint .gt. ZERO .and. rho_eint / u(i,j,k,UEDEN) .gt. dual_energy_eta2) then
 
-                      u(i,j,k,UEINT) = rho_eint
+                      q(i,j,k,QREINT) = rho_eint
 
                    endif
 
-                   if (u(i,j,k,UEINT) * rhoInv < small_e) then
+                   if (q(i,j,k,QREINT) * rhoInv < small_e) then
 
                       eos_state % T = max(u(i,j,k,UTEMP), small_temp)
 
@@ -251,7 +249,7 @@ contains
                          u(i,j,k,UEDEN) = rhoh * W2 - p - u(i,j,k,URHO)
                       endif
 
-                      u(i,j,k,UEINT) = q(i,j,k,QRHO) * eos_state % e
+                      q(i,j,k,QREINT) = q(i,j,k,QRHO) * eos_state % e
 
                    endif
 
@@ -271,12 +269,12 @@ contains
                 up = q(i,j,k,QU)
                 v = q(i,j,k,QV)
                 w = q(i,j,k,QW)
-                rhoh = gamma * u(i,j,k,UEINT) / q(i,j,k,QRHO) + (1.0d0 - gamma) * q(i,j,k,QRHO)
-                p = (gamma - 1.0d0) * (u(i,j,k,UEINT) / q(i,j,k,QRHO) - q(i,j,k,QRHO))
+                rhoh = gamma * q(i,j,k,QREINT) / q(i,j,k,QRHO) + (1.0d0 - gamma) * q(i,j,k,QRHO)
+                p = (gamma - 1.0d0) * (q(i,j,k,QREINT) / q(i,j,k,QRHO) - q(i,j,k,QRHO))
 
                 if (u(i,j,k,UEDEN) < ZERO) then
 
-                   if (u(i,j,k,UEINT) < ZERO) then
+                   if (q(i,j,k,QREINT) < ZERO) then
 
                       eos_state % rho   = q(i,j,k,QRHO)
                       eos_state % T     = small_temp
@@ -285,7 +283,7 @@ contains
 
                       call eos(eos_input_rt, eos_state)
 
-                      u(i,j,k,UEINT) = q(i,j,k,QRHO) * eos_state % e
+                      q(i,j,k,QREINT) = q(i,j,k,QRHO) * eos_state % e
 
                    endif
 
@@ -298,15 +296,15 @@ contains
                    ! Reset (e from e) if it's greater than eta * E.
                    if (rho_eint .gt. ZERO .and. rho_eint / u(i,j,k,UEDEN) .gt. dual_energy_eta2) then
 
-                      u(i,j,k,UEINT) = rho_eint
+                      q(i,j,k,QREINT) = rho_eint
 
                       ! If (e from E) < 0 or (e from E) < .0001*E but (e from e) > 0.
-                   else if (u(i,j,k,UEINT) .gt. ZERO .and. dual_energy_update_E_from_e == 1) then
+                  else if (q(i,j,k,QREINT) .gt. ZERO .and. dual_energy_update_E_from_e == 1) then
 
                       u(i,j,k,UEDEN) = rhoh * W2 - p - u(i,j,k,URHO)
 
                       ! If not resetting and little e is negative ...
-                   else if (u(i,j,k,UEINT) .le. ZERO) then
+                  else if (q(i,j,k,QREINT) .le. ZERO) then
 
                       eos_state % rho   = q(i,j,k,QRHO)
                       eos_state % T     = small_temp
@@ -321,7 +319,7 @@ contains
                          print *,'   '
                          print *,'>>> Warning: Castro_util.F90::reset_internal_energy  ',i,j,k
                          print *,'>>> ... resetting neg. e from EOS using small_temp'
-                         print *,'>>> ... from ',u(i,j,k,UEINT)/u(i,j,k,URHO),' to ', eint_new
+                         print *,'>>> ... from ',q(i,j,k,QREINT)/u(i,j,k,URHO),' to ', eint_new
                          print *,'    '
                       end if
 
@@ -329,7 +327,7 @@ contains
                          u(i,j,k,UEDEN) = rhoh * W2 - p - u(i,j,k,URHO)
                       endif
 
-                      u(i,j,k,UEINT) = u(i,j,k,URHO) * eint_new
+                      q(i,j,k,QREINT) = u(i,j,k,URHO) * eint_new
 
                    endif
 
@@ -346,10 +344,10 @@ contains
           do j = lo(2), hi(2)
              do i = lo(1), hi(1)
 
-                rhoh = gamma * u(i,j,k,UEINT) / q(i,j,k,QRHO) + (1.0d0 - gamma) * q(i,j,k,QRHO)
-                p = (gamma - 1.0d0) * (u(i,j,k,UEINT) / q(i,j,k,QRHO) - q(i,j,k,QRHO))
+                rhoh = gamma * q(i,j,k,QREINT) / q(i,j,k,QRHO) + (1.0d0 - gamma) * q(i,j,k,QRHO)
+                p = (gamma - 1.0d0) * (q(i,j,k,QREINT) / q(i,j,k,QRHO) - q(i,j,k,QRHO))
 
-                u(i,j,k,UEINT) = q(i,j,k,QRHO) * (rhoh  - p)
+                q(i,j,k,QREINT) = q(i,j,k,QRHO) * (rhoh  - p)
 
              enddo
           enddo
@@ -366,7 +364,7 @@ contains
     use network, only: nspec, naux
     use eos_module, only: eos
     use eos_type_module, only: eos_input_re, eos_t
-    use meth_params_module, only: NVAR, URHO, UEDEN, UEINT, UTEMP, &
+    use meth_params_module, only: NVAR, URHO, UEDEN, UTEMP, &
          UFS, UFX, allow_negative_energy, dual_energy_update_E_from_e, NQ, QU, QV, QW, QRHO, QREINT
     use bl_constants_module, only: ZERO, ONE
     use amrex_fort_module, only: rt => amrex_real
@@ -402,10 +400,10 @@ contains
                 call bl_error("Error:: compute_temp_nd.f90")
              end if
 
-             if (allow_negative_energy .eq. 0 .and. state(i,j,k,UEINT) <= ZERO) then
+             if (allow_negative_energy .eq. 0 .and. q(i,j,k,QREINT) <= ZERO) then
                 print *,'   '
                 print *,'>>> Warning: Castro_util.F90::ca_compute_temp ',i,j,k
-                print *,'>>> ... negative (rho e) ',state(i,j,k,UEINT)
+                print *,'>>> ... negative (rho e) ',q(i,j,k,QREINT)
                 print *,'   '
                 call bl_error("Error:: compute_temp_nd.f90")
              end if
@@ -445,13 +443,11 @@ contains
                   w**2 * gamma_up(9)
                  W2 = 1.0d0 / (1.0d0 - W2)
 
-                 rhoh = gamma * q(i,j,k,UEINT) / q(i,j,k,QRHO) + (1.0d0 - gamma) * q(i,j,k,QRHO)
-                 p = (gamma - 1.0d0) * (q(i,j,k,UEINT) / q(i,j,k,QRHO) - q(i,j,k,QRHO))
+                 rhoh = gamma * q(i,j,k,QREINT) / q(i,j,k,QRHO) + (1.0d0 - gamma) * q(i,j,k,QRHO)
+                 p = (gamma - 1.0d0) * (q(i,j,k,QREINT) / q(i,j,k,QRHO) - q(i,j,k,QRHO))
 
                 !state(i,j,k,UEDEN) = rhoh * W2 - p - state(i,j,k,URHO)
              endif
-
-             !state(i,j,k,UEINT) = q(i,j,k,QRHO) * eos_state % e
 
           enddo
        enddo
