@@ -6,6 +6,7 @@ module advection_util_module
   private
 
   public enforce_minimum_density, compute_cfl, grctoprim
+
 contains
 
   subroutine enforce_minimum_density(uin,uin_lo,uin_hi, &
@@ -14,7 +15,7 @@ contains
                                      lo,hi,frac_change,verbose)
 
     use network, only : nspec, naux
-    use meth_params_module, only : NVAR, QRHO, QREINT, UEDEN, small_dens, density_reset_method, NQ, NQAUX
+    use meth_params_module, only : NVAR, URHO, UEINT, UEDEN, small_dens, density_reset_method, NQ, NQAUX, QRHO, QREINT
     use bl_constants_module, only : ZERO
     use c_interface_modules, only : ca_ctoprim
     use riemann_util_module, only : gr_cons_state
@@ -37,7 +38,7 @@ contains
     integer          :: i,ii,j,jj,k,kk
     integer          :: i_set, j_set, k_set
     real(rt)         :: max_dens, gamma=5.0d0/3.0d0
-    real(rt)         :: qnew(NQ)
+    real(rt)         :: unew(NVAR), qnew(NQ)
     integer          :: num_positive_zones
 
     real(rt)         :: initial_mass, final_mass
@@ -95,7 +96,7 @@ contains
                 if ( qout(i,j,k,QRHO) < ZERO .and. &
                      (qout(i,j,k,QRHO) - qin(i,j,k,QRHO)) / qin(i,j,k,QRHO) < frac_change) then
 
-                   frac_change = (qout(i,j,k,QRHO) - qin(i,j,k,QRHO)) / qin(i,j,k,QRHO)
+                   frac_change = (qout(i,j,k,QRHO) - uin(i,j,k,QRHO)) / qin(i,j,k,QRHO)
 
                 endif
 
@@ -194,9 +195,11 @@ contains
 
                 endif
 
+                !call gr_cons_state(qout(i,j,k,:), uout(i,j,k,:), gamma)
+
              end if
 
-             call gr_cons_state(qout(i,j,k,:), uout(i,j,k,:), gamma)
+             !call gr_cons_state(qout(i,j,k,:), uout(i,j,k,:), gamma)
 
              final_mass = final_mass + qout(i,j,k,QRHO ) * vol(i,j,k)
              final_eint = final_eint + qout(i,j,k,QREINT) * vol(i,j,k)
@@ -309,7 +312,7 @@ contains
                          bind(C, name = "compute_cfl")
 
     use bl_constants_module, only: ZERO, ONE
-    use meth_params_module, only: NQ, QRHO, QU, QV, QW, QC, NQAUX
+    use meth_params_module, only: NQ, QRHO, QU, QV, QW, QC, NQAUX, do_ctu
     use prob_params_module, only: dim
 
     use amrex_fort_module, only : rt => amrex_real
@@ -381,7 +384,12 @@ contains
        enddo
     enddo
 
+    if (do_ctu == 1) then
+       courno = max( courmx, courmy, courmz )
+    endif
+
   end subroutine compute_cfl
+
 
   subroutine grctoprim(lo, hi, &
                      uin, uin_lo, uin_hi, &
@@ -393,9 +401,9 @@ contains
     use mempool_module, only : bl_allocate, bl_deallocate
     use actual_network, only : nspec, naux
     use eos_module, only : eos
-    use eos_type_module, only : eos_t, eos_input_rt
+    use eos_type_module, only : eos_t, eos_input_re
     use meth_params_module, only : NVAR, URHO, UMX, UMY, UMZ, &
-                                   UEDEN, UTEMP, &
+                                   UEDEN, UEINT, UTEMP, &
                                    QRHO, QU, QV, QW, &
                                    QREINT, QPRES, QTEMP, QGAME, QFS, QFX, &
                                    NQ, QC, QCSML, QGAMC, QDPDR, QDPDE, NQAUX, &
@@ -556,7 +564,7 @@ contains
        do k = lo(3),hi(3)
           do j = lo(2),hi(2)
              do i = lo(1),hi(1)
-                q(i,j,k,iq) = uin(i,j,k,n)/q(i,j,k,QRHO)
+                q(i,j,k,iq) = uin(i,j,k,n)/uin(i,j,k,URHO)
              enddo
           enddo
        enddo
@@ -573,7 +581,7 @@ contains
              eos_state % xn  = q(i,j,k,QFS:QFS+nspec-1)
              eos_state % aux = q(i,j,k,QFX:QFX+naux-1)
 
-             call eos(eos_input_rt, eos_state)
+             call eos(eos_input_re, eos_state)
 
              q(i,j,k,QTEMP)  = eos_state % T
              q(i,j,k,QREINT) = q(i,j,k,QREINT) * q(i,j,k,QRHO) !eos_state % e * q(i,j,k,QRHO)
@@ -591,7 +599,6 @@ contains
     enddo
 
   end subroutine grctoprim
-
 
 
 end module advection_util_module

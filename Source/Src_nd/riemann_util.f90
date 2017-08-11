@@ -57,7 +57,7 @@ contains
 
     use meth_params_module, only: QVAR, QRHO, QU, QV, QW, QREINT, &
          NVAR, URHO, UMX, UMY, UMZ, UEDEN, UEINT, UTEMP, &
-         npassive, upass_map, qpass_map
+         npassive, upass_map, qpass_map, QTEMP
 
     real(rt)        , intent(in)  :: q(QVAR), gamma
     real(rt)        , intent(out) :: U(NVAR)
@@ -80,9 +80,7 @@ contains
     U(UEDEN) = rhoh * W**2 - p - U(URHO) !q(QREINT) + HALF*q(QRHO)*(q(QU)**2 + q(QV)**2 + q(QW)**2)
     U(UEINT) = q(QREINT)
 
-    ! we don't care about T here, but initialize it to make NaN
-    ! checking happy
-    U(UTEMP) = ZERO
+    U(UTEMP) = q(QTEMP)
 
     do ipassive = 1, npassive
        n  = upass_map(ipassive)
