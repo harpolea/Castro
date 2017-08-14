@@ -1048,7 +1048,7 @@ contains
 
     u(:,:,:,:nc) = dat(:,:,:,:)
 
-    call ca_ctoprim(lo, hi, &
+    call ca_ctoprim(lo-dg, hi+dg, &
                       u, d_lo, d_hi, &
                       q,     d_lo, d_hi, &
                       qaux,  d_lo, d_hi, 0)

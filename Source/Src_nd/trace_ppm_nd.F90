@@ -3,7 +3,9 @@
 
 module trace_ppm_module
 
+  use prob_params_module, only : dg
   use amrex_fort_module, only : rt => amrex_real
+
   implicit none
 
   private
@@ -12,58 +14,76 @@ module trace_ppm_module
 
 contains
 
-  subroutine tracexy_ppm(q,c,flatn,qd_lo,qd_hi, &
-                         Ip,Im,Ip_src,Im_src,Ip_gc,Im_gc,I_lo,I_hi, &
-                         qxm,qxp,qym,qyp,qs_lo,qs_hi, &
-                         gamc,gc_lo,gc_hi, &
-                         ilo1,ilo2,ihi1,ihi2,dt,kc,k3d)
+  subroutine tracexy_ppm(q, qd_lo, qd_hi, &
+                         qaux, qa_lo, qa_hi, &
+                         Ip, Im, Ip_src, Im_src, Ip_gc, Im_gc, I_lo, I_hi, &
+                         qxm, qxp, qym, qyp, qs_lo, qs_hi, &
+#if (BL_SPACEDIM < 3)
+                         dloga, dloga_lo, dloga_hi, &
+#endif
+#if (BL_SPACEDIM == 1)
+                         SrcQ, src_lo, Src_hi, &
+#endif
+                         ilo1, ilo2, ihi1, ihi2, domlo, domhi, &
+                         dx, dt, kc, k3d)
 
     use network, only : nspec, naux
-    use meth_params_module, only : QVAR, QRHO, QU, QV, QW, &
-         QREINT, QPRES, QGAME, &
-         small_dens, small_pres, &
-         ppm_type, ppm_trace_sources, &
-         ppm_reference_eigenvectors, ppm_predict_gammae, &
-         npassive, qpass_map
+    use meth_params_module, only : NQ, NQAUX, QVAR, QRHO, QU, QV, QW, &
+                                   QREINT, QPRES, QGAME, QC, QGAMC, &
+                                   small_dens, small_pres, &
+                                   ppm_type, ppm_trace_sources, &
+                                   ppm_reference_eigenvectors, ppm_predict_gammae, &
+                                   npassive, qpass_map, &
+                                   fix_mass_flux
     use bl_constants_module
-
+    use prob_params_module, only : physbc_lo, physbc_hi, Outflow
+                                                 
     use amrex_fort_module, only : rt => amrex_real
     implicit none
 
     integer, intent(in) :: qd_lo(3), qd_hi(3)
     integer, intent(in) :: qs_lo(3),qs_hi(3)
-    integer, intent(in) :: gc_lo(3), gc_hi(3)
+    integer, intent(in) :: qa_lo(3), qa_hi(3)
     integer, intent(in) :: I_lo(3), I_hi(3)
+#if (BL_SPACEDIM < 3)
+    integer, intent(in) :: dloga_lo(3), dloga_hi(3)
+#endif
+#if (BL_SPACEDIM == 1)
+    integer, intent(in) :: src_lo(3), src_hi(3)
+#endif
     integer, intent(in) :: ilo1, ilo2, ihi1, ihi2
     integer, intent(in) :: kc, k3d
+    integer, intent(in) :: domlo(3), domhi(3)
 
-    real(rt)        , intent(in) ::     q(qd_lo(1):qd_hi(1),qd_lo(2):qd_hi(2),qd_lo(3):qd_hi(3),QVAR)
-    real(rt)        , intent(in) ::     c(qd_lo(1):qd_hi(1),qd_lo(2):qd_hi(2),qd_lo(3):qd_hi(3))
-    real(rt)        , intent(in) :: flatn(qd_lo(1):qd_hi(1),qd_lo(2):qd_hi(2),qd_lo(3):qd_hi(3))
+    real(rt), intent(in) ::     q(qd_lo(1):qd_hi(1),qd_lo(2):qd_hi(2),qd_lo(3):qd_hi(3),NQ)
+    real(rt), intent(in) ::  qaux(qa_lo(1):qa_hi(1),qa_lo(2):qa_hi(2),qa_lo(3):qa_hi(3),NQAUX)
 
-    real(rt)        , intent(in) :: Ip(I_lo(1):I_hi(1),I_lo(2):I_hi(2),I_lo(3):I_hi(3),1:3,1:3,QVAR)
-    real(rt)        , intent(in) :: Im(I_lo(1):I_hi(1),I_lo(2):I_hi(2),I_lo(3):I_hi(3),1:3,1:3,QVAR)
+    real(rt), intent(in) :: Ip(I_lo(1):I_hi(1),I_lo(2):I_hi(2),I_lo(3):I_hi(3),1:BL_SPACEDIM,1:3,NQ)
+    real(rt), intent(in) :: Im(I_lo(1):I_hi(1),I_lo(2):I_hi(2),I_lo(3):I_hi(3),1:BL_SPACEDIM,1:3,NQ)
 
-    real(rt)        , intent(in) :: Ip_src(I_lo(1):I_hi(1),I_lo(2):I_hi(2),I_lo(3):I_hi(3),1:3,1:3,QVAR)
-    real(rt)        , intent(in) :: Im_src(I_lo(1):I_hi(1),I_lo(2):I_hi(2),I_lo(3):I_hi(3),1:3,1:3,QVAR)
+    real(rt), intent(in) :: Ip_src(I_lo(1):I_hi(1),I_lo(2):I_hi(2),I_lo(3):I_hi(3),1:BL_SPACEDIM,1:3,QVAR)
+    real(rt), intent(in) :: Im_src(I_lo(1):I_hi(1),I_lo(2):I_hi(2),I_lo(3):I_hi(3),1:BL_SPACEDIM,1:3,QVAR)
 
-    real(rt)        , intent(in) :: Ip_gc(I_lo(1):I_hi(1),I_lo(2):I_hi(2),I_lo(3):I_hi(3),1:3,1:3,1)
-    real(rt)        , intent(in) :: Im_gc(I_lo(1):I_hi(1),I_lo(2):I_hi(2),I_lo(3):I_hi(3),1:3,1:3,1)
+    real(rt), intent(in) :: Ip_gc(I_lo(1):I_hi(1),I_lo(2):I_hi(2),I_lo(3):I_hi(3),1:BL_SPACEDIM,1:3,1)
+    real(rt), intent(in) :: Im_gc(I_lo(1):I_hi(1),I_lo(2):I_hi(2),I_lo(3):I_hi(3),1:BL_SPACEDIM,1:3,1)
 
-    real(rt)        , intent(inout) :: qxm(qs_lo(1):qs_hi(1),qs_lo(2):qs_hi(2),qs_lo(3):qs_hi(3),QVAR)
-    real(rt)        , intent(inout) :: qxp(qs_lo(1):qs_hi(1),qs_lo(2):qs_hi(2),qs_lo(3):qs_hi(3),QVAR)
-    real(rt)        , intent(inout) :: qym(qs_lo(1):qs_hi(1),qs_lo(2):qs_hi(2),qs_lo(3):qs_hi(3),QVAR)
-    real(rt)        , intent(inout) :: qyp(qs_lo(1):qs_hi(1),qs_lo(2):qs_hi(2),qs_lo(3):qs_hi(3),QVAR)
-
-    real(rt)        , intent(in) :: gamc(gc_lo(1):gc_hi(1),gc_lo(2):gc_hi(2),gc_lo(3):gc_hi(3))
-
-    real(rt)        , intent(in) :: dt
+    real(rt), intent(inout) :: qxm(qs_lo(1):qs_hi(1),qs_lo(2):qs_hi(2),qs_lo(3):qs_hi(3),NQ)
+    real(rt), intent(inout) :: qxp(qs_lo(1):qs_hi(1),qs_lo(2):qs_hi(2),qs_lo(3):qs_hi(3),NQ)
+    real(rt), intent(inout) :: qym(qs_lo(1):qs_hi(1),qs_lo(2):qs_hi(2),qs_lo(3):qs_hi(3),NQ)
+    real(rt), intent(inout) :: qyp(qs_lo(1):qs_hi(1),qs_lo(2):qs_hi(2),qs_lo(3):qs_hi(3),NQ)
+#if (BL_SPACEDIM < 3)
+    real(rt), intent(in) ::  dloga(dloga_lo(1):dloga_hi(1),dloga_lo(2):dloga_hi(2),dloga_lo(3):dloga_hi(3))
+#endif
+#if (BL_SPACEDIM == 1)
+    real(rt), intent(in) ::  srcQ(src_lo(1):src_hi(1),src_lo(2):src_hi(2),src_lo(3):src_hi(3),QVAR)    
+#endif
+    real(rt), intent(in) :: dt, dx(3)
 
     ! Local variables
     integer :: i, j
     integer :: n, ipassive
 
-    real(rt)         :: hdt
+    real(rt) :: hdt
 
     ! To allow for easy integration of radiation, we adopt the
     ! following conventions:
@@ -83,24 +103,26 @@ contains
     ! for pure hydro, we will only consider:
     !   rho, u, v, w, ptot, rhoe_g, cc, h_g
 
-    real(rt)         :: cc, csq, cgassq, Clag
-    real(rt)         :: rho, u, v, w, p, rhoe_g, h_g
-    real(rt)         :: gam_g, game
+    real(rt) :: cc, csq, cgassq, Clag
+    real(rt) :: rho, u, v, w, p, rhoe_g, h_g
+    real(rt) :: gam_g, game
 
-    real(rt)         :: drho, dptot, drhoe_g
-    real(rt)         :: de, dge, dtau
-    real(rt)         :: dup, dvp, dptotp
-    real(rt)         :: dum, dvm, dptotm
+    real(rt) :: drho, dptot, drhoe_g
+    real(rt) :: de, dge, dtau
+    real(rt) :: dup, dvp, dptotp
+    real(rt) :: dum, dvm, dptotm
 
-    real(rt)         :: rho_ref, u_ref, v_ref, p_ref, rhoe_g_ref, h_g_ref
-    real(rt)         :: tau_ref
+    real(rt) :: rho_ref, u_ref, v_ref, p_ref, rhoe_g_ref, h_g_ref
+    real(rt) :: tau_ref
 
-    real(rt)         :: cc_ref, csq_ref, Clag_ref, gam_g_ref, game_ref, gfactor
-    real(rt)         :: cc_ev, csq_ev, Clag_ev, rho_ev, p_ev, h_g_ev, tau_ev
+    real(rt) :: cc_ref, csq_ref, Clag_ref, gam_g_ref, game_ref, gfactor
+    real(rt) :: cc_ev, csq_ev, Clag_ev, rho_ev, p_ev, h_g_ev, tau_ev
 
-    real(rt)         :: alpham, alphap, alpha0r, alpha0e_g
+    real(rt) :: alpham, alphap, alpha0r, alpha0e_g
+    real(rt) :: sourcr, sourcp, source, courn, eta, dlogatmp
+    real(rt) :: tau_s, e_s
 
-    real(rt)         :: tau_s, e_s
+    logical :: fix_mass_flux_lo, fix_mass_flux_hi
 
     if (ppm_type == 0) then
        print *,'Oops -- shouldnt be in tracexy_ppm with ppm_type = 0'
@@ -108,6 +130,12 @@ contains
     end if
 
     hdt = HALF * dt
+
+
+    fix_mass_flux_lo = (fix_mass_flux == 1) .and. (physbc_lo(1) == Outflow) &
+         .and. (ilo1 == domlo(1))
+    fix_mass_flux_hi = (fix_mass_flux == 1) .and. (physbc_hi(1) == Outflow) &
+         .and. (ihi1 == domhi(1))
 
 
     !=========================================================================
@@ -143,14 +171,14 @@ contains
 
     ! Trace to left and right edges using upwind PPM
 
-    do j = ilo2-1, ihi2+1
+    do j = ilo2-dg(2), ihi2+dg(2)
        do i = ilo1-1, ihi1+1
 
           gfactor = ONE ! to help compiler resolve ANTI dependence
 
           rho = q(i,j,k3d,QRHO)
 
-          cc = c(i,j,k3d)
+          cc = qaux(i,j,k3d,QC)
           csq = cc**2
           Clag = rho*cc
 
@@ -162,7 +190,7 @@ contains
           rhoe_g = q(i,j,k3d,QREINT)
           h_g = ( (p + rhoe_g)/rho)/csq
 
-          gam_g = gamc(i,j,k3d)
+          gam_g = qaux(i,j,k3d,QGAMC)
           game = q(i,j,k3d,QGAME)
 
 
@@ -187,8 +215,8 @@ contains
              gam_g_ref  = Im_gc(i,j,kc,1,1,1)
              game_ref = Im(i,j,kc,1,1,QGAME)
 
-             rho_ref = max(rho_ref,small_dens)
-             p_ref = max(p_ref,small_pres)
+             rho_ref = max(rho_ref, small_dens)
+             p_ref = max(p_ref, small_pres)
 
              ! For tracing (optionally)
              cc_ref = sqrt(gam_g_ref*p_ref/rho_ref)
@@ -202,16 +230,16 @@ contains
              ! Note: for the transverse velocities, the jump is carried
              !       only by the u wave (the contact)
 
-             dum   = u_ref    - Im(i,j,kc,1,1,QU)
-             dptotm   = p_ref    - Im(i,j,kc,1,1,QPRES)
+             dum = u_ref - Im(i,j,kc,1,1,QU)
+             dptotm = p_ref - Im(i,j,kc,1,1,QPRES)
 
-             drho  = rho_ref  - Im(i,j,kc,1,2,QRHO)
-             dptot    = p_ref    - Im(i,j,kc,1,2,QPRES)
+             drho = rho_ref - Im(i,j,kc,1,2,QRHO)
+             dptot = p_ref - Im(i,j,kc,1,2,QPRES)
              drhoe_g = rhoe_g_ref - Im(i,j,kc,1,2,QREINT)
-             dtau  = tau_ref  - ONE/Im(i,j,kc,1,2,QRHO)
+             dtau = tau_ref - ONE/Im(i,j,kc,1,2,QRHO)
 
-             dup   = u_ref    - Im(i,j,kc,1,3,QU)
-             dptotp   = p_ref    - Im(i,j,kc,1,3,QPRES)
+             dup = u_ref - Im(i,j,kc,1,3,QU)
+             dptotp = p_ref - Im(i,j,kc,1,3,QPRES)
 
 
              ! If we are doing source term tracing, then we add the force to
@@ -322,8 +350,8 @@ contains
              endif
 
              ! Enforce small_*
-             qxp(i,j,kc,QRHO ) = max(qxp(i,j,kc,QRHO ),small_dens)
-             qxp(i,j,kc,QPRES) = max(qxp(i,j,kc,QPRES),small_pres)
+             qxp(i,j,kc,QRHO ) = max(qxp(i,j,kc,QRHO ), small_dens)
+             qxp(i,j,kc,QPRES) = max(qxp(i,j,kc,QPRES), small_pres)
 
              ! Transverse velocities -- there's no projection here, so
              ! we don't need a reference state.  We only care about
@@ -339,7 +367,21 @@ contains
                 qxp(i,j,kc,QV) = qxp(i,j,kc,QV) + hdt*Im_src(i,j,kc,1,2,QV)
                 qxp(i,j,kc,QW) = qxp(i,j,kc,QW) + hdt*Im_src(i,j,kc,1,2,QW)
              endif
+             
+#if (BL_SPACEDIM == 1)
+             ! if we did not trace sources, then add them here (for 1-d; 2- and 3-d will
+             ! get them in the transverse parts)
+             if (ppm_trace_sources == 0) then
+                qxp(i,j,kc,QU) = qxp(i,j,kc,QU) + HALF*dt*srcQ(i,j,k3d,QU)
+             endif
 
+             ! add source terms -- there is no corresponding trans 
+             qxp(i,j,kc,QRHO) = qxp(i,j,kc,QRHO) + HALF*dt*srcQ(i,j,k3d,QRHO)
+             qxp(i,j,kc,QRHO  ) = max(small_dens, qxp(i,j,kc,QRHO))
+             qxp(i,j,kc,QREINT) = qxp(i,j,kc,QREINT) + HALF*dt*srcQ(i,j,k3d,QREINT)
+             qxp(i,j,kc,QPRES ) = qxp(i,j,kc,QPRES) + HALF*dt*srcQ(i,j,k3d,QPRES)
+#endif
+             
           end if
 
 
@@ -362,7 +404,7 @@ contains
              game_ref = Ip(i,j,kc,1,3,QGAME)
 
              rho_ref = max(rho_ref,small_dens)
-             p_ref = max(p_ref,small_pres)
+             p_ref = max(p_ref, small_pres)
 
              ! For tracing (optionally)
              cc_ref = sqrt(gam_g_ref*p_ref/rho_ref)
@@ -373,16 +415,16 @@ contains
              ! *m are the jumps carried by u-c
              ! *p are the jumps carried by u+c
 
-             dum   = u_ref    - Ip(i,j,kc,1,1,QU)
-             dptotm   = p_ref    - Ip(i,j,kc,1,1,QPRES)
+             dum = u_ref - Ip(i,j,kc,1,1,QU)
+             dptotm  = p_ref - Ip(i,j,kc,1,1,QPRES)
 
-             drho  = rho_ref  - Ip(i,j,kc,1,2,QRHO)
-             dptot    = p_ref    - Ip(i,j,kc,1,2,QPRES)
+             drho = rho_ref - Ip(i,j,kc,1,2,QRHO)
+             dptot = p_ref - Ip(i,j,kc,1,2,QPRES)
              drhoe_g = rhoe_g_ref - Ip(i,j,kc,1,2,QREINT)
-             dtau  = tau_ref  - ONE/Ip(i,j,kc,1,2,QRHO)
+             dtau = tau_ref - ONE/Ip(i,j,kc,1,2,QRHO)
 
-             dup   = u_ref    - Ip(i,j,kc,1,3,QU)
-             dptotp   = p_ref    - Ip(i,j,kc,1,3,QPRES)
+             dup = u_ref - Ip(i,j,kc,1,3,QU)
+             dptotp = p_ref - Ip(i,j,kc,1,3,QPRES)
 
              ! If we are doing source term tracing, then we add the force
              ! to the velocity here, otherwise we will deal with this
@@ -498,13 +540,77 @@ contains
              qxm(i+1,j,kc,QV    ) = Ip(i,j,kc,1,2,QV)
              qxm(i+1,j,kc,QW    ) = Ip(i,j,kc,1,2,QW)
 
+             ! the transverse velocities only jump across the middle wave, so there
+             ! is no tracing needed
              if (ppm_trace_sources == 1) then
                 qxm(i+1,j,kc,QV) = qxm(i+1,j,kc,QV) + hdt*Ip_src(i,j,kc,1,2,QV)
                 qxm(i+1,j,kc,QW) = qxm(i+1,j,kc,QW) + hdt*Ip_src(i,j,kc,1,2,QW)
              endif
 
+#if (BL_SPACEDIM == 1)
+             ! if we did not trace sources, then add them here (for 1-d; 2- and 3-d will
+             ! get them in the transverse parts)
+             if (ppm_trace_sources == 0) then
+                qxm(i+1,j,kc,QU) = qxm(i+1,j,kc,QU) + HALF*dt*srcQ(i,j,k3d,QU)
+             endif
+
+             ! add remaining sources here
+             qxm(i+1,j,kc,QRHO) = qxm(i+1,j,kc,QRHO) + HALF*dt*srcQ(i,j,k3d,QRHO)
+             qxm(i+1,j,kc,QRHO) = max(small_dens, qxm(i+1,j,kc,QRHO))
+             qxm(i+1,j,kc,QREINT) = qxm(i+1,j,kc,QREINT) + HALF*dt*srcQ(i,j,k3d,QREINT)
+             qxm(i+1,j,kc,QPRES) = qxm(i+1,j,kc,QPRES) + HALF*dt*srcQ(i,j,k3d,QPRES)
+#endif             
+
           end if
 
+          !-------------------------------------------------------------------
+          ! geometry source terms
+          !-------------------------------------------------------------------
+
+#if (BL_SPACEDIM < 3)
+          if (dloga(i,j,k3d) /= 0) then
+             courn = dt/dx(1)*(cc+abs(u))
+             eta = (ONE-courn)/(cc*dt*abs(dloga(i,j,k3d)))
+             dlogatmp = min(eta, ONE)*dloga(i,j,k3d)
+             sourcr = -HALF*dt*rho*dlogatmp*u
+             sourcp = sourcr*csq
+             source = sourcp*h_g
+
+             if (i <= ihi1) then
+                qxm(i+1,j,kc,QRHO) = qxm(i+1,j,kc,QRHO) + sourcr
+                qxm(i+1,j,kc,QRHO) = max(qxm(i+1,j,kc,QRHO), small_dens)
+                qxm(i+1,j,kc,QPRES) = qxm(i+1,j,kc,QPRES) + sourcp
+                qxm(i+1,j,kc,QREINT) = qxm(i+1,j,kc,QREINT) + source
+             end if
+
+             if (i >= ilo1) then
+                qxp(i,j,kc,QRHO) = qxp(i,j,kc,QRHO) + sourcr
+                qxp(i,j,kc,QRHO) = max(qxp(i,j,kc,QRHO), small_dens)
+                qxp(i,j,kc,QPRES) = qxp(i,j,kc,QPRES) + sourcp
+                qxp(i,j,kc,QREINT) = qxp(i,j,kc,QREINT) + source
+             end if
+
+          endif
+#endif
+
+#if (BL_SPACEDIM == 1)
+          ! Enforce constant mass flux rate if specified
+          if (fix_mass_flux_lo) then
+             qxm(ilo1,j,kc,QRHO  ) = q(domlo(1)-1,j,k3d,QRHO)
+             qxm(ilo1,j,kc,QU    ) = q(domlo(1)-1,j,k3d,QU  )
+             qxm(ilo1,j,kc,QPRES ) = q(domlo(1)-1,j,k3d,QPRES)
+             qxm(ilo1,j,kc,QREINT) = q(domlo(1)-1,j,k3d,QREINT)
+          end if
+
+          ! Enforce constant mass flux rate if specified
+          if (fix_mass_flux_hi) then
+             qxp(ihi1+1,j,kc,QRHO  ) = q(domhi(1)+1,j,k3d,QRHO)
+             qxp(ihi1+1,j,kc,QU    ) = q(domhi(1)+1,j,k3d,QU  )
+             qxp(ihi1+1,j,kc,QPRES ) = q(domhi(1)+1,j,k3d,QPRES)
+             qxp(ihi1+1,j,kc,QREINT) = q(domhi(1)+1,j,k3d,QREINT)
+          end if
+
+#endif
        end do
     end do
 
@@ -516,7 +622,7 @@ contains
     ! Do all of the passively advected quantities in one loop
     do ipassive = 1, npassive
        n = qpass_map(ipassive)
-       do j = ilo2-1, ihi2+1
+       do j = ilo2-dg(2), ihi2+dg(2)
 
           ! Plus state on face i
           do i = ilo1, ihi1+1
@@ -552,10 +658,16 @@ contains
                 qxm(i+1,j,kc,n) = q(i,j,k3d,n) + HALF*(Ip(i,j,kc,1,2,n) - q(i,j,k3d,n))
              endif
           enddo
+
+#if (BL_SPACEDIM == 1)
+          if (fix_mass_flux_hi) qxp(ihi1+1,j,kc,n) = q(ihi1+1,j,k3d,n)
+          if (fix_mass_flux_lo) qxm(ilo1,j,kc,n) = q(ilo1-1,j,k3d,n)
+#endif
+
        enddo
     enddo
 
-
+#if (BL_SPACEDIM >= 2)
     !-------------------------------------------------------------------------
     ! y-direction
     !-------------------------------------------------------------------------
@@ -569,7 +681,7 @@ contains
 
           rho = q(i,j,k3d,QRHO)
 
-          cc = c(i,j,k3d)
+          cc = qaux(i,j,k3d,QC)
           csq = cc**2
           Clag = rho*cc
 
@@ -581,7 +693,7 @@ contains
           rhoe_g = q(i,j,k3d,QREINT)
           h_g = ( (p + rhoe_g)/rho )/csq
 
-          gam_g = gamc(i,j,k3d)
+          gam_g = qaux(i,j,k3d,QGAMC)
           game = q(i,j,k3d,QGAME)
 
           !-------------------------------------------------------------------
@@ -603,8 +715,8 @@ contains
              gam_g_ref  = Im_gc(i,j,kc,2,1,1)
              game_ref = Im(i,j,kc,2,1,QGAME)
 
-             rho_ref = max(rho_ref,small_dens)
-             p_ref = max(p_ref,small_pres)
+             rho_ref = max(rho_ref, small_dens)
+             p_ref = max(p_ref, small_pres)
 
              ! For tracing (optionally)
              cc_ref = sqrt(gam_g_ref*p_ref/rho_ref)
@@ -615,16 +727,16 @@ contains
              ! *m are the jumps carried by v-c
              ! *p are the jumps carried by v+c
 
-             dvm   = v_ref    - Im(i,j,kc,2,1,QV)
-             dptotm   = p_ref    - Im(i,j,kc,2,1,QPRES)
+             dvm = v_ref - Im(i,j,kc,2,1,QV)
+             dptotm = p_ref - Im(i,j,kc,2,1,QPRES)
 
-             drho  = rho_ref  - Im(i,j,kc,2,2,QRHO)
-             dptot    = p_ref    - Im(i,j,kc,2,2,QPRES)
+             drho = rho_ref - Im(i,j,kc,2,2,QRHO)
+             dptot = p_ref - Im(i,j,kc,2,2,QPRES)
              drhoe_g = rhoe_g_ref - Im(i,j,kc,2,2,QREINT)
-             dtau  = tau_ref  - ONE/Im(i,j,kc,2,2,QRHO)
+             dtau = tau_ref - ONE/Im(i,j,kc,2,2,QRHO)
 
-             dvp   = v_ref    - Im(i,j,kc,2,3,QV)
-             dptotp   = p_ref    - Im(i,j,kc,2,3,QPRES)
+             dvp = v_ref - Im(i,j,kc,2,3,QV)
+             dptotp = p_ref - Im(i,j,kc,2,3,QPRES)
 
              ! If we are doing source term tracing, then we add the force
              ! to the velocity here, otherwise we will deal with this
@@ -734,8 +846,8 @@ contains
              endif
 
              ! Enforce small_*
-             qyp(i,j,kc,QRHO ) = max(qyp(i,j,kc,QRHO ),small_dens)
-             qyp(i,j,kc,QPRES) = max(qyp(i,j,kc,QPRES),small_pres)
+             qyp(i,j,kc,QRHO ) = max(qyp(i,j,kc,QRHO ), small_dens)
+             qyp(i,j,kc,QPRES) = max(qyp(i,j,kc,QPRES), small_pres)
 
              ! transverse velocities
              qyp(i,j,kc,QU    ) = Im(i,j,kc,2,2,QU)
@@ -767,8 +879,8 @@ contains
              gam_g_ref  = Ip_gc(i,j,kc,2,3,1)
              game_ref = Ip(i,j,kc,2,3,QGAME)
 
-             rho_ref = max(rho_ref,small_dens)
-             p_ref = max(p_ref,small_pres)
+             rho_ref = max(rho_ref, small_dens)
+             p_ref = max(p_ref, small_pres)
 
              ! For tracing (optionally)
              cc_ref = sqrt(gam_g_ref*p_ref/rho_ref)
@@ -779,16 +891,16 @@ contains
              ! *m are the jumps carried by v-c
              ! *p are the jumps carried by v+c
 
-             dvm   = v_ref    - Ip(i,j,kc,2,1,QV)
-             dptotm   = p_ref    - Ip(i,j,kc,2,1,QPRES)
+             dvm = v_ref - Ip(i,j,kc,2,1,QV)
+             dptotm = p_ref - Ip(i,j,kc,2,1,QPRES)
 
-             drho  = rho_ref  - Ip(i,j,kc,2,2,QRHO)
-             dptot    = p_ref    - Ip(i,j,kc,2,2,QPRES)
+             drho = rho_ref - Ip(i,j,kc,2,2,QRHO)
+             dptot = p_ref - Ip(i,j,kc,2,2,QPRES)
              drhoe_g = rhoe_g_ref - Ip(i,j,kc,2,2,QREINT)
-             dtau  = tau_ref  - ONE/Ip(i,j,kc,2,2,QRHO)
+             dtau = tau_ref - ONE/Ip(i,j,kc,2,2,QRHO)
 
-             dvp   = v_ref    - Ip(i,j,kc,2,3,QV)
-             dptotp   = p_ref    - Ip(i,j,kc,2,3,QPRES)
+             dvp = v_ref - Ip(i,j,kc,2,3,QV)
+             dptotp = p_ref - Ip(i,j,kc,2,3,QPRES)
 
              ! If we are doing source term tracing, then we add the force
              ! to the velocity here, otherwise we will deal with this
@@ -899,8 +1011,8 @@ contains
              endif
 
              ! Enforce small_*
-             qym(i,j+1,kc,QRHO ) = max(qym(i,j+1,kc,QRHO ),small_dens)
-             qym(i,j+1,kc,QPRES) = max(qym(i,j+1,kc,QPRES),small_pres)
+             qym(i,j+1,kc,QRHO ) = max(qym(i,j+1,kc,QRHO ), small_dens)
+             qym(i,j+1,kc,QPRES) = max(qym(i,j+1,kc,QPRES), small_pres)
 
              ! transverse velocities
              qym(i,j+1,kc,QU    ) = Ip(i,j,kc,2,2,QU)
@@ -955,24 +1067,26 @@ contains
 
        enddo
     enddo
+#endif
 
   end subroutine tracexy_ppm
 
 
 
-  subroutine tracez_ppm(q,c,flatn,qd_lo,qd_hi, &
-                        Ip,Im,Ip_src,Im_src,Ip_gc,Im_gc,I_lo,I_hi, &
-                        qzm,qzp,qs_lo,qs_hi, &
-                        gamc,gc_lo,gc_hi, &
-                        ilo1,ilo2,ihi1,ihi2,dt,km,kc,k3d)
+  subroutine tracez_ppm(q, qd_lo, qd_hi, &
+                        qaux, qa_lo, qa_hi, &
+                        Ip, Im, Ip_src, Im_src, Ip_gc, Im_gc, I_lo, I_hi, &
+                        qzm, qzp, qs_lo, qs_hi, &
+                        ilo1, ilo2, ihi1, ihi2, domlo, domhi, &
+                        dt, km, kc, k3d)
 
     use network, only : nspec, naux
-    use meth_params_module, only : QVAR, QRHO, QU, QV, QW, &
-         QREINT, QPRES, QGAME, &
-         small_dens, small_pres, &
-         ppm_type, ppm_trace_sources, &
-         ppm_reference_eigenvectors, ppm_predict_gammae, &
-         npassive, qpass_map
+    use meth_params_module, only : NQ, NQAUX, QVAR, QRHO, QU, QV, QW, &
+                                   QREINT, QPRES, QGAME, QC, QGAMC, &
+                                   small_dens, small_pres, &
+                                   ppm_type, ppm_trace_sources, &
+                                   ppm_reference_eigenvectors, ppm_predict_gammae, &
+                                   npassive, qpass_map
     use bl_constants_module
 
     use amrex_fort_module, only : rt => amrex_real
@@ -980,36 +1094,34 @@ contains
 
     integer, intent(in) :: qd_lo(3), qd_hi(3)
     integer, intent(in) :: qs_lo(3),qs_hi(3)
-    integer, intent(in) :: gc_lo(3), gc_hi(3)
+    integer, intent(in) :: qa_lo(3), qa_hi(3)
     integer, intent(in) :: I_lo(3), I_hi(3)
     integer, intent(in) :: ilo1, ilo2, ihi1, ihi2
     integer, intent(in) :: km, kc, k3d
+    integer, intent(in) :: domlo(3), domhi(3)
 
-    real(rt)        , intent(in) ::     q(qd_lo(1):qd_hi(1),qd_lo(2):qd_hi(2),qd_lo(3):qd_hi(3),QVAR)
-    real(rt)        , intent(in) ::     c(qd_lo(1):qd_hi(1),qd_lo(2):qd_hi(2),qd_lo(3):qd_hi(3))
-    real(rt)        , intent(in) :: flatn(qd_lo(1):qd_hi(1),qd_lo(2):qd_hi(2),qd_lo(3):qd_hi(3))
+    real(rt), intent(in) ::     q(qd_lo(1):qd_hi(1),qd_lo(2):qd_hi(2),qd_lo(3):qd_hi(3),NQ)
+    real(rt), intent(in) ::  qaux(qa_lo(1):qa_hi(1),qa_lo(2):qa_hi(2),qa_lo(3):qa_hi(3),NQAUX)
 
-    real(rt)        , intent(in) :: Ip(I_lo(1):I_hi(1),I_lo(2):I_hi(2),I_lo(3):I_hi(3),1:3,1:3,QVAR)
-    real(rt)        , intent(in) :: Im(I_lo(1):I_hi(1),I_lo(2):I_hi(2),I_lo(3):I_hi(3),1:3,1:3,QVAR)
+    real(rt), intent(in) :: Ip(I_lo(1):I_hi(1),I_lo(2):I_hi(2),I_lo(3):I_hi(3),1:3,1:3,NQ)
+    real(rt), intent(in) :: Im(I_lo(1):I_hi(1),I_lo(2):I_hi(2),I_lo(3):I_hi(3),1:3,1:3,NQ)
 
-    real(rt)        , intent(in) :: Ip_src(I_lo(1):I_hi(1),I_lo(2):I_hi(2),I_lo(3):I_hi(3),1:3,1:3,QVAR)
-    real(rt)        , intent(in) :: Im_src(I_lo(1):I_hi(1),I_lo(2):I_hi(2),I_lo(3):I_hi(3),1:3,1:3,QVAR)
+    real(rt), intent(in) :: Ip_src(I_lo(1):I_hi(1),I_lo(2):I_hi(2),I_lo(3):I_hi(3),1:3,1:3,QVAR)
+    real(rt), intent(in) :: Im_src(I_lo(1):I_hi(1),I_lo(2):I_hi(2),I_lo(3):I_hi(3),1:3,1:3,QVAR)
 
-    real(rt)        , intent(in) :: Ip_gc(I_lo(1):I_hi(1),I_lo(2):I_hi(2),I_lo(3):I_hi(3),1:3,1:3,1)
-    real(rt)        , intent(in) :: Im_gc(I_lo(1):I_hi(1),I_lo(2):I_hi(2),I_lo(3):I_hi(3),1:3,1:3,1)
+    real(rt), intent(in) :: Ip_gc(I_lo(1):I_hi(1),I_lo(2):I_hi(2),I_lo(3):I_hi(3),1:3,1:3,1)
+    real(rt), intent(in) :: Im_gc(I_lo(1):I_hi(1),I_lo(2):I_hi(2),I_lo(3):I_hi(3),1:3,1:3,1)
 
-    real(rt)        , intent(inout) :: qzm(qs_lo(1):qs_hi(1),qs_lo(2):qs_hi(2),qs_lo(3):qs_hi(3),QVAR)
-    real(rt)        , intent(inout) :: qzp(qs_lo(1):qs_hi(1),qs_lo(2):qs_hi(2),qs_lo(3):qs_hi(3),QVAR)
+    real(rt), intent(inout) :: qzm(qs_lo(1):qs_hi(1),qs_lo(2):qs_hi(2),qs_lo(3):qs_hi(3),NQ)
+    real(rt), intent(inout) :: qzp(qs_lo(1):qs_hi(1),qs_lo(2):qs_hi(2),qs_lo(3):qs_hi(3),NQ)
 
-    real(rt)        , intent(in) :: gamc(gc_lo(1):gc_hi(1),gc_lo(2):gc_hi(2),gc_lo(3):gc_hi(3))
-
-    real(rt)        , intent(in) :: dt
+    real(rt), intent(in) :: dt
 
     !     Local variables
     integer :: i, j
     integer :: n, ipassive
 
-    real(rt)         :: hdt
+    real(rt) :: hdt
 
     ! To allow for easy integration of radiation, we adopt the
     ! following conventions:
@@ -1029,24 +1141,24 @@ contains
     ! for pure hydro, we will only consider:
     !   rho, u, v, w, ptot, rhoe_g, cc, h_g
 
-    real(rt)         :: cc, csq, cgassq, Clag
-    real(rt)         :: rho, u, v, w, p, rhoe_g, h_g
-    real(rt)         :: gam_g, game
+    real(rt) :: cc, csq, cgassq, Clag
+    real(rt) :: rho, u, v, w, p, rhoe_g, h_g
+    real(rt) :: gam_g, game
 
-    real(rt)         :: drho, dptot, drhoe_g
-    real(rt)         :: de, dge, dtau
-    real(rt)         :: dwp, dptotp
-    real(rt)         :: dwm, dptotm
+    real(rt) :: drho, dptot, drhoe_g
+    real(rt) :: de, dge, dtau
+    real(rt) :: dwp, dptotp
+    real(rt) :: dwm, dptotm
 
-    real(rt)         :: rho_ref, w_ref, p_ref, rhoe_g_ref, h_g_ref
-    real(rt)         :: tau_ref
+    real(rt) :: rho_ref, w_ref, p_ref, rhoe_g_ref, h_g_ref
+    real(rt) :: tau_ref
 
-    real(rt)         :: cc_ref, csq_ref, Clag_ref, gam_g_ref, game_ref, gfactor
-    real(rt)         :: cc_ev, csq_ev, Clag_ev, rho_ev, p_ev, h_g_ev, tau_ev
+    real(rt) :: cc_ref, csq_ref, Clag_ref, gam_g_ref, game_ref, gfactor
+    real(rt) :: cc_ev, csq_ev, Clag_ev, rho_ev, p_ev, h_g_ev, tau_ev
 
-    real(rt)         :: alpham, alphap, alpha0r, alpha0e_g
+    real(rt) :: alpham, alphap, alpha0r, alpha0e_g
 
-    real(rt)         :: tau_s, e_s
+    real(rt) :: tau_s, e_s
 
     hdt = HALF * dt
 
@@ -1075,7 +1187,7 @@ contains
 
           rho  = q(i,j,k3d,QRHO)
 
-          cc   = c(i,j,k3d)
+          cc   = qaux(i,j,k3d,QC)
           csq  = cc**2
           Clag = rho*cc
 
@@ -1087,7 +1199,7 @@ contains
           rhoe_g = q(i,j,k3d,QREINT)
           h_g = ( (p+rhoe_g)/rho )/csq
 
-          gam_g = gamc(i,j,k3d)
+          gam_g = qaux(i,j,k3d,QGAMC)
           game = q(i,j,k3d,QGAME)
 
           ! Set the reference state
@@ -1103,8 +1215,8 @@ contains
           gam_g_ref  = Im_gc(i,j,kc,3,1,1)
           game_ref = Im(i,j,kc,3,1,QGAME)
 
-          rho_ref = max(rho_ref,small_dens)
-          p_ref = max(p_ref,small_pres)
+          rho_ref = max(rho_ref, small_dens)
+          p_ref = max(p_ref, small_pres)
 
           ! For tracing (optionally)
           cc_ref = sqrt(gam_g_ref*p_ref/rho_ref)
@@ -1118,16 +1230,16 @@ contains
           ! Note: for the transverse velocities, the jump is carried
           !       only by the w wave (the contact)
 
-          dwm   = w_ref    - Im(i,j,kc,3,1,QW)
-          dptotm   = p_ref    - Im(i,j,kc,3,1,QPRES)
+          dwm = w_ref - Im(i,j,kc,3,1,QW)
+          dptotm = p_ref - Im(i,j,kc,3,1,QPRES)
 
-          drho  = rho_ref  - Im(i,j,kc,3,2,QRHO)
-          dptot    = p_ref    - Im(i,j,kc,3,2,QPRES)
+          drho = rho_ref - Im(i,j,kc,3,2,QRHO)
+          dptot = p_ref - Im(i,j,kc,3,2,QPRES)
           drhoe_g = rhoe_g_ref - Im(i,j,kc,3,2,QREINT)
-          dtau  = tau_ref  - ONE/Im(i,j,kc,3,2,QRHO)
+          dtau = tau_ref - ONE/Im(i,j,kc,3,2,QRHO)
 
-          dwp   = w_ref    - Im(i,j,kc,3,3,QW)
-          dptotp   = p_ref    - Im(i,j,kc,3,3,QPRES)
+          dwp = w_ref - Im(i,j,kc,3,3,QW)
+          dptotp = p_ref - Im(i,j,kc,3,3,QPRES)
 
           ! If we are doing source term tracing, then we add the force to
           ! the velocity here, otherwise we will deal with this in the
@@ -1234,8 +1346,8 @@ contains
           endif
 
           ! Enforce small_*
-          qzp(i,j,kc,QRHO ) = max(qzp(i,j,kc,QRHO ),small_dens)
-          qzp(i,j,kc,QPRES) = max(qzp(i,j,kc,QPRES),small_pres)
+          qzp(i,j,kc,QRHO ) = max(qzp(i,j,kc,QRHO ), small_dens)
+          qzp(i,j,kc,QPRES) = max(qzp(i,j,kc,QPRES), small_pres)
 
           ! transverse velocities
           qzp(i,j,kc,QU    ) = Im(i,j,kc,3,2,QU)
@@ -1257,7 +1369,7 @@ contains
 
           rho  = q(i,j,k3d-1,QRHO)
 
-          cc   = c(i,j,k3d-1)
+          cc   = qaux(i,j,k3d-1,QC)
           csq  = cc**2
           Clag = rho*cc
 
@@ -1269,7 +1381,7 @@ contains
           rhoe_g = q(i,j,k3d-1,QREINT)
           h_g = ( (p + rhoe_g)/rho)/csq
 
-          gam_g = gamc(i,j,k3d-1)
+          gam_g = qaux(i,j,k3d-1,QGAMC)
           game = q(i,j,k3d-1,QGAME)
 
           ! Set the reference state
@@ -1301,16 +1413,16 @@ contains
           ! Note: for the transverse velocities, the jump is carried
           !       only by the w wave (the contact)
 
-          dwm   = w_ref    - Ip(i,j,km,3,1,QW)
-          dptotm   = p_ref    - Ip(i,j,km,3,1,QPRES)
+          dwm = w_ref - Ip(i,j,km,3,1,QW)
+          dptotm = p_ref - Ip(i,j,km,3,1,QPRES)
 
-          drho  = rho_ref  - Ip(i,j,km,3,2,QRHO)
-          dptot    = p_ref    - Ip(i,j,km,3,2,QPRES)
+          drho = rho_ref - Ip(i,j,km,3,2,QRHO)
+          dptot = p_ref - Ip(i,j,km,3,2,QPRES)
           drhoe_g = rhoe_g_ref - Ip(i,j,km,3,2,QREINT)
-          dtau  = tau_ref  - ONE/Ip(i,j,km,3,2,QRHO)
+          dtau = tau_ref - ONE/Ip(i,j,km,3,2,QRHO)
 
-          dwp   = w_ref    - Ip(i,j,km,3,3,QW)
-          dptotp   = p_ref    - Ip(i,j,km,3,3,QPRES)
+          dwp = w_ref - Ip(i,j,km,3,3,QW)
+          dptotp = p_ref - Ip(i,j,km,3,3,QPRES)
 
           ! If we are doing source term tracing, then we add the force to
           ! the velocity here, otherwise we will deal with this in the

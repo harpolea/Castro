@@ -23,9 +23,6 @@ contains
     real(rt), intent(inout) :: state(s_lo(1):s_hi(1),s_lo(2):s_hi(2),s_lo(3):s_hi(3),NVAR)
     integer, intent(in)     :: idx
 
-    real(rt)     :: q(s_lo(1):s_hi(1),s_lo(2):s_hi(2),s_lo(3):s_hi(3),NQ)
-    real(rt)   :: qaux(s_lo(1):s_hi(1),s_lo(2):s_hi(2),s_lo(3):s_hi(3),NQAUX)
-
 #ifdef CUDA
 
     attributes(device) :: state
@@ -50,6 +47,9 @@ contains
     call cuda_enforce_consistent_e<<<numBlocks, numThreads, 0, stream>>>(lo_d, hi_d, state, s_lo_d, s_hi_d)
 
 #else
+
+    real(rt)     :: q(s_lo(1):s_hi(1),s_lo(2):s_hi(2),s_lo(3):s_hi(3),NQ)
+    real(rt)   :: qaux(s_lo(1):s_hi(1),s_lo(2):s_hi(2),s_lo(3):s_hi(3),NQAUX)
 
     call ca_ctoprim(lo, hi, &
                       state, s_lo, s_hi, &

@@ -6,6 +6,7 @@ module advection_util_module
   private
 
   public enforce_minimum_density, compute_cfl, grctoprim
+
 contains
 
   subroutine enforce_minimum_density(uin,uin_lo,uin_hi, &
@@ -16,7 +17,6 @@ contains
     use network, only : nspec, naux
     use meth_params_module, only : NVAR, QRHO, QREINT, UEDEN, small_dens, density_reset_method, NQ, NQAUX
     use bl_constants_module, only : ZERO
-    use c_interface_modules, only : ca_ctoprim
     use riemann_util_module, only : gr_cons_state
 
     use amrex_fort_module, only : rt => amrex_real
@@ -40,46 +40,40 @@ contains
     real(rt)         :: qnew(NQ)
     integer          :: num_positive_zones
 
-    real(rt)         :: initial_mass, final_mass
-    real(rt)         :: initial_eint, final_eint
-    real(rt)         :: initial_eden, final_eden
-
     logical :: have_reset
 
     real(rt)     :: qin(uin_lo(1):uin_hi(1),uin_lo(2):uin_hi(2),uin_lo(3):uin_hi(3),NQ)
     real(rt)   :: qaux(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),NQAUX)
     real(rt)     :: qout(uout_lo(1):uout_hi(1),uout_lo(2):uout_hi(2),uout_lo(3):uout_hi(3),NQ)
+    real(rt) :: gamma_up(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),9)
+    real(rt) :: alpha(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3))
 
-    !initial_mass = ZERO
-    !final_mass   = ZERO
-
-    !initial_eint = ZERO
-    !final_eint   = ZERO
-
-    !initial_eden = ZERO
-    !final_eden   = ZERO
+    gamma_up(:,:,:,:) = 0.0d0
+    gamma_up(:,:,:,1) = 1.0d0
+    gamma_up(:,:,:,5) = 1.0d0
+    gamma_up(:,:,:,9) = 1.0d0
+    alpha(:,:,:) = 1.0d0
 
     max_dens = ZERO
 
     have_reset = .false.
 
-    call ca_ctoprim(lo, hi, &
+    call grctoprim(lo, hi, &
                       uin, uin_lo, uin_hi, &
                       qin,  uin_lo, uin_hi, &
-                      qaux, lo, hi, 0)
-    call ca_ctoprim(lo, hi, &
+                      qaux, lo, hi, &
+                      gamma_up, lo, hi, &
+                      alpha, lo, hi)
+    call grctoprim(lo, hi, &
                     uout, uout_lo, uout_hi, &
                     qout,  uout_lo, uout_hi, &
-                    qaux,  lo, hi, 0)
+                    qaux,  lo, hi, &
+                    gamma_up, lo, hi, &
+                    alpha, lo, hi)
 
     do k = lo(3),hi(3)
        do j = lo(2),hi(2)
           do i = lo(1),hi(1)
-
-             !initial_mass = initial_mass + qout(i,j,k,QRHO ) * vol(i,j,k)
-             !initial_eint = initial_eint + qout(i,j,k,QREINT) * vol(i,j,k)
-             !initial_eden = initial_eden + uout(i,j,k,UEDEN) * vol(i,j,k)
-
              if (qout(i,j,k,QRHO) .eq. ZERO) then
 
                 print *,'DENSITY EXACTLY ZERO AT CELL ',i,j,k
@@ -197,10 +191,6 @@ contains
                 call gr_cons_state(qout(i,j,k,:), uout(i,j,k,:), gamma)
 
              end if
-
-             !final_mass = final_mass + qout(i,j,k,QRHO ) * vol(i,j,k)
-             !final_eint = final_eint + qout(i,j,k,QREINT) * vol(i,j,k)
-             !final_eden = final_eden + uout(i,j,k,UEDEN) * vol(i,j,k)
 
           enddo
        enddo
@@ -423,7 +413,7 @@ contains
     real(rt)        , intent(in   ) :: gamma_up(g_lo(1):g_hi(1),g_lo(2):g_hi(2),g_lo(3):g_hi(3),9)
     real(rt)        , intent(in   ) :: alpha(a_lo(1):a_hi(1),a_lo(2):a_hi(2),a_lo(3):a_hi(3))
 
-    real(rt)        , parameter :: small = 1.e-8_rt, gamma = 5.0d0 / 3.0d0
+    real(rt)        , parameter :: small = 1.d-8, gamma = 5.0d0 / 3.0d0
 
     integer          :: i, j, k, g
     integer          :: n, iq, ipassive
@@ -576,7 +566,7 @@ contains
              call eos(eos_input_rt, eos_state)
 
              q(i,j,k,QTEMP)  = eos_state % T
-             q(i,j,k,QREINT) = q(i,j,k,QREINT) * q(i,j,k,QRHO) !eos_state % e * q(i,j,k,QRHO)
+             q(i,j,k,QREINT) = eos_state % e * q(i,j,k,QRHO)!q(i,j,k,QREINT) * q(i,j,k,QRHO) !eos_state % e * q(i,j,k,QRHO)
              !q(i,j,k,QPRES)  = eos_state % p
              q(i,j,k,QGAME)  = q(i,j,k,QPRES) / q(i,j,k,QREINT) + ONE
 
@@ -590,7 +580,10 @@ contains
        enddo
     enddo
 
-  end subroutine grctoprim
+    where (q /= q)
+        q = 0.0d0
+    endwhere
 
+  end subroutine grctoprim
 
 end module advection_util_module
