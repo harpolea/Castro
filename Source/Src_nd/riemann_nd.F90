@@ -94,6 +94,9 @@ contains
     real(rt) :: beta(3), alpha
     real(rt) :: sigmal, sigmar, l1, l2
 
+    !write(*,*) "qp", ql(:,:,:,QPRES )
+    !stop
+
     if (idir == 1) then
        iu = QU
        iv1 = QV
@@ -173,8 +176,7 @@ contains
           pr  = max(qr(i,j,kc,QPRES), small_pres)
           rer = qr(i,j,kc,QREINT)
 
-          ! now we essentially do the CGF solver to get p and u on the
-          ! interface, but we won't use these in any flux construction.
+          ! find sound speeds
           csmall = max(qaux(i,j,k3d,QCSML), qaux(i-sx,j-sy,k3d-sz,QCSML) )
           cavg = HALF*(qaux(i,j,k3d,QC) + qaux(i-sx,j-sy,k3d-sz,QC))
           gamcl = qaux(i-sx,j-sy,k3d-sz,QGAMC)
@@ -216,6 +218,8 @@ contains
           beta(:) = 0.0d0
           alpha = 1.0d0
 
+          !write(*,*) "Sl, Sr, pl, pr", S_l, S_r, pl, pr
+
           if (S_r <= ZERO) then
              ! R region
              call gr_cons_state(qr(i,j,kc,:), U_state, gamcr)
@@ -242,6 +246,8 @@ contains
           uflx(i,j,kflux,:) = F_state(:)
        enddo
     enddo
+
+    !stop
 
   end subroutine gr_HLL
 

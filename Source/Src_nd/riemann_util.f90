@@ -68,8 +68,8 @@ contains
     W = 1.0d0 / sqrt(1.0d0 - sum(q(QU:QW)**2))
 
     U(URHO) = q(QRHO) * W
-    rhoh = gamma * q(QREINT) / q(QRHO) + (1.0d0 - gamma) * q(QRHO) !W * (q(QRHO) + gamma * q(QREINT))
-    p = (gamma - 1.0d0) * (q(QREINT) / q(QRHO) - q(QRHO))
+    rhoh = gamma * q(QREINT) + q(QRHO)
+    p = (gamma - 1.0d0) * q(QREINT)
 
     ! since we advect all 3 velocity components regardless of dimension, this
     ! will be general
@@ -77,7 +77,7 @@ contains
     U(UMY)  = rhoh * q(QV) * W**2
     U(UMZ)  = rhoh * q(QW) * W**2
 
-    U(UEDEN) = rhoh * W**2 - p - U(URHO) !q(QREINT) + HALF*q(QRHO)*(q(QU)**2 + q(QV)**2 + q(QW)**2)
+    U(UEDEN) = rhoh * W**2 - p - U(URHO)
     U(UEINT) = q(QREINT)
 
     U(UTEMP) = q(QTEMP)
@@ -125,11 +125,7 @@ contains
     F(UMY) = U(UMY)*u_flx
     F(UMZ) = U(UMZ)*u_flx
 
-    if (mom_flux_has_p(idir)%comp(UMX-1+idir)) then
-       ! we do not include the pressure term in any non-Cartesian
-       ! coordinate directions
-       F(UMX-1+idir) = F(UMX-1+idir) + p
-    endif
+    F(UMX-1+idir) = F(UMX-1+idir) + p
 
     F(UEINT) = U(UEINT)*u_flx
     F(UEDEN) = (U(UEDEN) + p)*u_flx + p*beta(idir)/alpha
@@ -143,34 +139,43 @@ contains
 
 end subroutine gr_compute_flux
 
-subroutine f_of_p(f, p, U, gamma, gamma_up)
+subroutine f_of_p(f, p, U, gamma_up)
     use meth_params_module, only: NVAR, URHO, UMX, UMY, UMZ, UEDEN
+    use eos_module, only: eos
+    use eos_type_module, only: eos_input_re, eos_t
     implicit none
 
-    double precision, intent(in)  :: U(NVAR), p, gamma, gamma_up(9)
+    double precision, intent(in)  :: U(NVAR), p, gamma_up(9)
     double precision, intent(out) :: f
 
-    double precision :: sq
+    double precision :: ss, tpd
+    type (eos_t)     :: eos_state
 
-    sq = sqrt((U(UEDEN) + p + U(URHO))**2 - U(UMX)**2*gamma_up(1) - &
-        2.0d0 * U(UMX) * U(UMY) * gamma_up(2) - &
-        2.0d0 * U(UMX) * U(UMZ) * gamma_up(3) - &
-        U(UMY)**2 * gamma_up(5) - &
-        2.0d0 * U(UMY) * U(UMZ) * gamma_up(6) - &
-        U(UMZ)**2 * gamma_up(9))
+    tpd = U(UEDEN) + p + U(URHO)
+    ss = U(UMX)**2*gamma_up(1) + &
+        2.0d0 * U(UMX) * U(UMY) * gamma_up(2) + &
+        2.0d0 * U(UMX) * U(UMZ) * gamma_up(3) + &
+        U(UMY)**2 * gamma_up(5) + &
+        2.0d0 * U(UMY) * U(UMZ) * gamma_up(6) + &
+        U(UMZ)**2 * gamma_up(9)
 
-    f = (gamma - 1.0d0) * sq / (U(UEDEN) + p + U(URHO)) * &
-        (sq - p * (U(UEDEN) + p + U(URHO)) / sq - U(URHO)) - p
+    eos_state % rho  = U(URHO) * sqrt(tpd**2 - ss) / tpd
+    eos_state % e    = (sqrt(tpd**2 - ss) - &
+        p * tpd / sqrt(tpd**2 - ss) - U(URHO)) / U(URHO)
+
+    call eos(eos_input_re, eos_state)
+
+    f = eos_state % p - p
 
 end subroutine f_of_p
 
-subroutine zbrent(p, x1, b, U, gamma, gamma_up)
+subroutine zbrent(p, x1, b, U, gamma_up)
     ! route finder using brent's method
     use meth_params_module, only: NVAR
     implicit none
 
     double precision, intent(out) :: p
-    double precision, intent(in)  :: U(NVAR), gamma, gamma_up(9), x1
+    double precision, intent(in)  :: U(NVAR), gamma_up(9), x1
     double precision, intent(inout) :: b
 
     double precision, parameter :: TOL = 1.0d-12
@@ -183,12 +188,12 @@ subroutine zbrent(p, x1, b, U, gamma, gamma_up)
     a = x1
     c = 0.0d0
     d = 0.0d0
-    call f_of_p(fa, a, U, gamma, gamma_up)
-    call f_of_p(fb, b, U, gamma, gamma_up)
+    call f_of_p(fa, a, U, gamma_up)
+    call f_of_p(fb, b, U, gamma_up)
     fc = 0.0d0
 
     if (fa * fb >= 0.0d0) then
-        p = b
+        p = x1
         return
     end if
 
@@ -240,7 +245,7 @@ subroutine zbrent(p, x1, b, U, gamma, gamma_up)
             mflag = .false.
         end if
 
-        call f_of_p(fs, s, U, gamma, gamma_up)
+        call f_of_p(fs, s, U, gamma_up)
 
         if (abs(fa) < abs(fb)) then
             d = a

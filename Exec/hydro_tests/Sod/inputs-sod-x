@@ -1,6 +1,6 @@
 # ------------------  INPUTS TO MAIN PROGRAM  -------------------
 max_step = 10000
-stop_time =  0.2
+stop_time =  500.0
 
 # PROBLEM SIZE & GEOMETRY
 geometry.is_periodic = 0 0 0
@@ -24,7 +24,7 @@ castro.ppm_type = 2
 castro.allow_negative_energy = 0
 
 # TIME STEP CONTROL
-castro.cfl            = 0.9     # cfl number for hyperbolic system
+castro.cfl            = 0.1     # cfl number for hyperbolic system
 castro.init_shrink    = 0.1     # scale back initial timestep
 castro.change_max     = 1.05    # scale back initial timestep
 castro.dt_cutoff      = 5.e-20  # level 0 timestep below which we halt
@@ -35,7 +35,7 @@ castro.v              = 1       # verbosity in Castro.cpp
 amr.v                 = 1       # verbosity in Amr.cpp
 #amr.grid_log        = grdlog  # name of grid logging file
 
-# REFINEMENT / REGRIDDING 
+# REFINEMENT / REGRIDDING
 amr.max_level       = 2       # maximum level number allowed
 amr.ref_ratio       = 2 2 2 2 # refinement ratio
 amr.regrid_int      = 2 2 2 2 # how often to regrid
@@ -45,11 +45,11 @@ amr.n_error_buf     = 2 2 2 2 # number of buffer cells in error est
 
 # CHECKPOINT FILES
 amr.check_file      = sod_x_chk  # root name of checkpoint file
-amr.check_int       = 10         # number of timesteps between checkpoints
+amr.check_int       = 100         # number of timesteps between checkpoints
 
 # PLOTFILES
 amr.plot_file       = sod_x_plt  # root name of plotfile
-amr.plot_int        = 4          # number of timesteps between plotfiles
+amr.plot_int        = 5          # number of timesteps between plotfiles
 amr.derive_plot_vars = density xmom ymom zmom eden Temp pressure  # these variables appear in the plotfile
 
 #PROBIN FILENAME

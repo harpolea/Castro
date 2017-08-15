@@ -80,6 +80,8 @@ contains
                 print *,'  in grid ',lo(1),lo(2),lo(3),hi(1),hi(2),hi(3)
                 call bl_error("Error:: advection_util_nd.f90 :: ca_enforce_minimum_density")
 
+                qout(i,j,k,QRHO) = small_dens
+
             else if (qout(i,j,k,QRHO) < small_dens) then
 
                 have_reset = .true.
@@ -383,7 +385,7 @@ contains
     use mempool_module, only : bl_allocate, bl_deallocate
     use actual_network, only : nspec, naux
     use eos_module, only : eos
-    use eos_type_module, only : eos_t, eos_input_rt
+    use eos_type_module, only : eos_t, eos_input_rt, eos_input_re
     use meth_params_module, only : NVAR, URHO, UMX, UMY, UMZ, &
                                    UEDEN, UTEMP, &
                                    QRHO, QU, QV, QW, &
@@ -406,7 +408,7 @@ contains
     integer, intent(in) :: g_lo(3), g_hi(3)
     integer, intent(in) :: a_lo(3), a_hi(3)
 
-    real(rt)        , intent(in   ) :: uin(uin_lo(1):uin_hi(1),uin_lo(2):uin_hi(2),uin_lo(3):uin_hi(3),NVAR)
+    real(rt)        , intent(in ) :: uin(uin_lo(1):uin_hi(1),uin_lo(2):uin_hi(2),uin_lo(3):uin_hi(3),NVAR)
 
     real(rt)        , intent(inout) :: q(q_lo(1):q_hi(1),q_lo(2):q_hi(2),q_lo(3):q_hi(3),NQ)
     real(rt)        , intent(inout) :: qaux(qa_lo(1):qa_hi(1),qa_lo(2):qa_hi(2),qa_lo(3):qa_hi(3),NQAUX)
@@ -419,9 +421,12 @@ contains
     integer          :: n, iq, ipassive
     real(rt)         :: vel(3)
     real(rt)         :: gamma_down(9)
-    real(rt)         :: pmin, pmax, ssq, p, fmin, fmax, sq, h, W2
+    real(rt)         :: pmin, pmax, ssq, p, fmin, fmax, sq, h, W2, eden
 
     type (eos_t) :: eos_state
+
+    !write(*,*) "UDEN", uin(:,:,:,UEDEN)
+    !stop
 
     do k = lo(3), hi(3)
        do j = lo(2), hi(2)
@@ -429,14 +434,19 @@ contains
           do i = lo(1), hi(1)
              if (uin(i,j,k,URHO) .le. ZERO) then
                 print *,'   '
-                print *,'>>> Error: advection_util_nd.F90::ctoprim ',i, j, k
+                print *,'>>> Error: advection_util_nd.F90::grctoprim ',i, j, k
                 print *,'>>> ... negative density ', uin(i,j,k,URHO)
-                call bl_error("Error:: advection_util_nd.f90 :: ctoprim")
+                call bl_error("Error:: advection_util_nd.f90 :: grctoprim")
+             else if (uin(i,j,k,URHO) /= uin(i,j,k,URHO)) then
+                 print *,'   '
+                 print *,'>>> Error: advection_util_nd.F90::grctoprim ',i, j, k
+                 print *,'>>> ... density is nan ', uin(i,j,k,URHO)
+                 call bl_error("Error:: advection_util_nd.f90 :: grctoprim")
              else if (uin(i,j,k,URHO) .lt. small_dens) then
                 print *,'   '
-                print *,'>>> Error: advection_util_nd.F90::ctoprim ',i, j, k
+                print *,'>>> Error: advection_util_nd.F90::grctoprim ',i, j, k
                 print *,'>>> ... small density ', uin(i,j,k,URHO)
-                call bl_error("Error:: advection_util_nd.f90 :: ctoprim")
+                call bl_error("Error:: advection_util_nd.f90 :: grctoprim")
              endif
           end do
 
@@ -449,60 +459,73 @@ contains
               gamma_down(5) = 1.0d0 / gamma_up(i,j,k,5)
               gamma_down(9) = 1.0d0 / gamma_up(i,j,k,9)
 
+              eden = uin(i,j,k,UEDEN)
+
+              if (eden < ZERO) then
+                  eden = abs(eden)
+              endif
+
               ssq = uin(i,j,k,UMX)**2 * gamma_up(i,j,k,1) + &
                   2.0d0 * uin(i,j,k,UMX) * uin(i,j,k,UMY) * gamma_up(i,j,k,2) + &
                   2.0d0 * uin(i,j,k,UMX) * uin(i,j,k,UMZ) * gamma_up(i,j,k,3) + &
                   uin(i,j,k,UMY)**2 * gamma_up(i,j,k,5) + &
                   2.0d0 * uin(i,j,k,UMY) * uin(i,j,k,UMZ) * gamma_up(i,j,k,6) + &
                   uin(i,j,k,UMZ)**2 * gamma_up(i,j,k,9)
-              pmin = (1.0d0 - ssq)**2 * uin(i,j,k,UEDEN) * (gamma - 1.0d0)
-              pmax = (gamma - 1.0d0) * (uin(i,j,k,UEDEN) + uin(i,j,k,URHO)) / (2.0d0 - gamma)
+              pmin = (gamma - 1.0d0) * (eden + uin(i,j,k,URHO) - ssq / (eden + uin(i,j,k,URHO))**2 - uin(i,j,k,URHO))
+
+              pmax = (gamma - 1.0d0) * (eden + uin(i,j,k,URHO) - ssq / (eden + uin(i,j,k,URHO)))!(uin(i,j,k,UEDEN) + uin(i,j,k,URHO)) / (2.0d0 - gamma)
+
+              !write(*,*) "pressure = ", pmin, pmax
 
               if (pmin < 0.0d0) then
                   pmin = 0.d0
               end if
 
-              if (pmax > 1.d0 .or. pmax < pmin) then
-                  pmax = 1.0d0
-              end if
+              !if (pmax > 1.d0 .or. pmax < pmin) then
+            !      pmax = 1.0d0
+             ! end
 
-              call f_of_p(fmin, pmin, uin, gamma, gamma_up(i,j,k,:))
-              call f_of_p(fmax, pmax, uin, gamma, gamma_up(i,j,k,:))
+              call f_of_p(fmin, pmin, uin, gamma_up(i,j,k,:))
+              call f_of_p(fmax, pmax, uin, gamma_up(i,j,k,:))
 
-              if (fmin * fmax > 0.0d0) then
-                  pmin = 0.d0
-              end if
+              !if (fmin * fmax > 0.0d0) then
+                  !pmin = 0.d0
+              !end if
 
-              call f_of_p(fmin, pmin, uin, gamma, gamma_up(i,j,k,:))
+              write(*,*) "f = ", fmin, fmax
+
+              !call f_of_p(fmin, pmin, uin, gamma_up(i,j,k,:))
 
               if (fmin * fmax > 0.0d0) then
                   pmax = pmax * 10.d0
               end if
 
-              call zbrent(p, pmin, pmax, uin, gamma, gamma_up(i,j,k,:))
+              call zbrent(p, pmin, pmax, uin, gamma_up(i,j,k,:))
 
-              if (p /= p .or. p < 0.0d0 .or. p > 1.0d0) then
-                  p = abs((gamma - 1.0d0) * (uin(i,j,k,UEDEN) + uin(i,j,k,URHO)) / (2.0d0 - gamma))
+              !write(*,*) "pressure = ", pmin, pmax
 
-                  if (p > 1.0d0) then
-                      p = 1.0d0
-                  end if
+              if (p /= p .or. p <= 0.0d0) then! .or. p > 1.0d0) then
+                  p = abs((gamma - 1.0d0) * ((eden + uin(i,j,k,URHO)) - ssq / (eden + uin(i,j,k,URHO))**2 - uin(i,j,k,URHO)))
+
+                  !if (p > 1.0d0) then
+                    !  p = 1.0d0
+                  !end if
               end if
 
-              sq = sqrt((uin(i,j,k,UEDEN) + p + uin(i,j,k,URHO))**2 - ssq)
+              sq = sqrt((eden + p + uin(i,j,k,URHO))**2 - ssq)
 
               if (sq /= sq) then
-                  sq = uin(i,j,k,UEDEN) + p + uin(i,j,k,URHO)
+                  sq = eden + p + uin(i,j,k,URHO)
               end if
 
               h = 1.0d0 + gamma * &
-                (sq - p * (uin(i,j,k,UEDEN) + p + uin(i,j,k,URHO)) / sq - uin(i,j,k,URHO)) / uin(i,j,k,URHO)
+                (sq - p * (eden + p + uin(i,j,k,URHO)) / sq - uin(i,j,k,URHO)) / uin(i,j,k,URHO)
               W2 = 1.0d0 + ssq / (uin(i,j,k,URHO) * h)**2
 
-              !write(*,*) "p, sq, eden", p, sq, uin(i,j,k,UEDEN)
+              !write(*,*) "p, sq, eden, rho", p, sq, eden, uin(i,j,k,URHO)
               !return
 
-              q(i,j,k,QRHO) = uin(i,j,k,URHO) * sq / (uin(i,j,k,UEDEN) + &
+              q(i,j,k,QRHO) = uin(i,j,k,URHO) * sq / (eden + &
                 p + uin(i,j,k,URHO))
 
               vel(1) = (gamma_up(i,j,k,1) * uin(i,j,k,UMX) + &
@@ -525,8 +548,7 @@ contains
               q(i,j,k,QW) = gamma_down(3) * vel(1) + &
                 gamma_down(6) * vel(2) + gamma_down(9) * vel(3)
 
-              q(i,j,k,QREINT) = q(i,j,k,QRHO) * h - p
-              !h - 1.0d0 - p / q(i,j,k,QRHO) !q(i,j,k,QRHO) * (h - 1.0d0) / gamma
+              q(i,j,k,QREINT) = p / (gamma - 1.0d0)
 
              ! If we're advecting in the rotating reference frame,
              ! then subtract off the rotation component here.
@@ -534,6 +556,8 @@ contains
              q(i,j,k,QTEMP) = uin(i,j,k,UTEMP)
 
              q(i,j,k,QPRES)  = p
+
+             !write(*,*) "pressure = ", p
 
           enddo
        enddo
@@ -559,15 +583,15 @@ contains
 
              eos_state % T   = q(i,j,k,QTEMP )
              eos_state % rho = q(i,j,k,QRHO  )
-             eos_state % e   = q(i,j,k,QREINT)
+             eos_state % e   = q(i,j,k,QREINT) !/ q(i,j,k,QRHO  )
              eos_state % xn  = q(i,j,k,QFS:QFS+nspec-1)
              eos_state % aux = q(i,j,k,QFX:QFX+naux-1)
 
-             call eos(eos_input_rt, eos_state)
+             call eos(eos_input_re, eos_state)
 
              q(i,j,k,QTEMP)  = eos_state % T
-             q(i,j,k,QREINT) = eos_state % e * q(i,j,k,QRHO)!q(i,j,k,QREINT) * q(i,j,k,QRHO) !eos_state % e * q(i,j,k,QRHO)
-             !q(i,j,k,QPRES)  = eos_state % p
+             q(i,j,k,QREINT) = eos_state % e * q(i,j,k,QRHO)
+             q(i,j,k,QPRES)  = eos_state % p
              q(i,j,k,QGAME)  = q(i,j,k,QPRES) / q(i,j,k,QREINT) + ONE
 
              qaux(i,j,k,QDPDR)  = eos_state % dpdr_e
@@ -579,10 +603,6 @@ contains
           enddo
        enddo
     enddo
-
-    where (q /= q)
-        q = 0.0d0
-    endwhere
 
   end subroutine grctoprim
 

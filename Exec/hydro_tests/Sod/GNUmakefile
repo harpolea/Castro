@@ -1,17 +1,17 @@
 PRECISION  = DOUBLE
 PROFILE    = FALSE
 
-DEBUG      = TRUE
+DEBUG      = FALSE
 
 
-DIM        = 1
-#DIM        = 2
+#DIM        = 1
+DIM        = 2
 #DIM        = 3
 
 COMP	   = gnu
 
 USE_MPI    = FALSE
-USE_OMP    = FALSE
+USE_OMP    = TRUE
 
 # define the location of the CASTRO top directory
 CASTRO_HOME  := ../../..

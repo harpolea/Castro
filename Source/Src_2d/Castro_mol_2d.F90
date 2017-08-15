@@ -23,7 +23,7 @@ subroutine ca_mol_single_stage(time, &
   use meth_params_module, only : NQ, QVAR, NVAR, NGDNV, GDPRES, &
                                  UTEMP, UMX, GDU, GDV, &
                                  QPRES, NQAUX, &
-                                 QTEMP, QFS, QFX, QRHO, &
+                                 QTEMP, QFS, QFX, QRHO, QREINT,&
                                  first_order_hydro, difmag
   use advection_util_2d_module, only : divu, normalize_species_fluxes
   use advection_util_module, only : compute_cfl
@@ -125,6 +125,10 @@ subroutine ca_mol_single_stage(time, &
   allocate ( qxp(qs_lo(1):qs_hi(1),qs_lo(2):qs_hi(2),NQ) )
   allocate ( qym(qs_lo(1):qs_hi(1),qs_lo(2):qs_hi(2),NQ) )
   allocate ( qyp(qs_lo(1):qs_hi(1),qs_lo(2):qs_hi(2),NQ) )
+
+  !write(*,*) "qp", q(:,:,QPRES )
+  !write(*,*) "qvar", QVAR, QPRES, QREINT
+  !stop
 
   ! Do reconstruction
   do n = 1, QVAR
