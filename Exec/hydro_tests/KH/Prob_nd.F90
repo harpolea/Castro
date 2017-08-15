@@ -122,8 +122,8 @@ subroutine ca_initdata(level,time,lo,hi,nscal, &
 
   integer :: sine_n
 
-  vel1 = -0.5d-1
-  vel2 =  0.5d-1
+  vel1 = -0.2d0
+  vel2 =  0.2d0
 
   gamma_up(:) = 0.0d0
   gamma_up(1) = 1.0d0
@@ -142,7 +142,7 @@ subroutine ca_initdata(level,time,lo,hi,nscal, &
      delta_y = 0.05
   else if (problem .eq. 3) then
      sine_n = 4
-     w0 = 0.01
+     w0 = 0.1
      delta_y = 0.025
   else if (problem .eq. 4) then
      sine_n = 2
