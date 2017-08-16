@@ -84,7 +84,7 @@ contains
              flx, flx_lo, flx_hi, &
              idir, imin, imax, jmin, jmax, 0, 0, 0, &
              [domlo(1), domlo(2), 0], [domhi(1), domhi(2), 0], &
-             gamma_up, glo, ghi)
+             gamma_up, [glo(1), glo(2), 0], [ghi(1), ghi(2), 0])
 
 
   end subroutine cmpflx

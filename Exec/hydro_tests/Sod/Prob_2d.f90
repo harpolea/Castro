@@ -136,6 +136,8 @@ subroutine ca_initdata(level,time,lo,hi,nscal, &
   gamma_up(5) = 1.0d0
   gamma_up(9) = 1.0d0
 
+  q(:,:,QW) = 0.0d0
+
   do j = lo(2), hi(2)
      ycen = xlo(2) + delta(2)*(float(j-lo(2)) + 0.5e0_rt)
 
@@ -211,5 +213,7 @@ subroutine ca_initdata(level,time,lo,hi,nscal, &
         !write(*,*) state(i,j,UEDEN)
      enddo
   enddo
+
+  !write(*,*) "state U",q(:,:,QU:QU+2)
 !stop
 end subroutine ca_initdata

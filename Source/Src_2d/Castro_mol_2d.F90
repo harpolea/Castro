@@ -87,7 +87,7 @@ subroutine ca_mol_single_stage(time, &
   integer :: qs_lo(3), qs_hi(3)
   real(rt) :: dx_3D(3)
 
-  real(rt) :: div1, gamma_up(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),9)
+  real(rt) :: div1, gamma_up(q_lo(1):q_hi(1),q_lo(2):q_hi(2),9)
 
   integer :: i, j, n
 
@@ -106,7 +106,7 @@ subroutine ca_mol_single_stage(time, &
   dx = delta(1)
   dy = delta(2)
 
-  call calculate_gamma_up(gamma_up, lo, hi)
+  call calculate_gamma_up(gamma_up, [q_lo(1), q_lo(2), 0], [q_hi(1), q_hi(2), 0])
 
   ! Check if we have violated the CFL criterion.
   call compute_cfl(q, q_lo, q_hi, &
@@ -173,14 +173,14 @@ subroutine ca_mol_single_stage(time, &
               flux1, flux1_lo, flux1_hi, &
               qaux, qa_lo, qa_hi, &
               1, lo(1), hi(1), lo(2), hi(2), domlo, domhi, &
-              gamma_up, lo, hi)
+              gamma_up, [q_lo(1), q_lo(2), 0], [q_hi(1), q_hi(2), 0])
 
 
   call cmpflx(qym, qyp, qs_lo, qs_hi, &
               flux2, flux2_lo, flux2_hi, &
               qaux, qa_lo, qa_hi, &
               2, lo(1), hi(1), lo(2), hi(2), domlo, domhi, &
-              gamma_up, lo, hi)
+              gamma_up, [q_lo(1), q_lo(2), 0], [q_hi(1), q_hi(2), 0])
 
   deallocate(qxm, qxp, qym, qyp)
 

@@ -15,6 +15,7 @@ contains
        bind(c, name='ca_enforce_consistent_e')
 
     use castro_util_module, only: enforce_consistent_e
+    use meth_params_module, only: NVAR, URHO, UEDEN, NQ, QU, QV, QW, QPRES, QRHO, QREINT, UMX
 
     implicit none
 

@@ -70,10 +70,11 @@ contains
 
     W = q(QU)**2 * gamma_up(1) + &
         2.0d0 * q(QU) * q(QV) * gamma_up(2) + &
-        2.0d0 * q(QU) * q(QW) * gamma_up(2) + &
+        2.0d0 * q(QU) * q(QW) * gamma_up(3) + &
         q(QV)**2 * gamma_up(5) + &
         2.0d0 * q(QV) * q(QW) * gamma_up(6) + &
         q(QW)**2 * gamma_up(9)
+
     W = 1.0d0 / sqrt(1.0d0 - W)
 
     U(URHO) = q(QRHO) * W
@@ -184,6 +185,8 @@ subroutine f_of_p(f, p, U, gamma_up)
     eos_state % rho  = U(URHO) * sqrt(tpd**2 - ss) / tpd
     eos_state % e    = (sqrt(tpd**2 - ss) - &
         p * tpd / sqrt(tpd**2 - ss) - U(URHO)) / U(URHO)
+
+    !write(*,*) "D, p, tau, ss", U(URHO), p, U(UEDEN), ss, U(UMX), U(UMY), U(UMZ)
 
     call eos(eos_input_re, eos_state)
 

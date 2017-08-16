@@ -438,6 +438,7 @@ contains
                  print *,'   '
                  print *,'>>> Error: advection_util_nd.F90::grctoprim ',i, j, k
                  print *,'>>> ... density is nan ', uin(i,j,k,URHO)
+                 write(*,*) uin(:,:,:,URHO)
                  call bl_error("Error:: advection_util_nd.f90 :: grctoprim")
              else if (uin(i,j,k,URHO) .lt. small_dens) then
                 print *,'   '
@@ -482,14 +483,14 @@ contains
             !      pmax = 1.0d0
              ! end
 
-              call f_of_p(fmin, pmin, uin, gamma_up(i,j,k,:))
-              call f_of_p(fmax, pmax, uin, gamma_up(i,j,k,:))
+              call f_of_p(fmin, pmin, uin(i,j,k,:), gamma_up(i,j,k,:))
+              call f_of_p(fmax, pmax, uin(i,j,k,:), gamma_up(i,j,k,:))
 
               !if (fmin * fmax > 0.0d0) then
                   !pmin = 0.d0
               !end if
 
-              write(*,*) "f = ", fmin, fmax
+              !write(*,*) "f = ", fmin, fmax, " p = ", pmin, pmax
 
               !call f_of_p(fmin, pmin, uin, gamma_up(i,j,k,:))
 
@@ -497,7 +498,7 @@ contains
                   pmax = pmax * 10.d0
               end if
 
-              call zbrent(p, pmin, pmax, uin, gamma_up(i,j,k,:))
+              call zbrent(p, pmin, pmax, uin(i,j,k,:), gamma_up(i,j,k,:))
 
               !write(*,*) "pressure = ", pmin, pmax
 
@@ -559,6 +560,9 @@ contains
           enddo
        enddo
     enddo
+    !stop
+
+    !write(*,*) "rho = ", q(:,:,:,QRHO)
 
     ! Load passively advected quatities into q
     do ipassive = 1, npassive

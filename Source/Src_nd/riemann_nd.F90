@@ -250,8 +250,6 @@ contains
        enddo
     enddo
 
-    !stop
-
   end subroutine gr_HLL
 
 

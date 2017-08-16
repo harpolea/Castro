@@ -88,6 +88,7 @@ contains
     use eos_module, only : eos
     use eos_type_module, only : eos_t, eos_input_re
     use amrex_fort_module, only: rt => amrex_real
+    use riemann_util_module, only : calculate_gamma_up
 
     implicit none
 
@@ -107,10 +108,7 @@ contains
     call eos(eos_input_re, eos_state)
     gamma = eos_state % gam1
 
-    gamma_up(:) = 0.0d0
-    gamma_up(1) = 1.0d0
-    gamma_up(5) = 1.0d0
-    gamma_up(9) = 1.0d0
+    call calculate_gamma_up(gamma_up, [0,0,0], [0,0,0])
 
     !
     ! Enforces (rho E) = (rho e) + 1/2 rho (u^2 + v^2 + w^2)
@@ -154,6 +152,7 @@ contains
          dual_energy_eta2, dual_energy_update_E_from_e, NQ, QRHO, QU, QV, QW, QPRES
     use bl_constants_module, only: ZERO, HALF, ONE
     use amrex_fort_module, only : rt => amrex_real
+    use riemann_util_module, only : calculate_gamma_up
 
     implicit none
 
@@ -172,6 +171,8 @@ contains
     call eos(eos_input_re, eos_state)
     gamma = eos_state % gam1
 
+    call calculate_gamma_up(gamma_up, [0,0,0], [0,0,0])
+
     ! Reset internal energy
 
     ! First, check if the internal energy variable is
@@ -183,10 +184,6 @@ contains
     ! allow_negative_energy .eq. 0 since a negative
     ! energy is of course smaller than the smallest
     ! allowed energy.
-    gamma_up(:) = 0.0d0
-    gamma_up(1) = 1.0d0
-    gamma_up(5) = 1.0d0
-    gamma_up(9) = 1.0d0
 
     if (allow_small_energy .eq. 0) then
 
@@ -380,6 +377,7 @@ contains
          UFS, UFX, allow_negative_energy, dual_energy_update_E_from_e, NQ, QU, QV, QW, QRHO, QREINT, small_dens
     use bl_constants_module, only: ZERO, ONE
     use amrex_fort_module, only: rt => amrex_real
+    use riemann_util_module, only : calculate_gamma_up
 
     implicit none
 
@@ -396,10 +394,7 @@ contains
     call eos(eos_input_re, eos_state)
     gamma = eos_state % gam1
 
-    gamma_up(:) = 0.0d0
-    gamma_up(1) = 1.0d0
-    gamma_up(5) = 1.0d0
-    gamma_up(9) = 1.0d0
+    call calculate_gamma_up(gamma_up, [0,0,0], [0,0,0])
 
     ! First check the inputs for validity.
 
