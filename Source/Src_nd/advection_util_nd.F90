@@ -486,13 +486,13 @@ contains
               call f_of_p(fmin, pmin, uin(i,j,k,:), gamma_up(i,j,k,:))
               call f_of_p(fmax, pmax, uin(i,j,k,:), gamma_up(i,j,k,:))
 
-              !if (fmin * fmax > 0.0d0) then
-                  !pmin = 0.d0
-              !end if
+              if (fmin * fmax > 0.0d0) then
+                  pmin = pmin * 0.1d0 !0.d0
+              end if
+
+              call f_of_p(fmin, pmin, uin(i,j,k,:), gamma_up(i,j,k,:))
 
               !write(*,*) "f = ", fmin, fmax, " p = ", pmin, pmax
-
-              !call f_of_p(fmin, pmin, uin, gamma_up(i,j,k,:))
 
               if (fmin * fmax > 0.0d0) then
                   pmax = pmax * 10.d0
