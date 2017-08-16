@@ -17,7 +17,7 @@ contains
     use network, only : nspec, naux
     use meth_params_module, only : NVAR, QRHO, QREINT, UEDEN, small_dens, density_reset_method, NQ, NQAUX
     use bl_constants_module, only : ZERO
-    use riemann_util_module, only : gr_cons_state
+    use riemann_util_module, only : gr_cons_state, calculate_gamma_up
 
     use amrex_fort_module, only : rt => amrex_real
 
@@ -36,7 +36,7 @@ contains
     ! Local variables
     integer          :: i,ii,j,jj,k,kk
     integer          :: i_set, j_set, k_set
-    real(rt)         :: max_dens, gamma=5.0d0/3.0d0
+    real(rt)         :: max_dens
     real(rt)         :: qnew(NQ)
     integer          :: num_positive_zones
 
@@ -48,10 +48,7 @@ contains
     real(rt) :: gamma_up(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),9)
     real(rt) :: alpha(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3))
 
-    gamma_up(:,:,:,:) = 0.0d0
-    gamma_up(:,:,:,1) = 1.0d0
-    gamma_up(:,:,:,5) = 1.0d0
-    gamma_up(:,:,:,9) = 1.0d0
+    call calculate_gamma_up(gamma_up, lo, hi)
     alpha(:,:,:) = 1.0d0
 
     max_dens = ZERO
@@ -190,7 +187,7 @@ contains
 
                 endif
 
-                call gr_cons_state(qout(i,j,k,:), uout(i,j,k,:), gamma)
+                call gr_cons_state(qout(i,j,k,:), uout(i,j,k,:), gamma_up(i,j,k,:))
 
              end if
 
@@ -385,7 +382,7 @@ contains
     use mempool_module, only : bl_allocate, bl_deallocate
     use actual_network, only : nspec, naux
     use eos_module, only : eos
-    use eos_type_module, only : eos_t, eos_input_rt, eos_input_re
+    use eos_type_module, only : eos_t, eos_input_re
     use meth_params_module, only : NVAR, URHO, UMX, UMY, UMZ, &
                                    UEDEN, UTEMP, &
                                    QRHO, QU, QV, QW, &
@@ -415,18 +412,18 @@ contains
     real(rt)        , intent(in   ) :: gamma_up(g_lo(1):g_hi(1),g_lo(2):g_hi(2),g_lo(3):g_hi(3),9)
     real(rt)        , intent(in   ) :: alpha(a_lo(1):a_hi(1),a_lo(2):a_hi(2),a_lo(3):a_hi(3))
 
-    real(rt)        , parameter :: small = 1.d-8, gamma = 5.0d0 / 3.0d0
+    real(rt)        , parameter :: small = 1.d-8
 
     integer          :: i, j, k, g
     integer          :: n, iq, ipassive
     real(rt)         :: vel(3)
     real(rt)         :: gamma_down(9)
-    real(rt)         :: pmin, pmax, ssq, p, fmin, fmax, sq, h, W2, eden
+    real(rt)         :: pmin, pmax, ssq, p, fmin, fmax, sq, h, W2, eden, gamma
 
     type (eos_t) :: eos_state
 
-    !write(*,*) "UDEN", uin(:,:,:,UEDEN)
-    !stop
+    call eos(eos_input_re, eos_state)
+    gamma = eos_state % gam1
 
     do k = lo(3), hi(3)
        do j = lo(2), hi(2)
@@ -583,14 +580,18 @@ contains
 
              eos_state % T   = q(i,j,k,QTEMP )
              eos_state % rho = q(i,j,k,QRHO  )
-             eos_state % e   = q(i,j,k,QREINT) !/ q(i,j,k,QRHO  )
+             eos_state % e   = q(i,j,k,QREINT) / q(i,j,k,QRHO  )
              eos_state % xn  = q(i,j,k,QFS:QFS+nspec-1)
              eos_state % aux = q(i,j,k,QFX:QFX+naux-1)
+             eos_state % p = q(i,j,k,QPRES)
 
              call eos(eos_input_re, eos_state)
 
              q(i,j,k,QTEMP)  = eos_state % T
              q(i,j,k,QREINT) = eos_state % e * q(i,j,k,QRHO)
+
+             !write(*,*) "p = ", q(i,j,k,QPRES), eos_state % p, eos_state % e, q(i,j,k,QREINT) / q(i,j,k,QRHO  )
+
              q(i,j,k,QPRES)  = eos_state % p
              q(i,j,k,QGAME)  = q(i,j,k,QPRES) / q(i,j,k,QREINT) + ONE
 

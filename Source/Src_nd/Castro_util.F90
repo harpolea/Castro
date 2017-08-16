@@ -85,6 +85,8 @@ contains
 
     use meth_params_module, only: NVAR, URHO, UEDEN, NQ, QU, QV, QW, QPRES, QRHO, QREINT
     use bl_constants_module, only: HALF, ONE
+    use eos_module, only : eos
+    use eos_type_module, only : eos_t, eos_input_re
     use amrex_fort_module, only: rt => amrex_real
 
     implicit none
@@ -98,7 +100,12 @@ contains
 
     ! Local variables
     integer  :: i,j,k
-    real(rt) :: u, v, w, rhoh, gamma = 5.0d0 / 3.0d0, W2, p
+    real(rt) :: u, v, w, rhoh, gamma, W2, p
+
+    type (eos_t) :: eos_state
+
+    call eos(eos_input_re, eos_state)
+    gamma = eos_state % gam1
 
     gamma_up(:) = 0.0d0
     gamma_up(1) = 1.0d0
@@ -158,9 +165,12 @@ contains
     ! Local variables
     integer  :: i,j,k
     real(rt) :: up, v, w, ke, rho_eint, eden, small_e, eint_new, rhoInv
-    real(rt) :: gamma_up(9), rhoh, gamma = 5.0d0 / 3.0d0, W2, p
+    real(rt) :: gamma_up(9), rhoh, gamma, W2, p
 
     type (eos_t) :: eos_state
+
+    call eos(eos_input_re, eos_state)
+    gamma = eos_state % gam1
 
     ! Reset internal energy
 
@@ -379,9 +389,12 @@ contains
     real(rt), intent(in   ) :: q(s_lo(1):s_hi(1),s_lo(2):s_hi(2),s_lo(3):s_hi(3),NQ)
 
     integer  :: i,j,k
-    real(rt) :: rhoInv, u, v, w, p, rhoh, W2, gamma = 5.0d0 / 3.0d0, gamma_up(9)
+    real(rt) :: rhoInv, u, v, w, p, rhoh, W2, gamma, gamma_up(9)
 
     type (eos_t) :: eos_state
+
+    call eos(eos_input_re, eos_state)
+    gamma = eos_state % gam1
 
     gamma_up(:) = 0.0d0
     gamma_up(1) = 1.0d0
@@ -446,7 +459,7 @@ contains
                  W2 = 1.0d0 / (1.0d0 - W2)
 
                  rhoh = gamma * q(i,j,k,QREINT) + q(i,j,k,QRHO)
-                 p = (gamma - 1.0d0) * q(i,j,k,QREINT)
+                 p = eos_state % p !(gamma - 1.0d0) * q(i,j,k,QREINT)
 
                 state(i,j,k,UEDEN) = rhoh * W2 - p - state(i,j,k,URHO)
              endif

@@ -53,23 +53,45 @@ contains
   end function bc_test
 
 
-  pure subroutine gr_cons_state(q, U, gamma)
+  subroutine gr_cons_state(q, U, gamma_up)
 
     use meth_params_module, only: QVAR, QRHO, QU, QV, QW, QREINT, &
          NVAR, URHO, UMX, UMY, UMZ, UEDEN, UEINT, UTEMP, &
-         npassive, upass_map, qpass_map, QTEMP
+         npassive, upass_map, qpass_map, QTEMP, QPRES
+    use eos_module, only: eos
+    use eos_type_module, only: eos_input_re, eos_t, eos_input_rt
 
-    real(rt)        , intent(in)  :: q(QVAR), gamma
+    real(rt)        , intent(in)  :: q(QVAR), gamma_up(9)
     real(rt)        , intent(out) :: U(NVAR)
 
     integer  :: ipassive, n, nq
     real(rt) :: W, rhoh, p
+    type (eos_t)     :: eos_state
 
-    W = 1.0d0 / sqrt(1.0d0 - sum(q(QU:QW)**2))
+    W = q(QU)**2 * gamma_up(1) + &
+        2.0d0 * q(QU) * q(QV) * gamma_up(2) + &
+        2.0d0 * q(QU) * q(QW) * gamma_up(2) + &
+        q(QV)**2 * gamma_up(5) + &
+        2.0d0 * q(QV) * q(QW) * gamma_up(6) + &
+        q(QW)**2 * gamma_up(9)
+    W = 1.0d0 / sqrt(1.0d0 - W)
 
     U(URHO) = q(QRHO) * W
-    rhoh = gamma * q(QREINT) + q(QRHO)
-    p = (gamma - 1.0d0) * q(QREINT)
+    !rhoh = gamma * q(QREINT) + q(QRHO)
+    !p = (gamma - 1.0d0) * q(QREINT)
+
+    eos_state % rho  = q(QRHO)
+    eos_state % e    = q(QREINT) / q(QRHO)
+    eos_state % p = q(QPRES)
+    eos_state % T = q(QTEMP)
+
+    call eos(eos_input_re, eos_state)
+
+    rhoh = eos_state % gam1 * q(QREINT) + q(QRHO)
+    p = eos_state % p !q(QPRES)
+
+    !write(*,*) "rho, erho, rhoh, erhoh, p, ep", q(QRHO), eos_state % rho, eos_state % h, rhoh, p, eos_state % p
+    !write(*,*) "T, eT", q(QTEMP), eos_state % T
 
     ! since we advect all 3 velocity components regardless of dimension, this
     ! will be general
@@ -80,7 +102,7 @@ contains
     U(UEDEN) = rhoh * W**2 - p - U(URHO)
     U(UEINT) = q(QREINT)
 
-    U(UTEMP) = q(QTEMP)
+    U(UTEMP) = eos_state % T!q(QTEMP)
 
     do ipassive = 1, npassive
        n  = upass_map(ipassive)
@@ -164,6 +186,8 @@ subroutine f_of_p(f, p, U, gamma_up)
         p * tpd / sqrt(tpd**2 - ss) - U(URHO)) / U(URHO)
 
     call eos(eos_input_re, eos_state)
+
+    !write(*,*) "p = ", eos_state % p, (eos_state % gam1 - 1.0d0) * eos_state % rho * eos_state % e
 
     f = eos_state % p - p
 
@@ -279,5 +303,18 @@ subroutine zbrent(p, x1, b, U, gamma_up)
     p = x1
 
 end subroutine zbrent
+
+subroutine calculate_gamma_up(gamma_up, glo, ghi)
+    implicit none
+
+    integer, intent(in) :: glo(3), ghi(3)
+    real(rt), intent(out) :: gamma_up(glo(1):ghi(1), glo(2):ghi(2), glo(3):ghi(3), 9)
+
+    gamma_up(:,:,:,:) = 0.0d0
+    gamma_up(:,:,:,1) = 1.0d0
+    gamma_up(:,:,:,5) = 1.0d0
+    gamma_up(:,:,:,9) = 1.0d0
+
+end subroutine calculate_gamma_up
 
 end module riemann_util_module

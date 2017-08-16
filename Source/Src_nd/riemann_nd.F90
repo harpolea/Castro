@@ -30,7 +30,8 @@ contains
                   qaux, qa_lo, qa_hi, &
                   uflx, uflx_lo, uflx_hi, &
                   idir, ilo, ihi, jlo, jhi, kc, kflux, k3d, &
-                  domlo, domhi)
+                  domlo, domhi, &
+                  gamma_up, glo, ghi)
 
 
     ! this is an implementation of the HLLC solver described in Toro's
@@ -50,6 +51,7 @@ contains
     integer, intent(in) :: uflx_lo(3), uflx_hi(3)
     integer, intent(in) :: idir, ilo, ihi, jlo, jhi
     integer, intent(in) :: domlo(3), domhi(3)
+    integer, intent(in) :: glo(3), ghi(3)
 
     real(rt), intent(in) :: ql(qpd_lo(1):qpd_hi(1),qpd_lo(2):qpd_hi(2),qpd_lo(3):qpd_hi(3),NQ)
     real(rt), intent(in) :: qr(qpd_lo(1):qpd_hi(1),qpd_lo(2):qpd_hi(2),qpd_lo(3):qpd_hi(3),NQ)
@@ -57,6 +59,7 @@ contains
     ! note: qaux comes in dimensioned as the fully box, so use k3d to
     ! index in z
     real(rt), intent(in) :: qaux(qa_lo(1):qa_hi(1),qa_lo(2):qa_hi(2),qa_lo(3):qa_hi(3),NQAUX)
+    real(rt), intent(in) :: gamma_up(glo(1):ghi(1), glo(2):ghi(2), glo(3):ghi(3), 9)
 
     real(rt), intent(inout) :: uflx(uflx_lo(1):uflx_hi(1),uflx_lo(2):uflx_hi(2),uflx_lo(3):uflx_hi(3),NVAR)
     integer, intent(in) :: kc, kflux, k3d
@@ -222,15 +225,15 @@ contains
 
           if (S_r <= ZERO) then
              ! R region
-             call gr_cons_state(qr(i,j,kc,:), U_state, gamcr)
+             call gr_cons_state(qr(i,j,kc,:), U_state, gamma_up(i,j,kc,:))
              call gr_compute_flux(idir, bnd_fac, qr(i,j,kc,:), U_state, pr, beta, alpha, F_state)
 
          else if (S_r > ZERO .and. S_l <= ZERO) then
              ! * region
-             call gr_cons_state(ql(i,j,kc,:), U_state, gamcl)
+             call gr_cons_state(ql(i,j,kc,:), U_state, gamma_up(i,j,kc,:))
              call gr_compute_flux(idir, bnd_fac, ql(i,j,kc,:), U_state, pl, beta, alpha, F_state)
 
-             call gr_cons_state(qr(i,j,kc,:), U_hll_state, gamcr)
+             call gr_cons_state(qr(i,j,kc,:), U_hll_state, gamma_up(i,j,kc,:))
              call gr_compute_flux(idir, bnd_fac, qr(i,j,kc,:), U_hll_state, pr, beta, alpha, Fr_state)
 
              ! correct the flux
@@ -238,7 +241,7 @@ contains
 
           else
              ! L region
-             call gr_cons_state(ql(i,j,kc,:), U_state, gamcl)
+             call gr_cons_state(ql(i,j,kc,:), U_state, gamma_up(i,j,kc,:))
              call gr_compute_flux(idir, bnd_fac, ql(i,j,kc,:), U_state, pl, beta, alpha, F_state)
 
           endif

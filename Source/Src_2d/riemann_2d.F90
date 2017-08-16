@@ -27,7 +27,8 @@ contains
   subroutine cmpflx(qm, qp, qpd_lo, qpd_hi, &
                     flx, flx_lo, flx_hi, &
                     qaux, qa_lo, qa_hi, &
-                    idir, ilo, ihi, jlo, jhi, domlo, domhi)
+                    idir, ilo, ihi, jlo, jhi, domlo, domhi, &
+                    gamma_up, glo, ghi)
 
     use actual_riemann_module
     use eos_type_module, only: eos_input_re, eos_input_rt, eos_t
@@ -40,6 +41,7 @@ contains
     integer, intent(in) :: qpd_lo(3), qpd_hi(3)
     integer, intent(in) :: flx_lo(3), flx_hi(3)
     integer, intent(in) :: qa_lo(3), qa_hi(3)
+    integer, intent(in) :: glo(3), ghi(3)
 
     integer, intent(in) :: idir,ilo,ihi,jlo,jhi
     integer, intent(in) :: domlo(2),domhi(2)
@@ -49,6 +51,7 @@ contains
     real(rt), intent(inout) :: flx(flx_lo(1):flx_hi(1),flx_lo(2):flx_hi(2),NVAR)
 
     real(rt), intent(in) :: qaux(qa_lo(1):qa_hi(1),qa_lo(2):qa_hi(2),NQAUX)
+    real(rt), intent(in) :: gamma_up(glo(1):ghi(1),glo(2):ghi(2),9)
 
     ! Local variables
     integer i, j
@@ -80,7 +83,8 @@ contains
              qaux, qa_lo, qa_hi, &
              flx, flx_lo, flx_hi, &
              idir, imin, imax, jmin, jmax, 0, 0, 0, &
-             [domlo(1), domlo(2), 0], [domhi(1), domhi(2), 0])
+             [domlo(1), domlo(2), 0], [domhi(1), domhi(2), 0], &
+             gamma_up, glo, ghi)
 
 
   end subroutine cmpflx

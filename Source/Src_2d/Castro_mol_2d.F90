@@ -30,6 +30,7 @@ subroutine ca_mol_single_stage(time, &
   use bl_constants_module, only : ZERO, HALF, ONE
   use prob_params_module, only : coord_type
   use riemann_module, only: cmpflx
+  use riemann_util_module, only: calculate_gamma_up
   use reconstruct_module, only : compute_reconstruction_tvd
   use amrex_fort_module, only : rt => amrex_real
   use eos_type_module, only : eos_t, eos_input_rt
@@ -86,7 +87,7 @@ subroutine ca_mol_single_stage(time, &
   integer :: qs_lo(3), qs_hi(3)
   real(rt) :: dx_3D(3)
 
-  real(rt) :: div1
+  real(rt) :: div1, gamma_up(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),9)
 
   integer :: i, j, n
 
@@ -104,6 +105,8 @@ subroutine ca_mol_single_stage(time, &
 
   dx = delta(1)
   dy = delta(2)
+
+  call calculate_gamma_up(gamma_up, lo, hi)
 
   ! Check if we have violated the CFL criterion.
   call compute_cfl(q, q_lo, q_hi, &
@@ -169,13 +172,15 @@ subroutine ca_mol_single_stage(time, &
   call cmpflx(qxm, qxp, qs_lo, qs_hi, &
               flux1, flux1_lo, flux1_hi, &
               qaux, qa_lo, qa_hi, &
-              1, lo(1), hi(1), lo(2), hi(2), domlo, domhi)
+              1, lo(1), hi(1), lo(2), hi(2), domlo, domhi, &
+              gamma_up, lo, hi)
 
 
   call cmpflx(qym, qyp, qs_lo, qs_hi, &
               flux2, flux2_lo, flux2_hi, &
               qaux, qa_lo, qa_hi, &
-              2, lo(1), hi(1), lo(2), hi(2), domlo, domhi)
+              2, lo(1), hi(1), lo(2), hi(2), domlo, domhi, &
+              gamma_up, lo, hi)
 
   deallocate(qxm, qxp, qym, qyp)
 

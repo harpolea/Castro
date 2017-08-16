@@ -61,7 +61,7 @@ contains
              ux = q(i,j,k,QU)
              uy = q(i,j,k,QV)
              uz = q(i,j,k,QW)
-
+             
              c = eos_state % cs
 
              dt1 = dx(1)/(c + abs(ux))
