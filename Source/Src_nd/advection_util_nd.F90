@@ -17,7 +17,8 @@ contains
     use network, only : nspec, naux
     use meth_params_module, only : NVAR, QRHO, QREINT, UEDEN, small_dens, density_reset_method, NQ, NQAUX
     use bl_constants_module, only : ZERO
-    use riemann_util_module, only : gr_cons_state, calculate_gamma_up
+    use riemann_util_module, only : gr_cons_state
+    use metric_module, only : calculate_gamma_up
 
     use amrex_fort_module, only : rt => amrex_real
 

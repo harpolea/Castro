@@ -223,6 +223,9 @@ contains
 
           !write(*,*) "Sl, Sr, pl, pr", S_l, S_r, pl, pr
 
+          S_l = -1.0d0
+          S_r = 1.0d0
+
           if (S_r <= ZERO) then
              ! R region
              call gr_cons_state(qr(i,j,kc,:), U_state, gamma_up(i,j,kc,:))
@@ -237,7 +240,7 @@ contains
              call gr_compute_flux(idir, bnd_fac, qr(i,j,kc,:), U_hll_state, pr, beta, alpha, Fr_state)
 
              ! correct the flux
-             F_state(:) = (S_l * F_state(:) - S_r * Fr_state(:) + S_r * S_l * (U_hll_state(:) - U_state(:)))/ (S_r - S_l)
+             F_state(:) = (S_r * F_state(:) - S_l * Fr_state(:) + S_r * S_l * (U_hll_state(:) - U_state(:)))/ (S_r - S_l)
 
           else
              ! L region

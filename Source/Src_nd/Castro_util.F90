@@ -88,7 +88,7 @@ contains
     use eos_module, only : eos
     use eos_type_module, only : eos_t, eos_input_re
     use amrex_fort_module, only: rt => amrex_real
-    use riemann_util_module, only : calculate_gamma_up
+    use metric_module, only : calculate_gamma_up
 
     implicit none
 
@@ -152,7 +152,7 @@ contains
          dual_energy_eta2, dual_energy_update_E_from_e, NQ, QRHO, QU, QV, QW, QPRES
     use bl_constants_module, only: ZERO, HALF, ONE
     use amrex_fort_module, only : rt => amrex_real
-    use riemann_util_module, only : calculate_gamma_up
+    use metric_module, only : calculate_gamma_up
 
     implicit none
 
@@ -377,7 +377,7 @@ contains
          UFS, UFX, allow_negative_energy, dual_energy_update_E_from_e, NQ, QU, QV, QW, QRHO, QREINT, small_dens
     use bl_constants_module, only: ZERO, ONE
     use amrex_fort_module, only: rt => amrex_real
-    use riemann_util_module, only : calculate_gamma_up
+    use metric_module, only : calculate_gamma_up
 
     implicit none
 

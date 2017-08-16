@@ -183,7 +183,7 @@ contains
                         qaux, qa_lo,  qa_hi, idx) bind(C, name = "ca_ctoprim")
 
     use advection_util_module, only: grctoprim
-    use riemann_util_module, only: calculate_gamma_up
+    use metric_module, only: calculate_gamma_up
 
     implicit none
 

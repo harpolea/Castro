@@ -76,9 +76,6 @@ contains
     endif
 
     ! Solve Riemann problem (godunov state passed back, but only (u,p) saved)
-
-       ! HLLC
-       !call HLLC(qm, qp, qpd_lo, qpd_hi, &
     call gr_HLL(qm, qp, qpd_lo, qpd_hi, &
              qaux, qa_lo, qa_hi, &
              flx, flx_lo, flx_hi, &

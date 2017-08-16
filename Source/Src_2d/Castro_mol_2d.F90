@@ -24,13 +24,13 @@ subroutine ca_mol_single_stage(time, &
                                  UTEMP, UMX, GDU, GDV, &
                                  QPRES, NQAUX, &
                                  QTEMP, QFS, QFX, QRHO, QREINT,&
-                                 first_order_hydro, difmag
+                                 first_order_hydro, difmag, URHO
   use advection_util_2d_module, only : divu, normalize_species_fluxes
   use advection_util_module, only : compute_cfl
   use bl_constants_module, only : ZERO, HALF, ONE
   use prob_params_module, only : coord_type
   use riemann_module, only: cmpflx
-  use riemann_util_module, only: calculate_gamma_up
+  use metric_module, only: calculate_gamma_up
   use reconstruct_module, only : compute_reconstruction_tvd
   use amrex_fort_module, only : rt => amrex_real
   use eos_type_module, only : eos_t, eos_input_rt
@@ -203,6 +203,8 @@ subroutine ca_mol_single_stage(time, &
            update(i,j,n) = update(i,j,n) + &
                 ( flux1(i,j,n) * area1(i,j) - flux1(i+1,j,n) * area1(i+1,j) + &
                   flux2(i,j,n) * area2(i,j) - flux2(i,j+1,n) * area2(i,j+1) ) / vol(i,j)
+
+            !write(*,*) "xmon, rho", flux1(i,j,UMX), q(i,j,QRHO)
 
            ! for storage
            update_flux(i,j,n) = update_flux(i,j,n) + stage_weight * update(i,j,n)
