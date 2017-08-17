@@ -20,8 +20,6 @@ Castro::sum_integrated_quantities ()
     Real ang_mom[3]  = { 0.0 };
     Real com[3]      = { 0.0 };
     Real com_vel[3]  = { 0.0 };
-    Real rho_e       = 0.0;
-    Real rho_E       = 0.0;
 
     int datwidth     = 14;
     int datprecision = 6;
@@ -45,9 +43,6 @@ Castro::sum_integrated_quantities ()
     	   com[2] += ca_lev.locWgtSum("density", time, 2, local_flag);
     	}
 
-       rho_e += ca_lev.volWgtSum("rho_e", time, local_flag);
-       rho_E += ca_lev.volWgtSum("rho_E", time, local_flag);
-
     }
 
     if (verbose > 0)
@@ -55,8 +50,7 @@ Castro::sum_integrated_quantities ()
 
         const int nfoo = 13;
 
-    	Real foo[nfoo] = {mass, mom[0], mom[1], mom[2], ang_mom[0], ang_mom[1], ang_mom[2],
-			  rho_e, rho_E};
+    	Real foo[nfoo] = {mass, mom[0], mom[1], mom[2], ang_mom[0], ang_mom[1], ang_mom[2]};
 
 #ifdef BL_LAZY
         Lazy::QueueReduction( [=] () mutable {
@@ -77,8 +71,6 @@ Castro::sum_integrated_quantities ()
 	    ang_mom[0] = foo[i++];
 	    ang_mom[1] = foo[i++];
 	    ang_mom[2] = foo[i++];
-	    rho_e      = foo[i++];
-            rho_E      = foo[i++];
 
 	    std::cout << '\n';
 	    std::cout << "TIME= " << time << " MASS        = "   << mass      << '\n';
@@ -88,9 +80,6 @@ Castro::sum_integrated_quantities ()
 	    std::cout << "TIME= " << time << " ANG MOM X   = "   << ang_mom[0] << '\n';
 	    std::cout << "TIME= " << time << " ANG MOM Y   = "   << ang_mom[1] << '\n';
 	    std::cout << "TIME= " << time << " ANG MOM Z   = "   << ang_mom[2] << '\n';
-
-	    std::cout << "TIME= " << time << " RHO*e       = "   << rho_e     << '\n';
-	    std::cout << "TIME= " << time << " RHO*E       = "   << rho_E     << '\n';
 
 	    if (parent->NumDataLogs() > 0 ) {
 
@@ -107,8 +96,6 @@ Castro::sum_integrated_quantities ()
     		      data_log1 << std::setw(datwidth) <<  "     ang mom x";
     		      data_log1 << std::setw(datwidth) <<  "     ang mom y";
     		      data_log1 << std::setw(datwidth) <<  "     ang mom z";
-    		      data_log1 << std::setw(datwidth) <<  "         rho_e";
-    		      data_log1 << std::setw(datwidth) <<  "         rho_E";
     		      data_log1 << std::endl;
     		  }
 
@@ -121,8 +108,6 @@ Castro::sum_integrated_quantities ()
     		  data_log1 << std::setw(datwidth) <<  std::setprecision(datprecision) << ang_mom[0];
     		  data_log1 << std::setw(datwidth) <<  std::setprecision(datprecision) << ang_mom[1];
     		  data_log1 << std::setw(datwidth) <<  std::setprecision(datprecision) << ang_mom[2];
-    		  data_log1 << std::setw(datwidth) <<  std::setprecision(datprecision) << rho_e;
-    		  data_log1 << std::setw(datwidth) <<  std::setprecision(datprecision) << rho_E;
     		  data_log1 << std::endl;
 
 	       }

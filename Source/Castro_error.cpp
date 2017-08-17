@@ -20,8 +20,6 @@ Castro::ErrorSetUp ()
 //  err_list.add("pressure",2,ErrorRec::Special,ca_laplac_error);
 
     err_list.add("density",1,ErrorRec::Special,ca_denerror);
-    err_list.add("Temp",1,ErrorRec::Special,ca_temperror);
-    err_list.add("pressure",1,ErrorRec::Special,ca_presserror);
     err_list.add("x_velocity",1,ErrorRec::Special,ca_velerror);
 #if (BL_SPACEDIM >= 2)
     err_list.add("y_velocity",1,ErrorRec::Special,ca_velerror);

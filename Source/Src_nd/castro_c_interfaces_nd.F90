@@ -11,108 +11,6 @@ module c_interface_modules
 
 contains
 
-  subroutine ca_enforce_consistent_e(lo,hi,state,s_lo,s_hi,idx) &
-       bind(c, name='ca_enforce_consistent_e')
-
-    use castro_util_module, only: enforce_consistent_e
-    use meth_params_module, only: NVAR, URHO, UEDEN, NQ, QU, QV, QW, QPRES, QRHO, QREINT, UMX
-
-    implicit none
-
-    integer, intent(in)     :: lo(3), hi(3)
-    integer, intent(in)     :: s_lo(3), s_hi(3)
-    real(rt), intent(inout) :: state(s_lo(1):s_hi(1),s_lo(2):s_hi(2),s_lo(3):s_hi(3),NVAR)
-    integer, intent(in)     :: idx
-
-#ifdef CUDA
-
-    attributes(device) :: state
-
-    integer, device :: lo_d(3), hi_d(3)
-    integer, device :: s_lo_d(3), s_hi_d(3)
-
-    integer :: cuda_result
-    integer(kind=cuda_stream_kind) :: stream
-    type(dim3) :: numThreads, numBlocks
-
-    stream = cuda_streams(mod(idx, max_cuda_streams) + 1)
-
-    cuda_result = cudaMemcpyAsync(lo_d, lo, 3, cudaMemcpyHostToDevice, stream)
-    cuda_result = cudaMemcpyAsync(hi_d, hi, 3, cudaMemcpyHostToDevice, stream)
-
-    cuda_result = cudaMemcpyAsync(s_lo_d, s_lo, 3, cudaMemcpyHostToDevice, stream)
-    cuda_result = cudaMemcpyAsync(s_hi_d, s_hi, 3, cudaMemcpyHostToDevice, stream)
-
-    call threads_and_blocks(lo, hi, numBlocks, numThreads)
-
-    call cuda_enforce_consistent_e<<<numBlocks, numThreads, 0, stream>>>(lo_d, hi_d, state, s_lo_d, s_hi_d)
-
-#else
-
-    real(rt)     :: q(s_lo(1):s_hi(1),s_lo(2):s_hi(2),s_lo(3):s_hi(3),NQ)
-    real(rt)   :: qaux(s_lo(1):s_hi(1),s_lo(2):s_hi(2),s_lo(3):s_hi(3),NQAUX)
-
-    call ca_ctoprim(lo, hi, &
-                      state, s_lo, s_hi, &
-                      q,     s_lo, s_hi, &
-                      qaux,  s_lo, s_hi, idx)
-
-    call enforce_consistent_e(lo, hi, state, q, s_lo, s_hi)
-
-#endif
-
-  end subroutine ca_enforce_consistent_e
-
-
-  subroutine ca_compute_temp(lo, hi, state, s_lo, s_hi, idx) &
-       bind(C, name="ca_compute_temp")
-
-    use castro_util_module, only: compute_temp
-
-    implicit none
-
-    integer, intent(in   ) :: lo(3),hi(3)
-    integer, intent(in   ) :: s_lo(3),s_hi(3)
-    real(rt), intent(inout) :: state(s_lo(1):s_hi(1),s_lo(2):s_hi(2),s_lo(3):s_hi(3),NVAR)
-    integer, intent(in)     :: idx
-
-    real(rt)     :: q(s_lo(1):s_hi(1),s_lo(2):s_hi(2),s_lo(3):s_hi(3),NQ)
-    real(rt)   :: qaux(s_lo(1):s_hi(1),s_lo(2):s_hi(2),s_lo(3):s_hi(3),NQAUX)
-
-    call ca_ctoprim(lo, hi, &
-                      state, s_lo, s_hi, &
-                      q,     s_lo, s_hi, &
-                      qaux,  s_lo, s_hi, idx)
-
-    call compute_temp(lo, hi, state, s_lo, s_hi, q)
-
-  end subroutine ca_compute_temp
-
-
-  subroutine ca_reset_internal_e(lo, hi, u, u_lo, u_hi, verbose, idx) &
-       bind(C, name="ca_reset_internal_e")
-
-    use castro_util_module, only: reset_internal_e
-
-    implicit none
-
-    integer, intent(in) :: lo(3), hi(3), verbose
-    integer, intent(in) :: u_lo(3), u_hi(3)
-    real(rt), intent(inout) :: u(u_lo(1):u_hi(1),u_lo(2):u_hi(2),u_lo(3):u_hi(3),NVAR)
-    integer, intent(in)     :: idx
-
-    real(rt)     :: q(u_lo(1):u_hi(1),u_lo(2):u_hi(2),u_lo(3):u_hi(3),NQ)
-    real(rt)   :: qaux(u_lo(1):u_hi(1),u_lo(2):u_hi(2),u_lo(3):u_hi(3),NQAUX)
-
-    call ca_ctoprim(lo, hi, &
-                      u, u_lo, u_hi, &
-                      q,     u_lo, u_hi, &
-                      qaux,  u_lo, u_hi, idx)
-
-    call reset_internal_e(lo, hi, u, u_lo, u_hi, q, verbose)
-
-  end subroutine ca_reset_internal_e
-
 
   subroutine ca_normalize_species(u, u_lo, u_hi, lo, hi, idx) &
        bind(C, name="ca_normalize_species")
@@ -182,8 +80,7 @@ contains
                         q,     q_lo,   q_hi, &
                         qaux, qa_lo,  qa_hi, idx) bind(C, name = "ca_ctoprim")
 
-    use advection_util_module, only: grctoprim
-    use metric_module, only: calculate_gamma_up, calculate_alpha
+    use advection_util_module, only: swectoprim
 
     implicit none
 
@@ -197,18 +94,11 @@ contains
     real(rt)        , intent(inout) :: q(q_lo(1):q_hi(1),q_lo(2):q_hi(2),q_lo(3):q_hi(3),NQ)
     real(rt)        , intent(inout) :: qaux(qa_lo(1):qa_hi(1),qa_lo(2):qa_hi(2),qa_lo(3):qa_hi(3),NQAUX)
     integer, intent(in)     :: idx
-    real(rt) :: gamma_up(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),9)
-    real(rt) :: alpha(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3))
 
-    call calculate_gamma_up(gamma_up, lo, hi)
-    call calculate_alpha(alpha, lo, hi)
-
-    call grctoprim(lo, hi, &
+    call swectoprim(lo, hi, &
                  uin, uin_lo, uin_hi, &
                  q,     q_lo,   q_hi, &
-                 qaux, qa_lo,  qa_hi, &
-                 gamma_up, lo, hi, &
-                 alpha, lo, hi)
+                 qaux, qa_lo,  qa_hi)
 
   end subroutine ca_ctoprim
 

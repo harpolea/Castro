@@ -1,7 +1,5 @@
 subroutine amrex_probinit (init,name,namlen,problo,probhi) bind(c)
 
-    use eos_module
-    use eos_type_module
     use bl_error_module
     use network
     use probdata_module
@@ -16,9 +14,7 @@ subroutine amrex_probinit (init,name,namlen,problo,probhi) bind(c)
 
     integer untin,i
 
-    type (eos_t) :: eos_state
-
-    namelist /fortin/ p_l, u_l, rho_l, p_r, u_r, rho_r, T_l, T_r, frac, idir
+    namelist /fortin/ p_l, u_l, rho_l, p_r, u_r, rho_r, T_l, T_r, frac, idir, g
 
     !
     !     Build "probin" filename -- the name of file containing fortin namelist.
@@ -50,6 +46,8 @@ subroutine amrex_probinit (init,name,namlen,problo,probhi) bind(c)
     idir = 1                ! direction across which to jump
     frac = 0.5              ! fraction of the domain for the interface
 
+    g = 1.0d0
+
     !     Read namelists
     untin = 9
     open(untin,file=probin(1:namlen),form='formatted',status='old')
@@ -65,25 +63,6 @@ subroutine amrex_probinit (init,name,namlen,problo,probhi) bind(c)
     xn(:) = 0.0e0_rt
     xn(1) = 1.0e0_rt
 
-    eos_state%rho = rho_l
-    eos_state%p = p_l
-    eos_state%T = 100000.e0_rt  ! initial guess
-    eos_state%xn(:) = xn(:)
-
-    call eos(eos_input_rp, eos_state)
-
-    rhoe_l = rho_l*eos_state%e
-    T_l = eos_state%T
-
-    eos_state%rho = rho_r
-    eos_state%p = p_r
-    eos_state%T = 100000.e0_rt  ! initial guess
-    eos_state%xn(:) = xn(:)
-
-    call eos(eos_input_rp, eos_state)
-
-    rhoe_r = rho_r*eos_state%e
-    T_r = eos_state%T
 
 end subroutine amrex_probinit
 
@@ -115,8 +94,8 @@ subroutine ca_initdata(level,time,lo,hi,nscal, &
 
   use network, only: nspec
   use probdata_module
-  use meth_params_module, only : NVAR, URHO, UMX, UMY, UEDEN, UEINT, UTEMP, UFS, QVAR, QRHO, QU, QV, QW, QREINT, QTEMP, QPRES
-  use riemann_util_module, only : gr_cons_state
+  use meth_params_module, only : NVAR, URHO, UMX, UMY, UFS, QVAR, QRHO, QU, QV, QW
+  use riemann_util_module, only : swe_cons_state
 
   use amrex_fort_module, only : rt => amrex_real
   implicit none
@@ -128,13 +107,8 @@ subroutine ca_initdata(level,time,lo,hi,nscal, &
   real(rt)         state(state_l1:state_h1,state_l2:state_h2,NVAR)
   real(rt)         q(state_l1:state_h1,state_l2:state_h2,QVAR)
 
-  real(rt)         xcen,ycen, rhoh, W, gamma_up(9), p
+  real(rt)         xcen,ycen
   integer i,j
-
-  gamma_up(:) = 0.0d0
-  gamma_up(1) = 1.0d0
-  gamma_up(5) = 1.0d0
-  gamma_up(9) = 1.0d0
 
   q(:,:,QW) = 0.0d0
 
@@ -149,20 +123,10 @@ subroutine ca_initdata(level,time,lo,hi,nscal, &
               q(i,j,QRHO) = rho_l
               q(i,j,QU) = rho_l*u_l
               q(i,j,QV) = 0.e0_rt
-
-              q(i,j,QREINT) = rhoe_l + 0.5*rho_l*u_l*u_l
-              q(i,j,QTEMP) = T_l
-
-              q(i,j,QPRES) = p_l
            else
               q(i,j,QRHO) = rho_r
               q(i,j,QU) = rho_r*u_r
               q(i,j,QV) = 0.e0_rt
-
-              q(i,j,QREINT) = rhoe_r + 0.5*rho_r*u_r*u_r
-              q(i,j,QTEMP) = T_r
-
-              q(i,j,QPRES) = p_r
            endif
 
         else if (idir == 2) then
@@ -170,20 +134,10 @@ subroutine ca_initdata(level,time,lo,hi,nscal, &
               q(i,j,QRHO) = rho_l
               q(i,j,QU) = 0.e0_rt
               q(i,j,QV) = rho_l*u_l
-
-              q(i,j,QREINT) = rhoe_l + 0.5*rho_l*u_l*u_l
-              q(i,j,QTEMP) = T_l
-
-              q(i,j,QPRES) = p_l
            else
               q(i,j,QRHO) = rho_r
               q(i,j,QU) = 0.e0_rt
               q(i,j,QV) = rho_r*u_r
-
-              q(i,j,QREINT) = rhoe_r + 0.5*rho_r*u_r*u_r
-              q(i,j,QTEMP) = T_r
-
-              q(i,j,QPRES) = p_r
            endif
 
         else
@@ -191,15 +145,10 @@ subroutine ca_initdata(level,time,lo,hi,nscal, &
         endif
 
         ! calculate conserved state from primitive initial data
-        call gr_cons_state(q(i,j,:), state(i,j,:), gamma_up)
+        call swe_cons_state(q(i,j,:), state(i,j,:))
 
         state(i,j,UFS:UFS-1+nspec) = 0.0e0_rt
         state(i,j,UFS  ) = state(i,j,URHO)
-
-        !write(*,*) state(i,j,UEDEN)
      enddo
   enddo
-
-  !write(*,*) "state U",q(:,:,QU:QU+2)
-!stop
 end subroutine ca_initdata

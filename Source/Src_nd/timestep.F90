@@ -14,12 +14,11 @@ contains
   subroutine ca_estdt(lo,hi,u,u_lo,u_hi,dx,dt) bind(C, name="ca_estdt")
 
     use network, only: nspec, naux
-    use meth_params_module, only: NVAR, QRHO, QU, QV, QW, QREINT, UTEMP, QFS, QFX, NQ, NQAUX
-    use eos_module, only: eos
-    use eos_type_module, only: eos_t, eos_input_re
+    use meth_params_module, only: NVAR, QRHO, QU, QV, QW, QFS, QFX, NQ, NQAUX
     use prob_params_module, only: dim
     use bl_constants_module
     use amrex_fort_module, only : rt => amrex_real
+    use probdata_module, only : g
 
     implicit none
 
@@ -29,8 +28,6 @@ contains
     real(rt)         :: dx(3), dt, dt_tmp
     real(rt)         :: rhoInv, ux, uy, uz, c, dt1, dt2, dt3
     integer          :: i, j, k
-
-    type (eos_t) :: eos_state
 
     real(rt)     :: q(u_lo(1):u_hi(1),u_lo(2):u_hi(2),u_lo(3):u_hi(3),NQ)
     real(rt)   :: qaux(u_lo(1):u_hi(1),u_lo(2):u_hi(2),u_lo(3):u_hi(3),NQAUX)
@@ -47,21 +44,13 @@ contains
           do i = lo(1), hi(1)
              rhoInv = ONE / q(i,j,k,QRHO)
 
-             eos_state % rho = q(i,j,k,QRHO )
-             eos_state % T   = u(i,j,k,UTEMP)
-             eos_state % e   = q(i,j,k,QREINT) * rhoInv
-             eos_state % xn  = q(i,j,k,QFS:QFS+nspec-1)
-             eos_state % aux = q(i,j,k,QFX:QFX+naux-1)
-
-             call eos(eos_input_re, eos_state)
-
              ! Compute velocity and then calculate CFL timestep.
 
              ux = q(i,j,k,QU)
              uy = q(i,j,k,QV)
              uz = q(i,j,k,QW)
 
-             c = eos_state % cs
+             c = sqrt(g * q(i,j,k,QRHO)) ! sound speed is sqrt(gh)
 
              dt1 = dx(1)/(c + abs(ux))
              if (dim >= 2) then
@@ -101,12 +90,11 @@ contains
                                bind(C, name="ca_check_timestep")
 
     use bl_constants_module, only: HALF, ONE
-    use meth_params_module, only: NVAR, QRHO, UTEMP, QREINT, QFS, QFX, QU, QV, QW, &
+    use meth_params_module, only: NVAR, QRHO, QFS, QFX, QU, QV, QW, &
                                   cfl, do_hydro, NQ, NQAUX
     use prob_params_module, only: dim
+    use probdata_module, only : g
     use network, only: nspec, naux
-    use eos_module, only: eos
-    use eos_type_module, only: eos_input_re, eos_t
     use amrex_fort_module, only : rt => amrex_real
 
     implicit none
@@ -119,10 +107,8 @@ contains
     real(rt)         :: dx(3), dt_old, dt_new
 
     integer          :: i, j, k
-    real(rt)         :: rhoninv
     real(rt)         :: tau_CFL
-    real(rt)         :: v(3), c
-    type (eos_t)     :: eos_state
+    real(rt)         :: h, v(3), c
 
     real(rt)     :: q_old(so_lo(1):so_hi(1),so_lo(2):so_hi(2),so_lo(3):so_hi(3),NQ)
     real(rt)     :: q_new(sn_lo(1):sn_hi(1),sn_lo(2):sn_hi(2),sn_lo(3):sn_hi(3),NQ)
@@ -142,8 +128,6 @@ contains
        do j = lo(2), hi(2)
           do i = lo(1), hi(1)
 
-             rhoninv = ONE / q_new(i,j,k,QRHO)
-
              ! CFL hydrodynamic stability criterion
 
              ! If the timestep violated (v+c) * dt / dx > 1,
@@ -162,17 +146,10 @@ contains
 
              if (do_hydro .eq. 1) then
 
-                eos_state % rho = q_new(i,j,k,QRHO )
-                eos_state % T   = s_new(i,j,k,UTEMP)
-                eos_state % e   = q_new(i,j,k,QREINT) * rhoninv
-                eos_state % xn  = q_new(i,j,k,QFS:QFS+nspec-1)
-                eos_state % aux = q_new(i,j,k,QFX:QFX+naux-1)
-
-                call eos(eos_input_re, eos_state)
-
                 v = HALF * (q_old(i,j,k,QU:QW) + q_new(i,j,k,QU:QW))
+                h = HALF * (q_old(i,j,k,QRHO) + q_new(i,j,k,QRHO))
 
-                c = eos_state % cs
+                c = sqrt(g * h) ! sound speed is sqrt(gh)
 
                 tau_CFL = minval(dx(1:dim) / (c + abs(v(1:dim))))
 

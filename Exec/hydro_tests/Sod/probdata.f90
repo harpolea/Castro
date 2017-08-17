@@ -11,5 +11,7 @@ module probdata_module
       integer        , save ::  probtype,idir
 
       real(rt)        , save :: split(3)
-      
+
+      real(rt), save :: g
+
 end module probdata_module

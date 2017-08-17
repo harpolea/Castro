@@ -10,4 +10,6 @@ module probdata_module
   ! Uniform flow speed
   real(rt)         :: bulk_velocity
 
+  real(rt)          :: g
+
 end module probdata_module

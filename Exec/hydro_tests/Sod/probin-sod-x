@@ -10,19 +10,14 @@
   idir = 1
   frac = 0.5d0
 
+  g = 1.0d0
+
 /
 
 &tagging
 
-  denerr = 3
+  velgrad = 1.0
   dengrad = 0.01
-  max_denerr_lev = 3
-  max_dengrad_lev = 3
-
-  presserr = 3
-  pressgrad = 0.01
-  max_presserr_lev = 3
-  max_pressgrad_lev = 3
 
 /
 

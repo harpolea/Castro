@@ -526,162 +526,6 @@ contains
   end subroutine ca_derangmomz
 
 
-
-  subroutine ca_derpres(p,p_lo,p_hi,ncomp_p, &
-                        u,u_lo,u_hi,ncomp_u,lo,hi,domlo, &
-                        domhi,dx,xlo,time,dt,bc,level,grid_no) &
-                        bind(C, name="ca_derpres")
-
-    use network, only: nspec, naux
-    use eos_module, only: eos
-    use eos_type_module, only: eos_t, eos_input_re
-    use meth_params_module, only: QRHO, QREINT, UTEMP, UFS, UFX, NQ, NQAUX, NVAR
-    use bl_constants_module
-    use amrex_fort_module, only : rt => amrex_real
-
-    implicit none
-
-    integer          :: lo(3), hi(3)
-    integer          :: p_lo(3), p_hi(3), ncomp_p
-    integer          :: u_lo(3), u_hi(3), ncomp_u
-    integer          :: domlo(3), domhi(3)
-    real(rt)         :: p(p_lo(1):p_hi(1),p_lo(2):p_hi(2),p_lo(3):p_hi(3),ncomp_p)
-    real(rt)         :: u(u_lo(1):u_hi(1),u_lo(2):u_hi(2),u_lo(3):u_hi(3),ncomp_u)
-    real(rt)         :: dx(3), xlo(3), time, dt
-    integer          :: bc(3,2,ncomp_u), level, grid_no
-
-    real(rt)         :: rhoInv
-    integer          :: i, j, k
-
-    type (eos_t) :: eos_state
-
-    real(rt)     :: s(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),NVAR)
-    real(rt)     :: q(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),NQ)
-    real(rt)   :: qaux(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),NQAUX)
-
-    s(:,:,:,:ncomp_u) = u(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),:)
-
-    call ca_ctoprim(lo, hi, &
-                      s, lo, hi, &
-                      q,     lo, hi, &
-                      qaux,  lo, hi, 0)
-
-    do k = lo(3), hi(3)
-       do j = lo(2), hi(2)
-          do i = lo(1), hi(1)
-             rhoInv = ONE / q(i,j,k,QRHO)
-
-             eos_state % rho  = q(i,j,k,QRHO)
-             eos_state % T    = u(i,j,k,UTEMP)
-             eos_state % e    = q(i,j,k,QREINT) * rhoInv
-             eos_state % xn   = u(i,j,k,UFS:UFS+nspec-1) * rhoInv
-             eos_state % aux  = u(i,j,k,UFX:UFX+naux-1) * rhoInv
-
-             call eos(eos_input_re, eos_state)
-
-             p(i,j,k,1) = eos_state % p
-          enddo
-       enddo
-    enddo
-
-  end subroutine ca_derpres
-
-
-
-  subroutine ca_dereint1(e,e_lo,e_hi,ncomp_e, &
-                         u,u_lo,u_hi,ncomp_u,lo,hi,domlo, &
-                         domhi,dx,xlo,time,dt,bc,level,grid_no) &
-                         bind(C, name="ca_dereint1")
-
-    use bl_constants_module
-    use meth_params_module, only: QRHO, QREINT, NQ, NQAUX, NVAR
-    use amrex_fort_module, only : rt => amrex_real
-
-    implicit none
-
-    integer          :: lo(3), hi(3)
-    integer          :: e_lo(3), e_hi(3), ncomp_e
-    integer          :: u_lo(3), u_hi(3), ncomp_u
-    integer          :: domlo(3), domhi(3)
-    real(rt)         :: e(e_lo(1):e_hi(1),e_lo(2):e_hi(2),e_lo(3):e_hi(3),ncomp_e)
-    real(rt)         :: u(u_lo(1):u_hi(1),u_lo(2):u_hi(2),u_lo(3):u_hi(3),ncomp_u)
-    real(rt)         :: dx(3), xlo(3), time, dt
-    integer          :: bc(3,2,ncomp_u), level, grid_no
-
-    real(rt)         :: rhoInv, ux, uy, uz
-    integer          :: i, j, k
-
-    real(rt)     :: s(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),NVAR)
-    real(rt)     :: q(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),NQ)
-    real(rt)   :: qaux(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),NQAUX)
-
-    s(:,:,:,:ncomp_u) = u(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),:)
-
-    call ca_ctoprim(lo, hi, &
-                      s, lo, hi, &
-                      q,     lo, hi, &
-                      qaux,  lo, hi, 0)
-    !
-    ! Compute internal energy from (rho E).
-    !
-    do k = lo(3),hi(3)
-       do j = lo(2),hi(2)
-          do i = lo(1),hi(1)
-             rhoInv = ONE/q(i,j,k,QRHO)
-             e(i,j,k,1) = q(i,j,k,QREINT) * rhoInv
-          enddo
-       enddo
-    enddo
-
-  end subroutine ca_dereint1
-
-
-
-  subroutine ca_dereint2(e,e_lo,e_hi,ncomp_e, &
-                         u,u_lo,u_hi,ncomp_u,lo,hi,domlo, &
-                         domhi,dx,xlo,time,dt,bc,level,grid_no) &
-                         bind(C, name="ca_dereint2")
-
-    use meth_params_module, only: QRHO, QREINT, NQ, NQAUX, NVAR
-
-    use amrex_fort_module, only : rt => amrex_real
-    implicit none
-
-    integer          :: lo(3), hi(3)
-    integer          :: e_lo(3), e_hi(3), ncomp_e
-    integer          :: u_lo(3), u_hi(3), ncomp_u
-    integer          :: domlo(3), domhi(3)
-    real(rt)         :: e(e_lo(1):e_hi(1),e_lo(2):e_hi(2),e_lo(3):e_hi(3),ncomp_e)
-    real(rt)         :: u(u_lo(1):u_hi(1),u_lo(2):u_hi(2),u_lo(3):u_hi(3),ncomp_u)
-    real(rt)         :: dx(3), xlo(3), time, dt
-    integer          :: bc(3,2,ncomp_u), level, grid_no
-
-    integer          :: i, j, k
-    real(rt)     :: s(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),NVAR)
-    real(rt)     :: q(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),NQ)
-    real(rt)   :: qaux(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),NQAUX)
-
-    s(:,:,:,:ncomp_u) = u(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),:)
-
-    call ca_ctoprim(lo, hi, &
-                      s, lo, hi, &
-                      q,     lo, hi, &
-                      qaux,  lo, hi, 0)
-    !
-    ! Compute internal energy from (rho e).
-    !
-    do k = lo(3),hi(3)
-       do j = lo(2),hi(2)
-          do i = lo(1),hi(1)
-             e(i,j,k,1) = q(i,j,k,QREINT) / q(i,j,k,QRHO)
-          enddo
-       enddo
-    enddo
-
-  end subroutine ca_dereint2
-
-
-
   subroutine ca_dersoundspeed(c,c_lo,c_hi,ncomp_c, &
                               u,u_lo,u_hi,ncomp_u,lo,hi,domlo, &
                               domhi,dx,xlo,time,dt,bc,level,grid_no) &
@@ -749,11 +593,10 @@ contains
                               bind(C, name="ca_dermachnumber")
 
     use network, only: nspec, naux
-    use eos_module, only: eos
-    use eos_type_module, only: eos_input_re, eos_t
-    use meth_params_module, only: QRHO, QU, QW, QREINT, UTEMP, UFS, UFX, NQ, NQAUX, NVAR
+    use meth_params_module, only: QRHO, QU, QW, UFS, UFX, NQ, NQAUX, NVAR
     use bl_constants_module
     use amrex_fort_module, only : rt => amrex_real
+    use probdata_module, only : g
 
     implicit none
 
@@ -766,10 +609,8 @@ contains
     real(rt)         :: dx(3), xlo(3), time, dt
     integer          :: bc(3,2,ncomp_u), level, grid_no
 
-    real(rt)         :: rhoInv
+    real(rt)         :: cs
     integer          :: i, j, k
-
-    type (eos_t) :: eos_state
 
     real(rt)     :: s(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),NVAR)
     real(rt)     :: q(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),NQ)
@@ -785,17 +626,10 @@ contains
     do k = lo(3), hi(3)
        do j = lo(2), hi(2)
           do i = lo(1), hi(1)
-             rhoInv = ONE / q(i,j,k,QRHO)
 
-             eos_state % rho  = q(i,j,k,QRHO)
-             eos_state % T    = u(i,j,k,UTEMP)
-             eos_state % e    = q(i,j,k,QREINT) * rhoInv
-             eos_state % xn = u(i,j,k,UFS:UFS+nspec-1) * rhoInv
-             eos_state % aux = u(i,j,k,UFX:UFX+naux-1) * rhoInv
+              cs = sqrt(g * q(i,j,k,QRHO))
 
-             call eos(eos_input_re, eos_state)
-
-             mach(i,j,k,1) = sum(q(i,j,k,QU:QW)**2)**0.5 / eos_state % cs
+             mach(i,j,k,1) = sum(q(i,j,k,QU:QW)**2)**0.5 / cs
           enddo
        enddo
     enddo
@@ -803,147 +637,6 @@ contains
   end subroutine ca_dermachnumber
 
 
-
-  subroutine ca_derentropy(s,s_lo,s_hi,ncomp_s, &
-                           u,u_lo,u_hi,ncomp_u,lo,hi,domlo, &
-                           domhi,dx,xlo,time,dt,bc,level,grid_no) &
-                           bind(C, name="ca_derentropy")
-
-    use network, only: nspec, naux
-    use eos_module, only: eos
-    use eos_type_module, only: eos_input_re, eos_t
-    use meth_params_module, only: QRHO, QREINT, UTEMP, UFS, UFX, NQ, NQAUX, NVAR
-    use bl_constants_module
-    use amrex_fort_module, only : rt => amrex_real
-
-    implicit none
-
-    integer          :: lo(3), hi(3)
-    integer          :: s_lo(3), s_hi(3), ncomp_s
-    integer          :: u_lo(3), u_hi(3), ncomp_u
-    integer          :: domlo(3), domhi(3)
-    real(rt)         :: s(s_lo(1):s_hi(1),s_lo(2):s_hi(2),s_lo(3):s_hi(3),ncomp_s)
-    real(rt)         :: u(u_lo(1):u_hi(1),u_lo(2):u_hi(2),u_lo(3):u_hi(3),ncomp_u)
-    real(rt)         :: dx(3), xlo(3), time, dt
-    integer          :: bc(3,2,ncomp_u), level, grid_no
-
-    real(rt)         :: rhoInv
-    integer          :: i, j, k
-    type (eos_t) :: eos_state
-
-
-    real(rt)     :: v(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),NVAR)
-    real(rt)     :: q(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),NQ)
-    real(rt)   :: qaux(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),NQAUX)
-
-    v(:,:,:,:ncomp_u) = u(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),:)
-
-    call ca_ctoprim(lo, hi, &
-                      v, lo, hi, &
-                      q,     lo, hi, &
-                      qaux,  lo, hi, 0)
-    do k = lo(3), hi(3)
-       do j = lo(2), hi(2)
-          do i = lo(1), hi(1)
-             rhoInv = ONE / q(i,j,k,QRHO)
-
-             eos_state % rho = q(i,j,k,QRHO)
-             eos_state % T   = u(i,j,k,UTEMP)
-             eos_state % e   = q(i,j,k,QREINT) * rhoInv
-             eos_state % xn  = u(i,j,k,UFS:UFS+nspec-1) * rhoInv
-             eos_state % aux = u(i,j,k,UFX:UFX+naux-1) * rhoInv
-
-             call eos(eos_input_re, eos_state)
-
-             s(i,j,k,1) = eos_state % s
-          enddo
-       enddo
-    enddo
-
-  end subroutine ca_derentropy
-
-
-
-  subroutine ca_derenuctimescale(t,t_lo,t_hi,ncomp_t, &
-                                 u,u_lo,u_hi,ncomp_u,lo,hi,domlo, &
-                                 domhi,dx,xlo,time,dt,bc,level,grid_no) &
-                                 bind(C, name="ca_derenuctimescale")
-
-    use bl_constants_module, only: ZERO, ONE
-    use meth_params_module, only: QRHO, QREINT, UTEMP, UFS, UFX, NQ, NQAUX, NVAR
-    use network, only: nspec, naux
-    use prob_params_module, only: dim
-    use eos_module, only: eos
-    use eos_type_module, only: eos_input_re, eos_t
-    use amrex_fort_module, only : rt => amrex_real
-
-    implicit none
-
-
-    integer          :: lo(3), hi(3)
-    integer          :: t_lo(3), t_hi(3), ncomp_t
-    integer          :: u_lo(3), u_hi(3), ncomp_u
-    integer          :: domlo(3), domhi(3)
-    real(rt)         :: t(t_lo(1):t_hi(1),t_lo(2):t_hi(2),t_lo(3):t_hi(3),ncomp_t)
-    real(rt)         :: u(u_lo(1):u_hi(1),u_lo(2):u_hi(2),u_lo(3):u_hi(3),ncomp_u) ! NVAR, enuc
-    real(rt)         :: dx(3), xlo(3), time, dt
-    integer          :: bc(3,2,ncomp_u), level, grid_no
-
-    integer          :: i, j, k
-    real(rt)         :: rhoInv, eint, enuc, t_s, t_e
-
-    type (eos_t)     :: eos_state
-
-    real(rt)     :: s(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),NVAR)
-    real(rt)     :: q(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),NQ)
-    real(rt)   :: qaux(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),NQAUX)
-
-    s(:,:,:,:ncomp_u) = u(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),:)
-
-    call ca_ctoprim(lo, hi, &
-                      s, lo, hi, &
-                      q,     lo, hi, &
-                      qaux,  lo, hi, 0)
-
-    do k = lo(3), hi(3)
-       do j = lo(2), hi(2)
-          do i = lo(1), hi(1)
-
-             enuc = abs(u(i,j,k,ncomp_u))
-
-             if (enuc > 1.e-100_rt) then
-
-                rhoInv = ONE / q(i,j,k,QRHO)
-
-                eint = q(i,j,k,QREINT) * rhoInv
-
-                t_e = eint / enuc
-
-                ! Calculate sound-speed
-
-                eos_state % rho  = q(i,j,k,QRHO)
-                eos_state % T    = u(i,j,k,UTEMP)
-                eos_state % e    = eint
-                eos_state % xn   = u(i,j,k,UFS:UFS+nspec-1) * rhoInv
-                eos_state % aux  = u(i,j,k,UFX:UFX+naux-1) * rhoInv
-
-                call eos(eos_input_re, eos_state)
-
-                t_s = minval(dx(1:dim)) / eos_state % cs
-
-                t(i,j,k,1) = t_s / t_e
-
-             else
-
-                t(i,j,k,1) = ZERO
-
-             endif
-
-          enddo
-       enddo
-    enddo
-
-  end subroutine ca_derenuctimescale
 
 
 
@@ -1245,146 +938,6 @@ contains
     integer          :: level, grid_no
 
   end subroutine ca_dernull
-
-
-  subroutine ca_derprim_density(rho,r_lo,r_hi,ncomp_r, &
-                        dat,d_lo,d_hi,nc,&
-                        lo,hi,domlo, &
-                        domhi,dx,xlo,time,dt,bc,level,grid_no) &
-                        bind(C, name="ca_derprim_density")
-    ! calculate the primitive density
-
-    use bl_constants_module
-    use meth_params_module, only: NQ, NQAUX, NVAR, QRHO
-
-    use amrex_fort_module, only : rt => amrex_real
-    implicit none
-
-    integer          :: lo(3), hi(3)
-    integer          :: r_lo(3), r_hi(3), ncomp_r
-    integer          :: d_lo(3), d_hi(3), nc
-    integer          :: domlo(3), domhi(3)
-    real(rt)         :: rho(r_lo(1):r_hi(1),r_lo(2):r_hi(2),r_lo(3):r_hi(3),ncomp_r)
-    real(rt)         :: dat(d_lo(1):d_hi(1),d_lo(2):d_hi(2),d_lo(3):d_hi(3),nc)
-    real(rt)         :: dx(3), xlo(3), time, dt
-    integer          :: bc(3,2,nc), level, grid_no
-
-    integer          :: i, j, k
-    real(rt)     :: s(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),NVAR)
-    real(rt)     :: q(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),NQ)
-    real(rt)   :: qaux(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),NQAUX)
-
-    s(:,:,:,:nc) = dat(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),:)
-
-    call ca_ctoprim(lo, hi, &
-                      s, lo, hi, &
-                      q,     lo, hi, &
-                      qaux,  lo, hi, 0)
-    do k = lo(3), hi(3)
-      do j = lo(2), hi(2)
-          do i = lo(1), hi(1)
-              rho(i,j,k,1) = q(i,j,k,QRHO)
-          end do
-      end do
-    end do
-
-  end subroutine ca_derprim_density
-
-  subroutine ca_derW(W,w_lo,w_hi,ncomp_w, &
-                        dat,d_lo,d_hi,nc,&
-                        lo,hi,domlo, &
-                        domhi,dx,xlo,time,dt,bc,level,grid_no) &
-                        bind(C, name="ca_derW")
-    ! calculate the Lorentz factor
-
-    use bl_constants_module
-    use meth_params_module, only: NQ, NQAUX, NVAR, QU, QW
-    use metric_module, only: calculate_scalar_W, calculate_gamma_up
-
-    use amrex_fort_module, only : rt => amrex_real
-    implicit none
-
-    integer          :: lo(3), hi(3)
-    integer          :: w_lo(3), w_hi(3), ncomp_w
-    integer          :: d_lo(3), d_hi(3), nc
-    integer          :: domlo(3), domhi(3)
-    real(rt)         :: W(w_lo(1):w_hi(1),w_lo(2):w_hi(2),w_lo(3):w_hi(3),ncomp_w)
-    real(rt)         :: dat(d_lo(1):d_hi(1),d_lo(2):d_hi(2),d_lo(3):d_hi(3),nc)
-    real(rt)         :: dx(3), xlo(3), time, dt
-    integer          :: bc(3,2,nc), level, grid_no
-
-    integer          :: i, j, k
-
-    real(rt)     :: s(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),NVAR)
-    real(rt)     :: q(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),NQ)
-    real(rt)   :: qaux(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),NQAUX)
-    real(rt)   :: gamma_up(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),9)
-
-    s(:,:,:,:nc) = dat(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),:)
-
-    call calculate_gamma_up(gamma_up, lo, hi)
-
-    call ca_ctoprim(lo, hi, &
-                      s, lo, hi, &
-                      q,     lo, hi, &
-                      qaux,  lo, hi, 0)
-
-    do k = lo(3), hi(3)
-      do j = lo(2), hi(2)
-          do i = lo(1), hi(1)
-              call calculate_scalar_W(s(i,j,k,QU:QW), gamma_up(i,j,k,:), W(i,j,k,1))
-          end do
-      end do
-    end do
-
-  end subroutine ca_derW
-
-  subroutine ca_derprim_u(u,u_lo,u_hi,ncomp_u, &
-                        dat,d_lo,d_hi,nc,&
-                        lo,hi,domlo, &
-                        domhi,dx,xlo,time,dt,bc,level,grid_no) &
-                        bind(C, name="ca_derprim_u")
-    ! calculate the Lorentz factor
-
-    use bl_constants_module
-    use meth_params_module, only: NQ, NQAUX, NVAR, QU
-    use metric_module, only: calculate_scalar_W, calculate_gamma_up
-
-    use amrex_fort_module, only : rt => amrex_real
-    implicit none
-
-    integer          :: lo(3), hi(3)
-    integer          :: u_lo(3), u_hi(3), ncomp_u
-    integer          :: d_lo(3), d_hi(3), nc
-    integer          :: domlo(3), domhi(3)
-    real(rt)         :: u(u_lo(1):u_hi(1),u_lo(2):u_hi(2),u_lo(3):u_hi(3),ncomp_u)
-    real(rt)         :: dat(d_lo(1):d_hi(1),d_lo(2):d_hi(2),d_lo(3):d_hi(3),nc)
-    real(rt)         :: dx(3), xlo(3), time, dt
-    integer          :: bc(3,2,nc), level, grid_no
-
-    integer          :: i, j, k
-
-    real(rt)     :: s(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),NVAR)
-    real(rt)     :: q(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),NQ)
-    real(rt)   :: qaux(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),NQAUX)
-
-    s(:,:,:,:nc) = dat(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),:)
-
-    call ca_ctoprim(lo, hi, &
-                      s, lo, hi, &
-                      q,     lo, hi, &
-                      qaux,  lo, hi, 0)
-
-    do k = lo(3), hi(3)
-      do j = lo(2), hi(2)
-          do i = lo(1), hi(1)
-              u(i,j,k,1) = q(i,j,k,QU)
-          end do
-      end do
-    end do
-
-  end subroutine ca_derprim_u
-
 
 
 end module derive_module

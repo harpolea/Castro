@@ -161,9 +161,6 @@ Castro::variableSetUp ()
   Xmom = cnt++;
   Ymom = cnt++;
   Zmom = cnt++;
-  Eden = cnt++;
-  Eint = cnt++;
-  Temp = cnt++;
 
 #ifdef NUM_ADV
   NumAdv = NUM_ADV;
@@ -307,9 +304,6 @@ Castro::variableSetUp ()
   cnt++; set_x_vel_bc(bc,phys_bc);  bcs[cnt] = bc; name[cnt] = "xmom";
   cnt++; set_y_vel_bc(bc,phys_bc);  bcs[cnt] = bc; name[cnt] = "ymom";
   cnt++; set_z_vel_bc(bc,phys_bc);  bcs[cnt] = bc; name[cnt] = "zmom";
-  cnt++; set_scalar_bc(bc,phys_bc); bcs[cnt] = bc; name[cnt] = "rho_E";
-  cnt++; set_scalar_bc(bc,phys_bc); bcs[cnt] = bc; name[cnt] = "rho_e";
-  cnt++; set_scalar_bc(bc,phys_bc); bcs[cnt] = bc; name[cnt] = "Temp";
 
   for (int i=0; i<NumAdv; ++i)
     {
@@ -404,13 +398,6 @@ Castro::variableSetUp ()
 
   num_state_type = desc_lst.size();
 
-  //
-  // DEFINE DERIVED QUANTITIES
-  //
-  // Pressure
-  //
-  derive_lst.add("pressure",IndexType::TheCellType(),1,ca_derpres,the_same_box);
-  derive_lst.addComponent("pressure",desc_lst,State_Type,Density,NUM_STATE);
 
   //
   // Kinetic energy
@@ -431,23 +418,6 @@ Castro::variableSetUp ()
   derive_lst.add("MachNumber",IndexType::TheCellType(),1,ca_dermachnumber,the_same_box);
   derive_lst.addComponent("MachNumber",desc_lst,State_Type,Density,NUM_STATE);
 
-  //
-  // primitive density
-  //
-  derive_lst.add("prim_density",IndexType::TheCellType(),1,ca_derprim_density,the_same_box);
-  derive_lst.addComponent("prim_density",desc_lst,State_Type,Density,NUM_STATE);
-
-  //
-  // Lorentz factor
-  //
-  derive_lst.add("W",IndexType::TheCellType(),1,ca_derW,the_same_box);
-  derive_lst.addComponent("W",desc_lst,State_Type,Density,NUM_STATE);
-
-  //
-  // primitive x velocity
-  //
-  derive_lst.add("prim_u",IndexType::TheCellType(),1,ca_derprim_u,the_same_box);
-  derive_lst.addComponent("prim_u",desc_lst,State_Type,Density,NUM_STATE);
 
 #if (BL_SPACEDIM == 1)
   //
@@ -462,16 +432,6 @@ Castro::variableSetUp ()
   derive_lst.add("uminusc",IndexType::TheCellType(),1,ca_deruminusc,the_same_box);
   derive_lst.addComponent("uminusc",desc_lst,State_Type,Density,NUM_STATE);
 #endif
-
-  //
-  // Gravitational forcing
-  //
-
-  //
-  // Entropy (S)
-  //
-  derive_lst.add("entropy",IndexType::TheCellType(),1,ca_derentropy,the_same_box);
-  derive_lst.addComponent("entropy",desc_lst,State_Type,Density,NUM_STATE);
 
   //
   // Vorticity
@@ -491,27 +451,11 @@ Castro::variableSetUp ()
   derive_lst.addComponent("divu",desc_lst,State_Type,Xmom,3);
 
   //
-  // Internal energy as derived from rho*E, part of the state
-  //
-  derive_lst.add("eint_E",IndexType::TheCellType(),1,ca_dereint1,the_same_box);
-  derive_lst.addComponent("eint_E",desc_lst,State_Type,Density,NUM_STATE);
-
-  //
-  // Internal energy as derived from rho*e, part of the state
-  //
-  derive_lst.add("eint_e",IndexType::TheCellType(),1,ca_dereint2,the_same_box);
-  derive_lst.addComponent("eint_e",desc_lst,State_Type,Density,NUM_STATE);
-
-  //
   // Log(density)
   //
   derive_lst.add("logden",IndexType::TheCellType(),1,ca_derlogden,the_same_box);
   derive_lst.addComponent("logden",desc_lst,State_Type,Density,NUM_STATE);
 
-  derive_lst.add("StateErr",IndexType::TheCellType(),3,ca_derstate,grow_box_by_one);
-  derive_lst.addComponent("StateErr",desc_lst,State_Type,Density,1);
-  derive_lst.addComponent("StateErr",desc_lst,State_Type,Temp,1);
-  derive_lst.addComponent("StateErr",desc_lst,State_Type,FirstSpec,1);
 
   //
   // X from rhoX

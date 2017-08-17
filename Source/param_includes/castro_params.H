@@ -83,10 +83,61 @@ static amrex::Real react_T_max;
 static amrex::Real react_rho_min;
 static amrex::Real react_rho_max;
 static int disable_shock_burning;
+#ifdef DIFFUSION
+static int diffuse_temp;
+#endif
+#ifdef DIFFUSION
+static int diffuse_enth;
+#endif
+#ifdef DIFFUSION
+static int diffuse_spec;
+#endif
+#ifdef DIFFUSION
+static int diffuse_vel;
+#endif
+#ifdef DIFFUSION
+static amrex::Real diffuse_cutoff_density;
+#endif
+#ifdef DIFFUSION
+static amrex::Real diffuse_cond_scale_fac;
+#endif
 static int do_grav;
 static int moving_center;
 static int grav_source_type;
 static int do_rotation;
+#ifdef ROTATION
+static amrex::Real rotational_period;
+#endif
+#ifdef ROTATION
+static amrex::Real rotational_dPdt;
+#endif
+#ifdef ROTATION
+static int rotation_include_centrifugal;
+#endif
+#ifdef ROTATION
+static int rotation_include_coriolis;
+#endif
+#ifdef ROTATION
+static int rotation_include_domegadt;
+#endif
+#ifdef ROTATION
+static int state_in_rotating_frame;
+#endif
+#ifdef ROTATION
+static int rot_source_type;
+#endif
+#ifdef ROTATION
+static int implicit_rotation_update;
+#endif
+#ifdef ROTATION
+static int rot_axis;
+#endif
+#ifdef POINTMASS
+static amrex::Real point_mass;
+#endif
+#ifdef POINTMASS
+static int point_mass_fix_solution;
+#endif
 static int do_acc;
 static int bndry_func_thread_safe;
 static int grown_factor;

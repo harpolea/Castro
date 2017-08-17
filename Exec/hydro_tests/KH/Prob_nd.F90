@@ -16,7 +16,7 @@ subroutine amrex_probinit (init,name,namlen,problo,probhi) bind(c)
    integer :: i
 
    namelist /fortin/ &
-        rho1, rho2, pressure, problem, bulk_velocity
+        rho1, rho2, pressure, problem, bulk_velocity, g
 
    integer, parameter :: maxlen=127
    character :: probin*(maxlen)
@@ -45,9 +45,10 @@ subroutine amrex_probinit (init,name,namlen,problo,probhi) bind(c)
 
    rho1 = 1.0d-3
    rho2 = 2.0d-3
-   pressure = 2.5d-3
 
    bulk_velocity = 0.0
+
+   g = 1.0d0
 
    ! Read namelists -- override the defaults
 
@@ -55,12 +56,6 @@ subroutine amrex_probinit (init,name,namlen,problo,probhi) bind(c)
    open(untin,file=probin(1:namlen),form='formatted',status='old')
    read(untin,fortin)
    close(unit=untin)
-
-   ! Force a different pressure choice for problem 5
-
-   if (problem .eq. 5) then
-      pressure = 10.0d-3
-   endif
 
 end subroutine amrex_probinit
 
@@ -91,10 +86,8 @@ subroutine ca_initdata(level,time,lo,hi,nscal, &
                        delta,xlo,xhi)
 
   use probdata_module
-  use eos_module, only : eos
-  use eos_type_module, only: eos_t, eos_input_rp
-  use meth_params_module, only : NVAR, URHO, UMX, UMY, UMZ, UTEMP, &
-       UEDEN, UEINT, UFS, UFA
+  use meth_params_module, only : NVAR, URHO, UMX, UMY, UMZ, &
+       UFS, UFA
   use network, only : nspec
   use bl_constants_module
   use prob_params_module, only: problo, center, probhi
@@ -110,27 +103,18 @@ subroutine ca_initdata(level,time,lo,hi,nscal, &
 
   real(rt)         :: xx, yy, zz
 
-  type (eos_t) :: eos_state
-
   integer :: i, j, k, n
 
   real(rt)         :: dens, velx, vely, velz
   real(rt)         :: w0, sigma, ramp, delta_y
   real(rt)         :: vel1, vel2
   real(rt)         :: y1, y2
-  real(rt)         :: dye, rhoh, W, gamma_up(9), gamma
+  real(rt)         :: dye
 
   integer :: sine_n
 
   vel1 = -0.2d0
   vel2 =  0.2d0
-
-  gamma_up(:) = 0.0d0
-  gamma_up(1) = 1.0d0
-  gamma_up(5) = 1.0d0
-  gamma_up(9) = 1.0d0
-
-  gamma = 5.0d0 / 3.0d0
 
   if (problem .eq. 1) then
      sine_n = 4
@@ -162,7 +146,7 @@ subroutine ca_initdata(level,time,lo,hi,nscal, &
 
   velz = 0.0
 
-  !$OMP PARALLEL DO PRIVATE(i, j, k, xx, yy, zz, dens, velx, vely, velz, ramp, eos_state)
+  !$OMP PARALLEL DO PRIVATE(i, j, k, xx, yy, zz, dens, velx, vely, velz, ramp)
   do k = lo(3), hi(3)
      zz = xlo(3) + delta(3)*dble(k-lo(3)+HALF)
 
@@ -230,40 +214,13 @@ subroutine ca_initdata(level,time,lo,hi,nscal, &
 
            endif
 
-           W = velx**2 * gamma_up(1) + &
-            2.0d0 * velx * vely * gamma_up(2) + &
-            2.0d0 * velx * velz * gamma_up(3) + &
-            vely**2 * gamma_up(5) + &
-            2.0d0 * vely * velz * gamma_up(6) + &
-            velz**2 * gamma_up(9)
-
-           W = 1.0d0 / sqrt(1.0d0 - W)
-
-           rhoh = dens + pressure * gamma / (gamma - 1.0d0)
-
-           state(i,j,k,URHO) = dens * W
-           state(i,j,k,UMX)  = rhoh * W**2 * velx !dens * velx
-           state(i,j,k,UMY)  = rhoh * W**2 * vely
-           state(i,j,k,UMZ)  = rhoh * W**2 * velz
+           state(i,j,k,URHO) = dens
+           state(i,j,k,UMX)  = dens * velx !dens * velx
+           state(i,j,k,UMY)  = dens * vely
+           state(i,j,k,UMZ)  = dens * velz
            state(i,j,k,UFA)  = dye
 
-           ! Establish the thermodynamic quantities
-
            state(i,j,k,UFS:UFS-1+nspec) = ONE / nspec
-
-           eos_state % xn  = state(i,j,k,UFS:UFS-1+nspec)
-           eos_state % rho = dens ! state(i,j,k,URHO)
-           eos_state % p   = pressure
-
-           call eos(eos_input_rp, eos_state)
-
-           state(i,j,k,UTEMP) = eos_state % T
-
-           state(i,j,k,UEDEN) = rhoh * W**2 - pressure - dens * W !state(i,j,k,URHO) * eos_state % e
-           state(i,j,k,UEINT) = rhoh - pressure !state(i,j,k,URHO) * eos_state % e
-
-           state(i,j,k,UEDEN) = state(i,j,k,UEDEN) + &
-                HALF * rhoh * W**2 * (velx**2 + vely**2 + velz**2)
 
            do n = 1,nspec
               state(i,j,k,UFS+n-1) = state(i,j,k,URHO) * state(i,j,k,UFS+n-1)

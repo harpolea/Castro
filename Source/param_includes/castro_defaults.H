@@ -7,7 +7,7 @@ int         Castro::state_interp_order = 1;
 int         Castro::lin_limit_state_interp = 0;
 int         Castro::state_nghost = 0;
 int         Castro::do_reflux = 1;
-int         Castro::update_sources_after_reflux = 1;
+int         Castro::update_sources_after_reflux = 0;
 int         Castro::use_custom_knapsack_weights = 0;
 amrex::Real Castro::difmag = 0.1;
 amrex::Real Castro::small_dens = -1.e200;
@@ -15,7 +15,7 @@ amrex::Real Castro::small_temp = -1.e200;
 amrex::Real Castro::small_pres = -1.e200;
 amrex::Real Castro::small_ener = -1.e200;
 int         Castro::do_hydro = -1;
-int         Castro::do_ctu = 0;
+int         Castro::do_ctu = 1;
 int         Castro::add_ext_src = 0;
 int         Castro::hybrid_hydro = 0;
 int         Castro::ppm_type = 1;
@@ -83,10 +83,61 @@ amrex::Real Castro::react_T_max = 1.e200;
 amrex::Real Castro::react_rho_min = 0.0;
 amrex::Real Castro::react_rho_max = 1.e200;
 int         Castro::disable_shock_burning = 0;
+#ifdef DIFFUSION
+int         Castro::diffuse_temp = 0;
+#endif
+#ifdef DIFFUSION
+int         Castro::diffuse_enth = 0;
+#endif
+#ifdef DIFFUSION
+int         Castro::diffuse_spec = 0;
+#endif
+#ifdef DIFFUSION
+int         Castro::diffuse_vel = 0;
+#endif
+#ifdef DIFFUSION
+amrex::Real Castro::diffuse_cutoff_density = -1.e200;
+#endif
+#ifdef DIFFUSION
+amrex::Real Castro::diffuse_cond_scale_fac = 1.0;
+#endif
 int         Castro::do_grav = -1;
 int         Castro::moving_center = 0;
 int         Castro::grav_source_type = 4;
 int         Castro::do_rotation = -1;
+#ifdef ROTATION
+amrex::Real Castro::rotational_period = -1.e200;
+#endif
+#ifdef ROTATION
+amrex::Real Castro::rotational_dPdt = 0.0;
+#endif
+#ifdef ROTATION
+int         Castro::rotation_include_centrifugal = 1;
+#endif
+#ifdef ROTATION
+int         Castro::rotation_include_coriolis = 1;
+#endif
+#ifdef ROTATION
+int         Castro::rotation_include_domegadt = 1;
+#endif
+#ifdef ROTATION
+int         Castro::state_in_rotating_frame = 1;
+#endif
+#ifdef ROTATION
+int         Castro::rot_source_type = 4;
+#endif
+#ifdef ROTATION
+int         Castro::implicit_rotation_update = 1;
+#endif
+#ifdef ROTATION
+int         Castro::rot_axis = 3;
+#endif
+#ifdef POINTMASS
+amrex::Real Castro::point_mass = 0.0;
+#endif
+#ifdef POINTMASS
+int         Castro::point_mass_fix_solution = 0;
+#endif
 int         Castro::do_acc = -1;
 int         Castro::bndry_func_thread_safe = 1;
 int         Castro::grown_factor = 1;

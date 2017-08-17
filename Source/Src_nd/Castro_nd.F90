@@ -385,7 +385,7 @@ subroutine ca_set_method_params(dm,Density,Xmom,Eden,Eint,Temp, &
 
   ! NTHERM: number of thermodynamic variables (rho, 3 momenta, rho*e, rho*E, T)
   ! NVAR  : number of total variables in initial system
-  NTHERM = 7
+  NTHERM = 4
   NVAR = NTHERM + nspec + naux + numadv
 
   nadv = numadv
@@ -395,9 +395,6 @@ subroutine ca_set_method_params(dm,Density,Xmom,Eden,Eint,Temp, &
   UMX   = Xmom      + 1
   UMY   = Xmom      + 2
   UMZ   = Xmom      + 3
-  UEDEN = Eden      + 1
-  UEINT = Eint      + 1
-  UTEMP = Temp      + 1
 
   if (numadv .ge. 1) then
      UFA   = FirstAdv  + 1
@@ -440,11 +437,6 @@ subroutine ca_set_method_params(dm,Density,Xmom,Eden,Eint,Temp, &
   QGAME = 5
 
   QLAST   = QGAME
-
-  QPRES   = QLAST + 1
-  QREINT  = QLAST + 2
-
-  QTEMP   = QTHERM ! = QLAST + 3
 
   if (numadv >= 1) then
      QFA = QTHERM + 1
@@ -544,26 +536,10 @@ subroutine ca_set_method_params(dm,Density,Xmom,Eden,Eint,Temp, &
      small_dens = 1.e-200_rt
   endif
 
-  if (small_temp <= 0.e0_rt) then
-     if (ioproc == 1) then
-        call bl_warning("Warning:: small_temp has not been set, defaulting to 1.e-200_rt.")
-     endif
-     small_temp = 1.e-200_rt
-  endif
-
-  if (small_pres <= 0.e0_rt) then
-     small_pres = 1.e-200_rt
-  endif
-
-  if (small_ener <= 0.e0_rt) then
-     small_ener = 1.e-200_rt
-  endif
-
   ! Note that the EOS may modify our choices because of its
   ! internal limitations, so the small_dens and small_temp
   ! may be modified coming back out of this routine.
 
-  call eos_init(small_dens=small_dens, small_temp=small_temp)
 
   ! Update device variables
 

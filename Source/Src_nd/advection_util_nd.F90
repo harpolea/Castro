@@ -5,7 +5,7 @@ module advection_util_module
 
   private
 
-  public enforce_minimum_density, compute_cfl, grctoprim
+  public enforce_minimum_density, compute_cfl, swectoprim
 
 contains
 
@@ -17,8 +17,7 @@ contains
     use network, only : nspec, naux
     use meth_params_module, only : NVAR, QRHO, QREINT, UEDEN, small_dens, density_reset_method, NQ, NQAUX
     use bl_constants_module, only : ZERO
-    use riemann_util_module, only : gr_cons_state
-    use metric_module, only : calculate_gamma_up, calculate_alpha
+    use riemann_util_module, only : swe_cons_state
 
     use amrex_fort_module, only : rt => amrex_real
 
@@ -46,28 +45,19 @@ contains
     real(rt)     :: qin(uin_lo(1):uin_hi(1),uin_lo(2):uin_hi(2),uin_lo(3):uin_hi(3),NQ)
     real(rt)   :: qaux(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),NQAUX)
     real(rt)     :: qout(uout_lo(1):uout_hi(1),uout_lo(2):uout_hi(2),uout_lo(3):uout_hi(3),NQ)
-    real(rt) :: gamma_up(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),9)
-    real(rt) :: alpha(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3))
-
-    call calculate_gamma_up(gamma_up, lo, hi)
-    call calculate_alpha(alpha, lo, hi)
 
     max_dens = ZERO
 
     have_reset = .false.
 
-    call grctoprim(lo, hi, &
+    call swectoprim(lo, hi, &
                       uin, uin_lo, uin_hi, &
                       qin,  uin_lo, uin_hi, &
-                      qaux, lo, hi, &
-                      gamma_up, lo, hi, &
-                      alpha, lo, hi)
-    call grctoprim(lo, hi, &
+                      qaux, lo, hi)
+    call swectoprim(lo, hi, &
                     uout, uout_lo, uout_hi, &
                     qout,  uout_lo, uout_hi, &
-                    qaux,  lo, hi, &
-                    gamma_up, lo, hi, &
-                    alpha, lo, hi)
+                    qaux,  lo, hi)
 
     do k = lo(3),hi(3)
        do j = lo(2),hi(2)
@@ -188,7 +178,7 @@ contains
 
                 endif
 
-                call gr_cons_state(qout(i,j,k,:), uout(i,j,k,:), gamma_up(i,j,k,:))
+                call swe_cons_state(qout(i,j,k,:), uout(i,j,k,:))
 
              end if
 
@@ -204,9 +194,7 @@ contains
 
     use bl_constants_module, only: ZERO
     use network, only: nspec, naux
-    use meth_params_module, only: NQ, QRHO, QU, QV, QW, QTEMP, QREINT, QFS, small_temp, small_dens, npassive, upass_map
-    use eos_type_module, only: eos_t, eos_input_rt
-    use eos_module, only: eos
+    use meth_params_module, only: NQ, QRHO, QU, QV, QW, QFS, small_temp, small_dens, npassive, upass_map
     use castro_util_module, only: position
     use amrex_fort_module, only : rt => amrex_real
     implicit none
@@ -215,7 +203,6 @@ contains
     integer          :: idx(3), lo(3), hi(3), verbose
 
     integer          :: n, ipassive
-    type (eos_t)     :: eos_state
 
     ! If no neighboring zones are above small_dens, our only recourse
     ! is to set the density equal to small_dens, and the temperature
@@ -240,21 +227,12 @@ contains
        new_state(n) = new_state(n) * (small_dens / new_state(QRHO))
     end do
 
-    eos_state % rho = small_dens
-    eos_state % T   = small_temp
-    eos_state % xn  = new_state(QFS:QFS+nspec-1)
-    eos_state % aux = new_state(QFS:QFS+naux-1)
-
-    call eos(eos_input_rt, eos_state)
-
-    new_state(QRHO ) = eos_state % rho
-    new_state(QTEMP) = eos_state % T
+    new_state(QRHO ) = small_dens
 
     new_state(QU  ) = ZERO
     new_state(QV  ) = ZERO
     new_state(QW  ) = ZERO
 
-    new_state(QREINT) = eos_state % rho * eos_state % e
   end subroutine reset_to_small_state
 
 
@@ -301,6 +279,7 @@ contains
     use bl_constants_module, only: ZERO, ONE
     use meth_params_module, only: NQ, QRHO, QU, QV, QW, QC, NQAUX
     use prob_params_module, only: dim
+    use probdata_module, only : g
 
     use amrex_fort_module, only : rt => amrex_real
     implicit none
@@ -313,7 +292,7 @@ contains
     real(rt)         :: dt, dx(3), courno
 
     real(rt)         :: courx, coury, courz, courmx, courmy, courmz, courtmp
-    real(rt)         :: dtdx, dtdy, dtdz
+    real(rt)         :: dtdx, dtdy, dtdz, c
     integer          :: i, j, k
 
     ! Compute running max of Courant number over grids
@@ -340,9 +319,11 @@ contains
        do j = lo(2),hi(2)
           do i = lo(1),hi(1)
 
-             courx = ( qaux(i,j,k,QC) + abs(q(i,j,k,QU)) ) * dtdx
-             coury = ( qaux(i,j,k,QC) + abs(q(i,j,k,QV)) ) * dtdy
-             courz = ( qaux(i,j,k,QC) + abs(q(i,j,k,QW)) ) * dtdz
+              c = sqrt(q(i,j,k,QRHO) * g)
+
+             courx = ( c + abs(q(i,j,k,QU)) ) * dtdx
+             coury = ( c + abs(q(i,j,k,QV)) ) * dtdy
+             courz = ( c + abs(q(i,j,k,QW)) ) * dtdz
 
              courmx = max( courmx, courx )
              courmy = max( courmy, coury )
@@ -362,7 +343,7 @@ contains
                print *,'   '
                call bl_warning("Warning:: advection_util_nd.F90 :: CFL violation in compute_cfl")
                print *,'>>> ... at cell (i,j,k)   : ', i, j, k
-               print *,'>>> ... u,v,w, c            ', q(i,j,k,QU), q(i,j,k,QV), q(i,j,k,QW), qaux(i,j,k,QC)
+               print *,'>>> ... u,v,w, c            ', q(i,j,k,QU), q(i,j,k,QV), q(i,j,k,QW), c
                print *,'>>> ... density             ', q(i,j,k,QRHO)
             endif
 
@@ -373,21 +354,15 @@ contains
 
   end subroutine compute_cfl
 
-  subroutine grctoprim(lo, hi, &
+  subroutine swectoprim(lo, hi, &
                      uin, uin_lo, uin_hi, &
                      q,     q_lo,   q_hi, &
-                     qaux, qa_lo,  qa_hi, &
-                     gamma_up, g_lo, g_hi, &
-                     alpha, a_lo, a_hi)
+                     qaux, qa_lo,  qa_hi)
 
     use mempool_module, only : bl_allocate, bl_deallocate
     use actual_network, only : nspec, naux
-    use eos_module, only : eos
-    use eos_type_module, only : eos_t, eos_input_re
     use meth_params_module, only : NVAR, URHO, UMX, UMY, UMZ, &
-                                   UEDEN, UTEMP, &
                                    QRHO, QU, QV, QW, &
-                                   QREINT, QPRES, QTEMP, QGAME, QFS, QFX, &
                                    NQ, QC, QCSML, QGAMC, QDPDR, QDPDE, NQAUX, &
                                    npassive, upass_map, qpass_map, dual_energy_eta1, &
                                    small_dens
@@ -395,8 +370,6 @@ contains
     use castro_util_module, only: position
 
     use amrex_fort_module, only : rt => amrex_real
-    use riemann_util_module, only : zbrent, f_of_p
-    use metric_module, only : calculate_norm
 
     implicit none
 
@@ -404,28 +377,16 @@ contains
     integer, intent(in) :: uin_lo(3), uin_hi(3)
     integer, intent(in) :: q_lo(3), q_hi(3)
     integer, intent(in) :: qa_lo(3), qa_hi(3)
-    integer, intent(in) :: g_lo(3), g_hi(3)
-    integer, intent(in) :: a_lo(3), a_hi(3)
 
     real(rt)        , intent(in ) :: uin(uin_lo(1):uin_hi(1),uin_lo(2):uin_hi(2),uin_lo(3):uin_hi(3),NVAR)
 
     real(rt)        , intent(inout) :: q(q_lo(1):q_hi(1),q_lo(2):q_hi(2),q_lo(3):q_hi(3),NQ)
     real(rt)        , intent(inout) :: qaux(qa_lo(1):qa_hi(1),qa_lo(2):qa_hi(2),qa_lo(3):qa_hi(3),NQAUX)
-    real(rt)        , intent(in   ) :: gamma_up(g_lo(1):g_hi(1),g_lo(2):g_hi(2),g_lo(3):g_hi(3),9)
-    real(rt)        , intent(in   ) :: alpha(a_lo(1):a_hi(1),a_lo(2):a_hi(2),a_lo(3):a_hi(3))
 
     real(rt)        , parameter :: small = 1.d-8
 
     integer          :: i, j, k, g
     integer          :: n, iq, ipassive
-    real(rt)         :: vel(3)
-    real(rt)         :: gamma_down(9)
-    real(rt)         :: pmin, pmax, ssq, p, fmin, fmax, sq, h, W2, eden, gamma
-
-    type (eos_t) :: eos_state
-
-    call eos(eos_input_re, eos_state)
-    gamma = eos_state % gam1
 
     do k = lo(3), hi(3)
        do j = lo(2), hi(2)
@@ -452,106 +413,8 @@ contains
 
           do i = lo(1), hi(1)
 
-              ! calculate gamma_down. Assume for now that it's diagonal.
-
-              gamma_down(:) = 0.0d0
-              gamma_down(1) = 1.0d0 / gamma_up(i,j,k,1)
-              gamma_down(5) = 1.0d0 / gamma_up(i,j,k,5)
-              gamma_down(9) = 1.0d0 / gamma_up(i,j,k,9)
-
-              eden = uin(i,j,k,UEDEN)
-
-              if (eden < ZERO) then
-                  eden = abs(eden)
-              endif
-
-              call calculate_norm(uin(i,j,k,UMX:UMZ), gamma_up(i,j,k,:), ssq)
-
-              pmin = (gamma - 1.0d0) * (eden + uin(i,j,k,URHO) - ssq / (eden + uin(i,j,k,URHO))**2 - uin(i,j,k,URHO))
-
-              pmax = (gamma - 1.0d0) * (eden + uin(i,j,k,URHO) - ssq / (eden + uin(i,j,k,URHO)))
-
-              !write(*,*) "pressure = ", pmin, pmax
-
-              if (pmin < 0.0d0) then
-                  pmin = 0.d0
-              end if
-
-              !if (pmax > 1.d0 .or. pmax < pmin) then
-            !      pmax = 1.0d0
-             ! end
-
-              call f_of_p(fmin, pmin, uin(i,j,k,:), gamma_up(i,j,k,:))
-              call f_of_p(fmax, pmax, uin(i,j,k,:), gamma_up(i,j,k,:))
-
-              if (fmin * fmax > 0.0d0) then
-                  pmin = pmin * 0.1d0 !0.d0
-              end if
-
-              call f_of_p(fmin, pmin, uin(i,j,k,:), gamma_up(i,j,k,:))
-
-              !write(*,*) "f = ", fmin, fmax, " p = ", pmin, pmax
-
-              if (fmin * fmax > 0.0d0) then
-                  pmax = pmax * 10.d0
-              end if
-
-              call zbrent(p, pmin, pmax, uin(i,j,k,:), gamma_up(i,j,k,:))
-
-              !write(*,*) "pressure = ", pmin, pmax
-
-              if (p /= p .or. p <= 0.0d0) then ! .or. p > 1.0d0) then
-
-                  p = abs((gamma - 1.0d0) * ((eden + uin(i,j,k,URHO)) - ssq / (eden + uin(i,j,k,URHO))**2 - uin(i,j,k,URHO)))
-
-                  !if (p > 1.0d0) then
-                    !  p = 1.0d0
-                  !end if
-              end if
-
-              sq = sqrt((eden + p + uin(i,j,k,URHO))**2 - ssq)
-
-              if (sq /= sq) then
-                  sq = eden + p + uin(i,j,k,URHO)
-              end if
-
-              h = 1.0d0 + gamma * &
-                (sq - p * (eden + p + uin(i,j,k,URHO)) / sq - uin(i,j,k,URHO)) / uin(i,j,k,URHO)
-              W2 = 1.0d0 + ssq / (uin(i,j,k,URHO) * h)**2
-
-              !write(*,*) "p, sq, eden, rho", p, sq, eden, uin(i,j,k,URHO)
-              !return
-
-              q(i,j,k,QRHO) = uin(i,j,k,URHO) * sq / (eden + &
-                p + uin(i,j,k,URHO))
-
-              vel(1) = (gamma_up(i,j,k,1) * uin(i,j,k,UMX) + &
-                  gamma_up(i,j,k,2) * uin(i,j,k,UMY) + &
-                  gamma_up(i,j,k,3) * uin(i,j,k,UMZ)) /&
-                  (W2 * h * q(i,j,k,QRHO))
-              vel(2) = (gamma_up(i,j,k,2) * uin(i,j,k,UMX) + &
-                  gamma_up(i,j,k,5) * uin(i,j,k,UMY) + &
-                    gamma_up(i,j,k,6) * uin(i,j,k,UMZ)) /&
-                  (W2 * h * q(i,j,k,QRHO))
-              vel(3) = (gamma_up(i,j,k,3) * uin(i,j,k,UMX) + &
-                  gamma_up(i,j,k,6) * uin(i,j,k,UMY) + &
-                    gamma_up(i,j,k,9) * uin(i,j,k,UMZ)) /&
-                  (W2 * h * q(i,j,k,QRHO))
-
-              q(i,j,k,QU) = gamma_down(1) * vel(1) + &
-                gamma_down(2) * vel(2) + gamma_down(3) * vel(3)
-              q(i,j,k,QV) = gamma_down(2) * vel(1) + &
-                gamma_down(5) * vel(2) + gamma_down(6) * vel(3)
-              q(i,j,k,QW) = gamma_down(3) * vel(1) + &
-                gamma_down(6) * vel(2) + gamma_down(9) * vel(3)
-
-              q(i,j,k,QREINT) = p / (gamma - 1.0d0)
-
-              q(i,j,k,QTEMP) = uin(i,j,k,UTEMP)
-
-              q(i,j,k,QPRES)  = p
-
-             !write(*,*) "pressure = ", p
+              q(i,j,k,QRHO) = uin(i,j,k,URHO)
+              q(i,j,k,QU:QW) = uin(i,j,k,UMX:UMZ) / uin(i,j,k,URHO)
 
           enddo
        enddo
@@ -573,38 +436,6 @@ contains
        enddo
     enddo
 
-    ! get gamc, p, T, c, csml using q state
-    do k = lo(3), hi(3)
-       do j = lo(2), hi(2)
-          do i = lo(1), hi(1)
-
-             eos_state % T   = q(i,j,k,QTEMP )
-             eos_state % rho = q(i,j,k,QRHO  )
-             eos_state % e   = q(i,j,k,QREINT) / q(i,j,k,QRHO  )
-             eos_state % xn  = q(i,j,k,QFS:QFS+nspec-1)
-             eos_state % aux = q(i,j,k,QFX:QFX+naux-1)
-             eos_state % p = q(i,j,k,QPRES)
-
-             call eos(eos_input_re, eos_state)
-
-             q(i,j,k,QTEMP)  = eos_state % T
-             q(i,j,k,QREINT) = eos_state % e * q(i,j,k,QRHO)
-
-             !write(*,*) "p = ", q(i,j,k,QPRES), eos_state % p, eos_state % e, q(i,j,k,QREINT) / q(i,j,k,QRHO  )
-
-             q(i,j,k,QPRES)  = eos_state % p
-             q(i,j,k,QGAME)  = q(i,j,k,QPRES) / q(i,j,k,QREINT) + ONE
-
-             qaux(i,j,k,QDPDR)  = eos_state % dpdr_e
-             qaux(i,j,k,QDPDE)  = eos_state % dpde
-             qaux(i,j,k,QGAMC)  = eos_state % gam1
-             qaux(i,j,k,QC   )  = eos_state % cs
-
-             qaux(i,j,k,QCSML)  = max(small, small * qaux(i,j,k,QC))
-          enddo
-       enddo
-    enddo
-
-  end subroutine grctoprim
+end subroutine swectoprim
 
 end module advection_util_module

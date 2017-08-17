@@ -83,10 +83,61 @@ pp.query("react_T_max", react_T_max);
 pp.query("react_rho_min", react_rho_min);
 pp.query("react_rho_max", react_rho_max);
 pp.query("disable_shock_burning", disable_shock_burning);
+#ifdef DIFFUSION
+pp.query("diffuse_temp", diffuse_temp);
+#endif
+#ifdef DIFFUSION
+pp.query("diffuse_enth", diffuse_enth);
+#endif
+#ifdef DIFFUSION
+pp.query("diffuse_spec", diffuse_spec);
+#endif
+#ifdef DIFFUSION
+pp.query("diffuse_vel", diffuse_vel);
+#endif
+#ifdef DIFFUSION
+pp.query("diffuse_cutoff_density", diffuse_cutoff_density);
+#endif
+#ifdef DIFFUSION
+pp.query("diffuse_cond_scale_fac", diffuse_cond_scale_fac);
+#endif
 pp.query("do_grav", do_grav);
 pp.query("moving_center", moving_center);
 pp.query("grav_source_type", grav_source_type);
 pp.query("do_rotation", do_rotation);
+#ifdef ROTATION
+pp.query("rotational_period", rotational_period);
+#endif
+#ifdef ROTATION
+pp.query("rotational_dPdt", rotational_dPdt);
+#endif
+#ifdef ROTATION
+pp.query("rotation_include_centrifugal", rotation_include_centrifugal);
+#endif
+#ifdef ROTATION
+pp.query("rotation_include_coriolis", rotation_include_coriolis);
+#endif
+#ifdef ROTATION
+pp.query("rotation_include_domegadt", rotation_include_domegadt);
+#endif
+#ifdef ROTATION
+pp.query("state_in_rotating_frame", state_in_rotating_frame);
+#endif
+#ifdef ROTATION
+pp.query("rot_source_type", rot_source_type);
+#endif
+#ifdef ROTATION
+pp.query("implicit_rotation_update", implicit_rotation_update);
+#endif
+#ifdef ROTATION
+pp.query("rot_axis", rot_axis);
+#endif
+#ifdef POINTMASS
+pp.query("point_mass", point_mass);
+#endif
+#ifdef POINTMASS
+pp.query("point_mass_fix_solution", point_mass_fix_solution);
+#endif
 pp.query("do_acc", do_acc);
 pp.query("bndry_func_thread_safe", bndry_func_thread_safe);
 pp.query("grown_factor", grown_factor);

@@ -30,11 +30,8 @@ subroutine ca_mol_single_stage(time, &
   use bl_constants_module, only : ZERO, HALF, ONE
   use prob_params_module, only : coord_type
   use riemann_module, only: cmpflx
-  use metric_module, only: calculate_gamma_up
   use reconstruct_module, only : compute_reconstruction_tvd
   use amrex_fort_module, only : rt => amrex_real
-  use eos_type_module, only : eos_t, eos_input_rt
-  use eos_module, only : eos
   use network, only : nspec, naux
 
   implicit none
@@ -87,11 +84,9 @@ subroutine ca_mol_single_stage(time, &
   integer :: qs_lo(3), qs_hi(3)
   real(rt) :: dx_3D(3)
 
-  real(rt) :: div1, gamma_up(q_lo(1):q_hi(1),q_lo(2):q_hi(2),9)
+  real(rt) :: div1
 
   integer :: i, j, n
-
-  type (eos_t) :: eos_state
 
   ngf = 1
 
@@ -105,8 +100,6 @@ subroutine ca_mol_single_stage(time, &
 
   dx = delta(1)
   dy = delta(2)
-
-  call calculate_gamma_up(gamma_up, [q_lo(1), q_lo(2), 0], [q_hi(1), q_hi(2), 0])
 
   ! Check if we have violated the CFL criterion.
   call compute_cfl(q, q_lo, q_hi, &
@@ -128,7 +121,7 @@ subroutine ca_mol_single_stage(time, &
   allocate ( qxp(qs_lo(1):qs_hi(1),qs_lo(2):qs_hi(2),NQ) )
   allocate ( qym(qs_lo(1):qs_hi(1),qs_lo(2):qs_hi(2),NQ) )
   allocate ( qyp(qs_lo(1):qs_hi(1),qs_lo(2):qs_hi(2),NQ) )
-  
+
   ! Do reconstruction
   do n = 1, QVAR
 
@@ -168,15 +161,12 @@ subroutine ca_mol_single_stage(time, &
   call cmpflx(qxm, qxp, qs_lo, qs_hi, &
               flux1, flux1_lo, flux1_hi, &
               qaux, qa_lo, qa_hi, &
-              1, lo(1), hi(1), lo(2), hi(2), domlo, domhi, &
-              gamma_up, [q_lo(1), q_lo(2), 0], [q_hi(1), q_hi(2), 0])
-
+              1, lo(1), hi(1), lo(2), hi(2), domlo, domhi)
 
   call cmpflx(qym, qyp, qs_lo, qs_hi, &
               flux2, flux2_lo, flux2_hi, &
               qaux, qa_lo, qa_hi, &
-              2, lo(1), hi(1), lo(2), hi(2), domlo, domhi, &
-              gamma_up, [q_lo(1), q_lo(2), 0], [q_hi(1), q_hi(2), 0])
+              2, lo(1), hi(1), lo(2), hi(2), domlo, domhi)
 
   deallocate(qxm, qxp, qym, qyp)
 
