@@ -43,6 +43,7 @@ contains
 
     use prob_params_module, only : physbc_lo, physbc_hi, &
                                    Symmetry, SlipWall, NoSlipWall
+    use metric_module, only : calculate_alpha, calculate_beta
 
     implicit none
 
@@ -94,11 +95,14 @@ contains
 
     real(rt) :: U_hll_state(NVAR), U_state(NVAR), F_state(NVAR), Fr_state(NVAR)
     real(rt) :: S_l, S_r, S_c
-    real(rt) :: beta(3), alpha
+    real(rt) :: beta(ilo:ihi, jlo:jhi, 3), alpha(ilo:ihi, jlo:jhi)
     real(rt) :: sigmal, sigmar, l1, l2
 
     !write(*,*) "qp", ql(:,:,:,QPRES )
     !stop
+
+    call calculate_alpha(alpha, [ilo,jlo,0], [ihi,jhi,0])
+    call calculate_beta(beta, [ilo,jlo,0], [ihi,jhi,0])
 
     if (idir == 1) then
        iu = QU
@@ -218,9 +222,6 @@ contains
           !S_l = min(ul - sqrt(gamcl*pl/rl), ur - sqrt(gamcr*pr/rr))
           !S_r = max(ul + sqrt(gamcl*pl/rl), ur + sqrt(gamcr*pr/rr))
 
-          beta(:) = 0.0d0
-          alpha = 1.0d0
-
           !write(*,*) "Sl, Sr, pl, pr", S_l, S_r, pl, pr
 
           S_l = -1.0d0
@@ -229,15 +230,15 @@ contains
           if (S_r <= ZERO) then
              ! R region
              call gr_cons_state(qr(i,j,kc,:), U_state, gamma_up(i,j,kc,:))
-             call gr_compute_flux(idir, bnd_fac, qr(i,j,kc,:), U_state, pr, beta, alpha, F_state)
+             call gr_compute_flux(idir, bnd_fac, qr(i,j,kc,:), U_state, pr, beta(i,j,:), alpha(i,j), F_state)
 
          else if (S_r > ZERO .and. S_l <= ZERO) then
              ! * region
              call gr_cons_state(ql(i,j,kc,:), U_state, gamma_up(i,j,kc,:))
-             call gr_compute_flux(idir, bnd_fac, ql(i,j,kc,:), U_state, pl, beta, alpha, F_state)
+             call gr_compute_flux(idir, bnd_fac, ql(i,j,kc,:), U_state, pl, beta(i,j,:), alpha(i,j), F_state)
 
              call gr_cons_state(qr(i,j,kc,:), U_hll_state, gamma_up(i,j,kc,:))
-             call gr_compute_flux(idir, bnd_fac, qr(i,j,kc,:), U_hll_state, pr, beta, alpha, Fr_state)
+             call gr_compute_flux(idir, bnd_fac, qr(i,j,kc,:), U_hll_state, pr, beta(i,j,:), alpha(i,j), Fr_state)
 
              ! correct the flux
              F_state(:) = (S_r * F_state(:) - S_l * Fr_state(:) + S_r * S_l * (U_hll_state(:) - U_state(:)))/ (S_r - S_l)
@@ -245,7 +246,7 @@ contains
           else
              ! L region
              call gr_cons_state(ql(i,j,kc,:), U_state, gamma_up(i,j,kc,:))
-             call gr_compute_flux(idir, bnd_fac, ql(i,j,kc,:), U_state, pl, beta, alpha, F_state)
+             call gr_compute_flux(idir, bnd_fac, ql(i,j,kc,:), U_state, pl, beta(i,j,:), alpha(i,j), F_state)
 
           endif
 

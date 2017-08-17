@@ -18,7 +18,7 @@ contains
     use meth_params_module, only : NVAR, QRHO, QREINT, UEDEN, small_dens, density_reset_method, NQ, NQAUX
     use bl_constants_module, only : ZERO
     use riemann_util_module, only : gr_cons_state
-    use metric_module, only : calculate_gamma_up
+    use metric_module, only : calculate_gamma_up, calculate_alpha
 
     use amrex_fort_module, only : rt => amrex_real
 
@@ -50,7 +50,7 @@ contains
     real(rt) :: alpha(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3))
 
     call calculate_gamma_up(gamma_up, lo, hi)
-    alpha(:,:,:) = 1.0d0
+    call calculate_alpha(alpha, lo, hi)
 
     max_dens = ZERO
 
@@ -472,7 +472,7 @@ contains
                   uin(i,j,k,UMZ)**2 * gamma_up(i,j,k,9)
               pmin = (gamma - 1.0d0) * (eden + uin(i,j,k,URHO) - ssq / (eden + uin(i,j,k,URHO))**2 - uin(i,j,k,URHO))
 
-              pmax = (gamma - 1.0d0) * (eden + uin(i,j,k,URHO) - ssq / (eden + uin(i,j,k,URHO)))!(uin(i,j,k,UEDEN) + uin(i,j,k,URHO)) / (2.0d0 - gamma)
+              pmax = (gamma - 1.0d0) * (eden + uin(i,j,k,URHO) - ssq / (eden + uin(i,j,k,URHO)))
 
               !write(*,*) "pressure = ", pmin, pmax
 
@@ -549,12 +549,9 @@ contains
 
               q(i,j,k,QREINT) = p / (gamma - 1.0d0)
 
-             ! If we're advecting in the rotating reference frame,
-             ! then subtract off the rotation component here.
+              q(i,j,k,QTEMP) = uin(i,j,k,UTEMP)
 
-             q(i,j,k,QTEMP) = uin(i,j,k,UTEMP)
-
-             q(i,j,k,QPRES)  = p
+              q(i,j,k,QPRES)  = p
 
              !write(*,*) "pressure = ", p
 

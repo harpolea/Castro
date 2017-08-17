@@ -128,11 +128,7 @@ subroutine ca_mol_single_stage(time, &
   allocate ( qxp(qs_lo(1):qs_hi(1),qs_lo(2):qs_hi(2),NQ) )
   allocate ( qym(qs_lo(1):qs_hi(1),qs_lo(2):qs_hi(2),NQ) )
   allocate ( qyp(qs_lo(1):qs_hi(1),qs_lo(2):qs_hi(2),NQ) )
-
-  !write(*,*) "qp", q(:,:,QPRES )
-  !write(*,*) "qvar", QVAR, QPRES, QREINT
-  !stop
-
+  
   ! Do reconstruction
   do n = 1, QVAR
 
@@ -203,8 +199,6 @@ subroutine ca_mol_single_stage(time, &
            update(i,j,n) = update(i,j,n) + &
                 ( flux1(i,j,n) * area1(i,j) - flux1(i+1,j,n) * area1(i+1,j) + &
                   flux2(i,j,n) * area2(i,j) - flux2(i,j+1,n) * area2(i,j+1) ) / vol(i,j)
-
-            !write(*,*) "xmon, rho", flux1(i,j,UMX), q(i,j,QRHO)
 
            ! for storage
            update_flux(i,j,n) = update_flux(i,j,n) + stage_weight * update(i,j,n)

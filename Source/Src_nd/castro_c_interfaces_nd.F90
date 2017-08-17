@@ -183,7 +183,7 @@ contains
                         qaux, qa_lo,  qa_hi, idx) bind(C, name = "ca_ctoprim")
 
     use advection_util_module, only: grctoprim
-    use metric_module, only: calculate_gamma_up
+    use metric_module, only: calculate_gamma_up, calculate_alpha
 
     implicit none
 
@@ -201,7 +201,7 @@ contains
     real(rt) :: alpha(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3))
 
     call calculate_gamma_up(gamma_up, lo, hi)
-    alpha(:,:,:) = 1.0d0
+    call calculate_alpha(alpha, lo, hi)
 
     call grctoprim(lo, hi, &
                  uin, uin_lo, uin_hi, &
