@@ -431,6 +431,24 @@ Castro::variableSetUp ()
   derive_lst.add("MachNumber",IndexType::TheCellType(),1,ca_dermachnumber,the_same_box);
   derive_lst.addComponent("MachNumber",desc_lst,State_Type,Density,NUM_STATE);
 
+  //
+  // primitive density
+  //
+  derive_lst.add("prim_density",IndexType::TheCellType(),1,ca_derprim_density,the_same_box);
+  derive_lst.addComponent("prim_density",desc_lst,State_Type,Density,NUM_STATE);
+
+  //
+  // Lorentz factor
+  //
+  derive_lst.add("W",IndexType::TheCellType(),1,ca_derW,the_same_box);
+  derive_lst.addComponent("W",desc_lst,State_Type,Density,NUM_STATE);
+
+  //
+  // primitive x velocity
+  //
+  derive_lst.add("prim_u",IndexType::TheCellType(),1,ca_derprim_u,the_same_box);
+  derive_lst.addComponent("prim_u",desc_lst,State_Type,Density,NUM_STATE);
+
 #if (BL_SPACEDIM == 1)
   //
   // Wave speed u+c

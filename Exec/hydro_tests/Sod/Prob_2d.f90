@@ -151,7 +151,6 @@ subroutine ca_initdata(level,time,lo,hi,nscal, &
               q(i,j,QV) = 0.e0_rt
 
               q(i,j,QREINT) = rhoe_l + 0.5*rho_l*u_l*u_l
-              !q(i,j,UEINT) = rhoe_l
               q(i,j,QTEMP) = T_l
 
               q(i,j,QPRES) = p_l
@@ -161,7 +160,6 @@ subroutine ca_initdata(level,time,lo,hi,nscal, &
               q(i,j,QV) = 0.e0_rt
 
               q(i,j,QREINT) = rhoe_r + 0.5*rho_r*u_r*u_r
-              !q(i,j,UEINT) = rhoe_r
               q(i,j,QTEMP) = T_r
 
               q(i,j,QPRES) = p_r
@@ -174,7 +172,6 @@ subroutine ca_initdata(level,time,lo,hi,nscal, &
               q(i,j,QV) = rho_l*u_l
 
               q(i,j,QREINT) = rhoe_l + 0.5*rho_l*u_l*u_l
-              !state(i,j,UEINT) = rhoe_l
               q(i,j,QTEMP) = T_l
 
               q(i,j,QPRES) = p_l
@@ -184,7 +181,6 @@ subroutine ca_initdata(level,time,lo,hi,nscal, &
               q(i,j,QV) = rho_r*u_r
 
               q(i,j,QREINT) = rhoe_r + 0.5*rho_r*u_r*u_r
-              !state(i,j,UEINT) = rhoe_r
               q(i,j,QTEMP) = T_r
 
               q(i,j,QPRES) = p_r
@@ -194,18 +190,8 @@ subroutine ca_initdata(level,time,lo,hi,nscal, &
            call bl_abort('invalid idir')
         endif
 
+        ! calculate conserved state from primitive initial data
         call gr_cons_state(q(i,j,:), state(i,j,:), gamma_up)
-
-        !W = state(i,j,UMX)**2 * gamma_up(1)
-
-        !W = 1.0d0 / sqrt(1.0d0 - W)
-
-        !rhoh = state(i,j,URHO) + gamma * state(i,j,UEDEN)
-
-        !state(i,j,URHO) = state(i,j,URHO) * W
-        !state(i,j,UMX)  = rhoh * W**2 * state(i,j,UMX) !dens * velx
-        !state(i,j,UEDEN) = rhoh * W**2 - p - state(i,j,URHO)
-        !state(i,j,UEINT) = rhoh - p
 
         state(i,j,UFS:UFS-1+nspec) = 0.0e0_rt
         state(i,j,UFS  ) = state(i,j,URHO)

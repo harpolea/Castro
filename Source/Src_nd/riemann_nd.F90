@@ -13,7 +13,6 @@ module actual_riemann_module
                                  use_eos_in_riemann
   use riemann_util_module
 
-
   implicit none
 
   private
@@ -25,7 +24,6 @@ module actual_riemann_module
 
 contains
 
-
   subroutine gr_HLL(ql, qr, qpd_lo, qpd_hi, &
                   qaux, qa_lo, qa_hi, &
                   uflx, uflx_lo, uflx_hi, &
@@ -34,13 +32,9 @@ contains
                   gamma_up, glo, ghi)
 
 
-    ! this is an implementation of the HLLC solver described in Toro's
-    ! book.  it uses the simplest estimate of the wave speeds, since
-    ! those should work for a general EOS.  We also initially do the
-    ! CGF Riemann construction to get pstar and ustar, since we'll
-    ! need to know the pressure and velocity on the interface for the
-    ! pdV term in the internal energy update.
-
+    ! this is an implementation of the HLL solver described in Mignone
+    ! & Bodo 05. It uses the simplest estimate of the wave speeds, setting
+    ! them both to +-1.
     use prob_params_module, only : physbc_lo, physbc_hi, &
                                    Symmetry, SlipWall, NoSlipWall
     use metric_module, only : calculate_alpha, calculate_beta
@@ -97,9 +91,6 @@ contains
     real(rt) :: S_l, S_r, S_c
     real(rt) :: beta(ilo:ihi, jlo:jhi, 3), alpha(ilo:ihi, jlo:jhi)
     real(rt) :: sigmal, sigmar, l1, l2
-
-    !write(*,*) "qp", ql(:,:,:,QPRES )
-    !stop
 
     call calculate_alpha(alpha, [ilo,jlo,0], [ihi,jhi,0])
     call calculate_beta(beta, [ilo,jlo,0], [ihi,jhi,0])

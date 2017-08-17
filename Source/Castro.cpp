@@ -266,7 +266,7 @@ Castro::Castro (Amr&            papa,
                 int             lev,
                 const Geometry& level_geom,
                 const BoxArray& bl,
-		const DistributionMapping& dm,
+		        const DistributionMapping& dm,
                 Real            time)
     :
     AmrLevel(papa,lev,level_geom,bl,dm,time),
@@ -373,14 +373,14 @@ Castro::initMFs()
     fluxes.resize(3);
 
     for (int dir = 0; dir < BL_SPACEDIM; ++dir)
-	fluxes[dir].reset(new MultiFab(getEdgeBoxArray(dir), dmap, NUM_STATE, 0));
+	   fluxes[dir].reset(new MultiFab(getEdgeBoxArray(dir), dmap, NUM_STATE, 0));
 
     for (int dir = BL_SPACEDIM; dir < 3; ++dir)
-	fluxes[dir].reset(new MultiFab(get_new_data(State_Type).boxArray(), dmap, NUM_STATE, 0));
+	   fluxes[dir].reset(new MultiFab(get_new_data(State_Type).boxArray(), dmap, NUM_STATE, 0));
 
 #if (BL_SPACEDIM <= 2)
     if (!Geometry::IsCartesian())
-	P_radial.define(getEdgeBoxArray(0), dmap, 1, 0);
+	   P_radial.define(getEdgeBoxArray(0), dmap, 1, 0);
 #endif
 
     if (do_reflux && level > 0) {
@@ -732,7 +732,8 @@ Castro::estTimeStep (Real dt_old)
     		{
     		  const Box& box = mfi.tilebox();
 
-    		  ca_estdt(ARLIM_3D(box.loVect()), ARLIM_3D(box.hiVect()),
+    		  ca_estdt(ARLIM_3D(box.loVect()),
+                   ARLIM_3D(box.hiVect()),
     			   BL_TO_FORTRAN_3D(stateMF[mfi]),
     			   ZFILL(dx),&dt);
     		}
@@ -1716,7 +1717,7 @@ Castro::reset_internal_energy(MultiFab& S_new)
     for (MFIter mfi(S_new,true); mfi.isValid(); ++mfi)
     {
         const Box& bx = mfi.growntilebox(ng);
-	const int idx = mfi.tileIndex();
+	    const int idx = mfi.tileIndex();
 
         ca_reset_internal_e(ARLIM_3D(bx.loVect()), ARLIM_3D(bx.hiVect()),
 			    BL_TO_FORTRAN_3D(S_new[mfi]),
@@ -1730,16 +1731,16 @@ Castro::reset_internal_energy(MultiFab& S_new)
 
     if (print_update_diagnostics)
     {
-	// Evaluate what the effective reset source was.
+    	// Evaluate what the effective reset source was.
 
-	MultiFab reset_source(S_new.boxArray(), S_new.DistributionMap(), S_new.nComp(), 0);
+    	MultiFab reset_source(S_new.boxArray(), S_new.DistributionMap(), S_new.nComp(), 0);
 
-	MultiFab::Copy(reset_source, S_new, 0, 0, S_new.nComp(), 0);
+    	MultiFab::Copy(reset_source, S_new, 0, 0, S_new.nComp(), 0);
 
-	MultiFab::Subtract(reset_source, old_state, 0, 0, old_state.nComp(), 0);
+    	MultiFab::Subtract(reset_source, old_state, 0, 0, old_state.nComp(), 0);
 
-	bool local = true;
-	Array<Real> reset_update = evaluate_source_change(reset_source, 1.0, local);
+    	bool local = true;
+    	Array<Real> reset_update = evaluate_source_change(reset_source, 1.0, local);
 
 #ifdef BL_LAZY
         Lazy::QueueReduction( [=] () mutable {
@@ -1771,10 +1772,10 @@ Castro::computeTemp(MultiFab& State)
 #endif
   for (MFIter mfi(State,true); mfi.isValid(); ++mfi)
     {
-      const Box& bx = mfi.growntilebox();
-    	const int idx = mfi.tileIndex();
-    	ca_compute_temp(ARLIM_3D(bx.loVect()), ARLIM_3D(bx.hiVect()),
-    			BL_TO_FORTRAN_3D(State[mfi]), &idx);
+        const Box& bx = mfi.growntilebox();
+        const int idx = mfi.tileIndex();
+        ca_compute_temp(ARLIM_3D(bx.loVect()), ARLIM_3D(bx.hiVect()),
+        		BL_TO_FORTRAN_3D(State[mfi]), &idx);
     }
 }
 

@@ -396,6 +396,7 @@ contains
 
     use amrex_fort_module, only : rt => amrex_real
     use riemann_util_module, only : zbrent, f_of_p
+    use metric_module, only : calculate_norm
 
     implicit none
 
@@ -464,12 +465,8 @@ contains
                   eden = abs(eden)
               endif
 
-              ssq = uin(i,j,k,UMX)**2 * gamma_up(i,j,k,1) + &
-                  2.0d0 * uin(i,j,k,UMX) * uin(i,j,k,UMY) * gamma_up(i,j,k,2) + &
-                  2.0d0 * uin(i,j,k,UMX) * uin(i,j,k,UMZ) * gamma_up(i,j,k,3) + &
-                  uin(i,j,k,UMY)**2 * gamma_up(i,j,k,5) + &
-                  2.0d0 * uin(i,j,k,UMY) * uin(i,j,k,UMZ) * gamma_up(i,j,k,6) + &
-                  uin(i,j,k,UMZ)**2 * gamma_up(i,j,k,9)
+              call calculate_norm(uin(i,j,k,UMX:UMZ), gamma_up(i,j,k,:), ssq)
+
               pmin = (gamma - 1.0d0) * (eden + uin(i,j,k,URHO) - ssq / (eden + uin(i,j,k,URHO))**2 - uin(i,j,k,URHO))
 
               pmax = (gamma - 1.0d0) * (eden + uin(i,j,k,URHO) - ssq / (eden + uin(i,j,k,URHO)))
@@ -503,7 +500,8 @@ contains
 
               !write(*,*) "pressure = ", pmin, pmax
 
-              if (p /= p .or. p <= 0.0d0) then! .or. p > 1.0d0) then
+              if (p /= p .or. p <= 0.0d0) then ! .or. p > 1.0d0) then
+
                   p = abs((gamma - 1.0d0) * ((eden + uin(i,j,k,URHO)) - ssq / (eden + uin(i,j,k,URHO))**2 - uin(i,j,k,URHO)))
 
                   !if (p > 1.0d0) then

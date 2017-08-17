@@ -274,7 +274,6 @@ Castro::initialize_advance(Real time, Real dt, int amr_iteration, int amr_ncycle
 
     	state[k].allocOldData();
     	state[k].swapTimeLevels(dt);
-
     }
 
     // Ensure data is valid before beginning advance. This addresses
@@ -316,7 +315,6 @@ Castro::initialize_advance(Real time, Real dt, int amr_iteration, int amr_ncycle
       // This array holds the hydrodynamics update.
 
       hydro_source.define(grids,dmap,NUM_STATE,0);
-
     }
 
     // This array holds the sum of all source terms that affect the
@@ -345,7 +343,7 @@ Castro::initialize_advance(Real time, Real dt, int amr_iteration, int amr_ncycle
 
 #if (BL_SPACEDIM <= 2)
     if (!Geometry::IsCartesian())
-	P_radial.setVal(0.0);
+	   P_radial.setVal(0.0);
 #endif
 
 }
@@ -363,7 +361,6 @@ Castro::finalize_advance(Real time, Real dt, int amr_iteration, int amr_ncycle)
 
       for (int i = 0; i < n_lost; i++)
     	material_lost_through_boundary_cumulative[i] += material_lost_through_boundary_temp[i];
-
     }
 
     if (do_reflux) {
@@ -387,7 +384,6 @@ Castro::finalize_advance(Real time, Real dt, int amr_iteration, int amr_ncycle)
 
     k_mol.clear();
     Sburn.clear();
-
 }
 
 
@@ -418,7 +414,6 @@ Castro::retry_advance(Real time, Real dt, int amr_iteration, int amr_ncycle)
     			  BL_TO_FORTRAN_3D(S_new[mfi]),
     			  ARLIM_3D(lo), ARLIM_3D(hi), ZFILL(dx),
     			  &dt, &dt_subcycle);
-
     }
 
     if (retry_neg_dens_factor > 0.0) {
@@ -431,7 +426,6 @@ Castro::retry_advance(Real time, Real dt, int amr_iteration, int amr_ncycle)
 
     	if (frac_change < 0.0)
     	  dt_subcycle = std::min(dt_subcycle, dt * -(retry_neg_dens_factor / frac_change));
-
     }
 
     ParallelDescriptor::ReduceRealMin(dt_subcycle);
@@ -512,7 +506,6 @@ Castro::retry_advance(Real time, Real dt, int amr_iteration, int amr_ncycle)
 	  state[k].swapTimeLevels(0.0);
 
 	  state[k].setTimeLevel(time, 0.0, 0.0);
-
 	}
 
 	if (track_grid_losses)

@@ -27,7 +27,6 @@ contains
     integer          :: u_lo(3), u_hi(3)
     real(rt)         :: u(u_lo(1):u_hi(1),u_lo(2):u_hi(2),u_lo(3):u_hi(3),NVAR)
     real(rt)         :: dx(3), dt, dt_tmp
-
     real(rt)         :: rhoInv, ux, uy, uz, c, dt1, dt2, dt3
     integer          :: i, j, k
 
@@ -61,7 +60,7 @@ contains
              ux = q(i,j,k,QU)
              uy = q(i,j,k,QV)
              uz = q(i,j,k,QW)
-             
+
              c = eos_state % cs
 
              dt1 = dx(1)/(c + abs(ux))
@@ -122,8 +121,6 @@ contains
     integer          :: i, j, k
     real(rt)         :: rhoninv
     real(rt)         :: tau_CFL
-
-
     real(rt)         :: v(3), c
     type (eos_t)     :: eos_state
 
@@ -131,7 +128,6 @@ contains
     real(rt)     :: q_new(sn_lo(1):sn_hi(1),sn_lo(2):sn_hi(2),sn_lo(3):sn_hi(3),NQ)
     real(rt)   :: qoaux(so_lo(1):so_hi(1),so_lo(2):so_hi(2),so_lo(3):so_hi(3),NQAUX)
     real(rt)   :: qnaux(sn_lo(1):sn_hi(1),sn_lo(2):sn_hi(2),sn_lo(3):sn_hi(3),NQAUX)
-
 
     call ca_ctoprim(lo, hi, &
                   s_old, so_lo, so_hi, &

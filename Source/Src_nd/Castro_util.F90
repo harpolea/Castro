@@ -88,7 +88,7 @@ contains
     use eos_module, only : eos
     use eos_type_module, only : eos_t, eos_input_re
     use amrex_fort_module, only: rt => amrex_real
-    use metric_module, only : calculate_gamma_up
+    use metric_module, only : calculate_gamma_up, calculate_scalar_W
 
     implicit none
 
@@ -101,7 +101,7 @@ contains
 
     ! Local variables
     integer  :: i,j,k
-    real(rt) :: u, v, w, rhoh, gamma, W2, p
+    real(rt) :: rhoh, gamma, W, p
 
     type (eos_t) :: eos_state
 
@@ -117,22 +117,12 @@ contains
        do j = lo(2), hi(2)
           do i = lo(1), hi(1)
 
-             u = q(i,j,k,QU)
-             v = q(i,j,k,QV)
-             w = q(i,j,k,QW)
-
-             W2 = u**2 * gamma_up(1) + &
-              2.0d0 * u * v * gamma_up(2) + &
-              2.0d0 * u * w * gamma_up(3) + &
-              v**2 * gamma_up(5) + &
-              2.0d0 * v * w * gamma_up(6) + &
-              w**2 * gamma_up(9)
-             W2 = 1.0d0 / (1.0d0 - W2)
+             call calculate_scalar_W(q(i,j,k,QU:QW), gamma_up, W)
 
              rhoh = gamma * q(i,j,k,QREINT) + q(i,j,k,QRHO)
              p = (gamma - 1.0d0) * q(i,j,k,QREINT)
 
-             state(i,j,k,UEDEN) = rhoh * W2 - p - state(i,j,k,URHO)
+             state(i,j,k,UEDEN) = rhoh * W**2 - p - state(i,j,k,URHO)
 
           end do
        end do
@@ -152,7 +142,7 @@ contains
          dual_energy_eta2, dual_energy_update_E_from_e, NQ, QRHO, QU, QV, QW, QPRES
     use bl_constants_module, only: ZERO, HALF, ONE
     use amrex_fort_module, only : rt => amrex_real
-    use metric_module, only : calculate_gamma_up
+    use metric_module, only : calculate_gamma_up, calculate_scalar_W
 
     implicit none
 
@@ -163,8 +153,8 @@ contains
 
     ! Local variables
     integer  :: i,j,k
-    real(rt) :: up, v, w, ke, rho_eint, eden, small_e, eint_new, rhoInv
-    real(rt) :: gamma_up(9), rhoh, gamma, W2, p
+    real(rt) :: rho_eint, eden, small_e, eint_new, rhoInv
+    real(rt) :: gamma_up(9), rhoh, gamma, W, p
 
     type (eos_t) :: eos_state
 
@@ -191,17 +181,7 @@ contains
           do j = lo(2), hi(2)
              do i = lo(1), hi(1)
 
-                 up = q(i,j,k,QU)
-                 v = q(i,j,k,QV)
-                 w = q(i,j,k,QW)
-
-                 W2 = up**2 * gamma_up(1) + &
-                  2.0d0 * up * v * gamma_up(2) + &
-                  2.0d0 * up * w * gamma_up(3) + &
-                  v**2 * gamma_up(5) + &
-                  2.0d0 * v * w * gamma_up(6) + &
-                  w**2 * gamma_up(9)
-                 W2 = 1.0d0 / (1.0d0 - W2)
+                 call calculate_scalar_W(q(i,j,k,QU:QW), gamma_up, W)
 
                  rhoh = gamma * q(i,j,k,QREINT) + q(i,j,k,QRHO)
                  p = (gamma - 1.0d0) * q(i,j,k,QREINT)
@@ -233,7 +213,7 @@ contains
 
                    endif
 
-                   u(i,j,k,UEDEN) = rhoh * W2 - p - u(i,j,k,URHO)
+                   u(i,j,k,UEDEN) = rhoh * W**2 - p - u(i,j,k,URHO)
 
                 else
 
@@ -254,7 +234,7 @@ contains
                       call eos(eos_input_rt, eos_state)
 
                       if (dual_energy_update_E_from_e == 1) then
-                         u(i,j,k,UEDEN) = rhoh * W2 - p - u(i,j,k,URHO)
+                         u(i,j,k,UEDEN) = rhoh * W**2 - p - u(i,j,k,URHO)
                       endif
 
                       q(i,j,k,QREINT) = q(i,j,k,QRHO) * eos_state % e
@@ -274,11 +254,10 @@ contains
              do i = lo(1), hi(1)
 
                 rhoInv = ONE/q(i,j,k,QRHO)
-                up = q(i,j,k,QU)
-                v = q(i,j,k,QV)
-                w = q(i,j,k,QW)
                 rhoh = gamma * q(i,j,k,QREINT) + q(i,j,k,QRHO)
                 p = (gamma - 1.0d0) * q(i,j,k,QREINT)
+
+                call calculate_scalar_W(q(i,j,k,QU:QW), gamma_up, W)
 
                 if (u(i,j,k,UEDEN) < ZERO) then
 
@@ -296,7 +275,7 @@ contains
 
                    endif
 
-                   u(i,j,k,UEDEN) = rhoh * W2 - p - u(i,j,k,URHO)
+                   u(i,j,k,UEDEN) = rhoh * W**2 - p - u(i,j,k,URHO)
 
                 else
 
@@ -310,7 +289,7 @@ contains
                       ! If (e from E) < 0 or (e from E) < .0001*E but (e from e) > 0.
                   else if (q(i,j,k,QREINT) .gt. ZERO .and. dual_energy_update_E_from_e == 1) then
 
-                      u(i,j,k,UEDEN) = rhoh * W2 - p - u(i,j,k,URHO)
+                      u(i,j,k,UEDEN) = rhoh * W**2 - p - u(i,j,k,URHO)
 
                       ! If not resetting and little e is negative ...
                   else if (q(i,j,k,QREINT) .le. ZERO) then
@@ -334,7 +313,7 @@ contains
                       end if
 
                       if (dual_energy_update_E_from_e == 1) then
-                         u(i,j,k,UEDEN) = rhoh * W2 - p - u(i,j,k,URHO)
+                         u(i,j,k,UEDEN) = rhoh * W**2 - p - u(i,j,k,URHO)
                       endif
 
                       q(i,j,k,QREINT) = q(i,j,k,QRHO) * eint_new
@@ -355,8 +334,7 @@ contains
              do i = lo(1), hi(1)
 
                  p = q(i,j,k,QPRES)
-
-                q(i,j,k,QREINT) = p / (gamma - 1.0d0)
+                 q(i,j,k,QREINT) = p / (gamma - 1.0d0)
 
              enddo
           enddo
@@ -377,7 +355,7 @@ contains
          UFS, UFX, allow_negative_energy, dual_energy_update_E_from_e, NQ, QU, QV, QW, QRHO, QREINT, small_dens
     use bl_constants_module, only: ZERO, ONE
     use amrex_fort_module, only: rt => amrex_real
-    use metric_module, only : calculate_gamma_up
+    use metric_module, only : calculate_gamma_up, calculate_scalar_W
 
     implicit none
 
@@ -387,7 +365,7 @@ contains
     real(rt), intent(in   ) :: q(s_lo(1):s_hi(1),s_lo(2):s_hi(2),s_lo(3):s_hi(3),NQ)
 
     integer  :: i,j,k
-    real(rt) :: rhoInv, u, v, w, p, rhoh, W2, gamma, gamma_up(9)
+    real(rt) :: rhoInv, p, rhoh, W, gamma, gamma_up(9)
 
     type (eos_t) :: eos_state
 
@@ -442,21 +420,12 @@ contains
 
              if (dual_energy_update_E_from_e == 1) then
 
-                 u = q(i,j,k,QU)
-                 v = q(i,j,k,QV)
-                 w = q(i,j,k,QW)
-                 W2 = u**2 * gamma_up(1) + &
-                  2.0d0 * u * v * gamma_up(2) + &
-                  2.0d0 * u * w * gamma_up(3) + &
-                  v**2 * gamma_up(5) + &
-                  2.0d0 * v * w * gamma_up(6) + &
-                  w**2 * gamma_up(9)
-                 W2 = 1.0d0 / (1.0d0 - W2)
+                 call calculate_scalar_W(q(i,j,k,QU:QW), gamma_up, W)
 
                  rhoh = gamma * q(i,j,k,QREINT) + q(i,j,k,QRHO)
                  p = eos_state % p !(gamma - 1.0d0) * q(i,j,k,QREINT)
 
-                state(i,j,k,UEDEN) = rhoh * W2 - p - state(i,j,k,URHO)
+                 state(i,j,k,UEDEN) = rhoh * W**2 - p - state(i,j,k,URHO)
              endif
 
           enddo
@@ -487,9 +456,9 @@ contains
        do j = lo(2), hi(2)
           do i = lo(1), hi(1)
 
-             spec_sum = sum(state(i,j,k,UFS:UFS+nspec-1))
+                spec_sum = sum(state(i,j,k,UFS:UFS+nspec-1))
 
-             if (abs(state(i,j,k,URHO)-spec_sum) .gt. 1.e-8_rt * state(i,j,k,URHO)) then
+                if (abs(state(i,j,k,URHO)-spec_sum) .gt. 1.e-8_rt * state(i,j,k,URHO)) then
 
                 print *,'Sum of (rho X)_i vs rho at (i,j,k): ',i,j,k,spec_sum,state(i,j,k,URHO)
                 call bl_error("Error:: Failed check of initial species summing to 1")
@@ -559,7 +528,6 @@ contains
     index(dim+1:3) = 0
 
   end function position_to_index
-
 
 
   ! Given 3D indices (i,j,k) and a direction dir, return the

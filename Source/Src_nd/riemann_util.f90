@@ -2,7 +2,6 @@ module riemann_util_module
 
   use bl_types
   use bl_constants_module
-
   use amrex_fort_module, only : rt => amrex_real
   implicit none
 
@@ -54,12 +53,13 @@ contains
 
 
   subroutine gr_cons_state(q, U, gamma_up)
-
+    ! calculates the conserved state from the primitive variables
     use meth_params_module, only: QVAR, QRHO, QU, QV, QW, QREINT, &
          NVAR, URHO, UMX, UMY, UMZ, UEDEN, UEINT, UTEMP, &
          npassive, upass_map, qpass_map, QTEMP, QPRES
     use eos_module, only: eos
     use eos_type_module, only: eos_input_re, eos_t, eos_input_rt
+    use metric_module, only: calculate_scalar_W
 
     real(rt)        , intent(in)  :: q(QVAR), gamma_up(9)
     real(rt)        , intent(out) :: U(NVAR)
@@ -68,18 +68,9 @@ contains
     real(rt) :: W, rhoh, p
     type (eos_t)     :: eos_state
 
-    W = q(QU)**2 * gamma_up(1) + &
-        2.0d0 * q(QU) * q(QV) * gamma_up(2) + &
-        2.0d0 * q(QU) * q(QW) * gamma_up(3) + &
-        q(QV)**2 * gamma_up(5) + &
-        2.0d0 * q(QV) * q(QW) * gamma_up(6) + &
-        q(QW)**2 * gamma_up(9)
-
-    W = 1.0d0 / sqrt(1.0d0 - W)
+    call calculate_scalar_W(q(QU:QW), gamma_up, W)
 
     U(URHO) = q(QRHO) * W
-    !rhoh = gamma * q(QREINT) + q(QRHO)
-    !p = (gamma - 1.0d0) * q(QREINT)
 
     eos_state % rho  = q(QRHO)
     eos_state % e    = q(QREINT) / q(QRHO)
@@ -115,7 +106,7 @@ contains
 
 
   pure subroutine gr_compute_flux(idir, bnd_fac, q, U, p, beta, alpha, F)
-
+    ! returns the GR flux in direction idir
     use meth_params_module, only: QVAR, QRHO, QU, QV, QW, QREINT, &
         NVAR, URHO, UMX, UMY, UMZ, UEDEN, UEINT, UTEMP, &
          npassive, upass_map
@@ -131,11 +122,11 @@ contains
     real(rt)         :: u_flx
 
     if (idir == 1) then
-       u_flx = q(QU) - beta(1) / alpha !U(UMX)/U(URHO)
+       u_flx = q(QU) - beta(1) / alpha
     elseif (idir == 2) then
-       u_flx = q(QV) - beta(2) / alpha !U(UMY)/U(URHO)
+       u_flx = q(QV) - beta(2) / alpha
     elseif (idir == 3) then
-       u_flx = q(QW) - beta(3) / alpha !U(UMZ)/U(URHO)
+       u_flx = q(QW) - beta(3) / alpha
     endif
 
     if (bnd_fac == 0) then
@@ -163,9 +154,11 @@ contains
 end subroutine gr_compute_flux
 
 subroutine f_of_p(f, p, U, gamma_up)
+    ! function used to recover the primitive variables. Calculates the pressure using the conserved variables and a guess of the pressure, then subtracts the pressure guess; the root of this function therefore gives the correct pressure.
     use meth_params_module, only: NVAR, URHO, UMX, UMY, UMZ, UEDEN
     use eos_module, only: eos
     use eos_type_module, only: eos_input_re, eos_t
+    use metric_module, only: calculate_norm
     implicit none
 
     double precision, intent(in)  :: U(NVAR), p, gamma_up(9)
@@ -175,12 +168,7 @@ subroutine f_of_p(f, p, U, gamma_up)
     type (eos_t)     :: eos_state
 
     tpd = U(UEDEN) + p + U(URHO)
-    ss = U(UMX)**2*gamma_up(1) + &
-        2.0d0 * U(UMX) * U(UMY) * gamma_up(2) + &
-        2.0d0 * U(UMX) * U(UMZ) * gamma_up(3) + &
-        U(UMY)**2 * gamma_up(5) + &
-        2.0d0 * U(UMY) * U(UMZ) * gamma_up(6) + &
-        U(UMZ)**2 * gamma_up(9)
+    call calculate_norm(U(UMX:UMZ), gamma_up, ss)
 
     eos_state % rho  = U(URHO) * sqrt(tpd**2 - ss) / tpd
     eos_state % e    = (sqrt(tpd**2 - ss) - &
