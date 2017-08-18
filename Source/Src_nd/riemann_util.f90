@@ -52,67 +52,70 @@ contains
   end function bc_test
 
 
-  subroutine swe_cons_state(q, U)
+  subroutine grswe_cons_state(q, U, gamma_up)
     ! calculates the conserved state from the primitive variables
     use meth_params_module, only: QVAR, QRHO, QU, QV, QW, &
-         NVAR, URHO, UMX, UMY, UMZ, &
-         npassive, upass_map, qpass_map
+         NVAR, URHO, UMX, UMY, UMZ
+    use metric_module, only : calculate_scalar_W
 
-    real(rt)        , intent(in)  :: q(QVAR)
+    real(rt)        , intent(in)  :: q(QVAR), gamma_up(9)
     real(rt)        , intent(out) :: U(NVAR)
 
     integer  :: ipassive, n, nq
+    real(rt) :: W
 
     U(:) = 0.0d0
 
     U(:UMZ) = q(:UMZ)
 
-    U(URHO) = q(QRHO)
+    call calculate_scalar_W(q(QU:QW), gamma_up, W)
+
+    U(URHO) = q(QRHO) * W
 
     ! since we advect all 3 velocity components regardless of dimension, this
     ! will be general
-    U(UMX)  = q(QRHO) * q(QU)
-    U(UMY)  = q(QRHO) * q(QV)
-    U(UMZ)  = q(QRHO) * q(QW)
+    U(UMX)  = q(QRHO) * W**2 * q(QU)
+    U(UMY)  = q(QRHO) * W**2 * q(QV)
+    U(UMZ)  = q(QRHO) * W**2 * q(QW)
 
-  end subroutine swe_cons_state
+  end subroutine grswe_cons_state
 
 
-  subroutine swe_compute_flux(idir, bnd_fac, U, F)
+  subroutine grswe_compute_flux(idir, bnd_fac, q, U, F, alpha, beta, gamma_up)
     ! returns the GR flux in direction idir
     use meth_params_module, only: NVAR, URHO, UMX, UMY, UMZ, &
-         npassive, upass_map
-    use probdata_module, only: g
+         QVAR, QRHO, QU, QV, QW
 
     integer, intent(in) :: idir, bnd_fac
-    real(rt)        , intent(in) :: U(NVAR)
+    real(rt)        , intent(in) :: U(NVAR), q(QVAR), alpha, beta(3), gamma_up(9)
     real(rt)        , intent(out) :: F(NVAR)
 
     integer :: ipassive, n
     real(rt)         :: u_flx
 
-    if (idir == 1) then
-       u_flx = U(UMX)
-    elseif (idir == 2) then
-       u_flx = U(UMY)
-    elseif (idir == 3) then
-       u_flx = U(UMZ)
+    if (idir==1) then
+        u_flx = q(QU) * gamma_up(1) + q(QV) * gamma_up(2) + q(QW) * gamma_up(3)
+    elseif (idir==2) then
+        u_flx = q(QU) * gamma_up(4) + q(QV) * gamma_up(5) + q(QW) * gamma_up(6)
+    else
+        u_flx = q(QU) * gamma_up(7) + q(QV) * gamma_up(8) + q(QW) * gamma_up(9)
     endif
+
+    u_flx = u_flx - beta(idir) / alpha
 
     if (bnd_fac == 0) then
        u_flx = ZERO
     endif
+
     F(:) = 0.0d0
 
-    F(URHO) = u_flx
+    F(URHO) = U(URHO) * u_flx
+    F(UMX) = U(UMX) * u_flx
+    F(UMY) = U(UMY) * u_flx
+    F(UMZ) = U(UMZ) * u_flx
 
-    F(UMX) = U(UMX)*u_flx / U(URHO)
-    F(UMY) = U(UMY)*u_flx / U(URHO)
-    F(UMZ) = U(UMZ)*u_flx / U(URHO)
+    F(UMX-1+idir) = F(UMX-1+idir) + 0.5d0 * q(QRHO)**2
 
-    F(UMX-1+idir) = F(UMX-1+idir) + 0.5d0 * g * U(URHO)**2
-
-
-  end subroutine swe_compute_flux
+  end subroutine grswe_compute_flux
 
 end module riemann_util_module

@@ -35,7 +35,7 @@ contains
     ! them both to +-1.
     use prob_params_module, only : physbc_lo, physbc_hi, &
                                    Symmetry, SlipWall, NoSlipWall
-    use probdata_module, only : g
+    use metric_module
 
     implicit none
 
@@ -71,12 +71,30 @@ contains
 
     integer :: i, j
 
-    integer :: iu, iv1, iv2, sx, sy, sz
+    integer :: iu, iv1, iv2, sx, sy, sz, lo(3), hi(3)
     logical :: special_bnd_lo, special_bnd_hi, special_bnd_lo_x, special_bnd_hi_x
     integer :: bnd_fac_x, bnd_fac_y, bnd_fac_z, bnd_fac
 
     real(rt) :: U_hll_state(NVAR), U_state(NVAR), F_state(NVAR), Fr_state(NVAR)
     real(rt) :: S_l, S_r, S_c, Smax_l, Smax_r, Smax
+    real(rt) :: gamma_upl(ilo:ihi, jlo:jhi, domlo(3):domhi(3), 9)
+    real(rt) :: gamma_upr(ilo:ihi, jlo:jhi, domlo(3):domhi(3), 9)
+    real(rt) :: alphal(ilo:ihi, jlo:jhi, domlo(3):domhi(3))
+    real(rt) :: alphar(ilo:ihi, jlo:jhi, domlo(3):domhi(3))
+    real(rt) :: betal(ilo:ihi, jlo:jhi, domlo(3):domhi(3), 3)
+    real(rt) :: betar(ilo:ihi, jlo:jhi, domlo(3):domhi(3), 3)
+
+    lo = [ilo, jlo, domlo(3)]
+    hi = [ihi, jhi, domhi(3)]
+
+    call calculate_alpha(alphal, lo, hi)
+    call calculate_alpha(alphar, lo, hi)
+
+    call calculate_beta(betal, lo, hi)
+    call calculate_beta(betar, lo, hi)
+
+    call calculate_gamma_up(gamma_upl, lo, hi)
+    call calculate_gamma_up(gamma_upr, lo, hi)
 
     if (idir == 1) then
        iu = QU
@@ -124,8 +142,8 @@ contains
        end if
     end if
 
-    Smax_l = maxval(abs(ql(:,:,:,QU-1+idir))) + maxval(sqrt(g * ql(:,:,:,QRHO)))
-    Smax_r = maxval(abs(qr(:,:,:,QU-1+idir))) + maxval(sqrt(g * qr(:,:,:,QRHO)))
+    Smax_l = maxval(abs(ql(:,:,:,QU-1+idir))) + maxval(sqrt( ql(:,:,:,QRHO)))
+    Smax_r = maxval(abs(qr(:,:,:,QU-1+idir))) + maxval(sqrt( qr(:,:,:,QRHO)))
     Smax = max(Smax_r, Smax_l)
 
     do j = jlo, jhi
@@ -157,24 +175,24 @@ contains
 
           if (S_r <= ZERO) then
              ! R region
-             call swe_cons_state(qr(i,j,kc,:), U_state)
-             call swe_compute_flux(idir, bnd_fac, U_state, F_state)
+             call grswe_cons_state(qr(i,j,kc,:), U_state, gamma_upr(i,j,kc,:))
+             call grswe_compute_flux(idir, bnd_fac, qr(i,j,kc,:), U_state, F_state, alphar(i,j,kc), betar(i,j,kc,:), gamma_upr(i,j,kc,:))
 
          else if (S_r > ZERO .and. S_l <= ZERO) then
              ! * region
-             call swe_cons_state(ql(i,j,kc,:), U_state)
-             call swe_compute_flux(idir, bnd_fac, U_state, F_state)
+             call grswe_cons_state(ql(i,j,kc,:), U_state, gamma_upl(i,j,kc,:))
+             call grswe_compute_flux(idir, bnd_fac, ql(i,j,kc,:), U_state, F_state, alphal(i,j,kc), betal(i,j,kc,:), gamma_upl(i,j,kc,:))
 
-             call swe_cons_state(qr(i,j,kc,:), U_hll_state)
-             call swe_compute_flux(idir, bnd_fac, U_hll_state, Fr_state)
+             call grswe_cons_state(qr(i,j,kc,:), U_hll_state, gamma_upr(i,j,kc,:))
+             call grswe_compute_flux(idir, bnd_fac, qr(i,j,kc,:), U_hll_state, Fr_state, alphar(i,j,kc), betar(i,j,kc,:), gamma_upr(i,j,kc,:))
 
              ! correct the flux
              F_state(:) = (S_r * F_state(:) - S_l * Fr_state(:) + S_r * S_l * (U_hll_state(:) - U_state(:)))/ (S_r - S_l)
 
           else
              ! L region
-             call swe_cons_state(ql(i,j,kc,:), U_state)
-             call swe_compute_flux(idir, bnd_fac, U_state, F_state)
+             call grswe_cons_state(ql(i,j,kc,:), U_state, gamma_upl(i,j,kc,:))
+             call grswe_compute_flux(idir, bnd_fac, ql(i,j,kc,:), U_state, F_state, alphal(i,j,kc), betal(i,j,kc,:), gamma_upl(i,j,kc,:))
 
           endif
 
