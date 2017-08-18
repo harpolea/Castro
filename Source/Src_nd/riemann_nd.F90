@@ -141,12 +141,17 @@ contains
        !dir$ ivdep
        do i = ilo, ihi
 
-          ! use the simplest estimates of the wave speeds
-          !S_l = min(ul - sqrt(gamcl*pl/rl), ur - sqrt(gamcr*pr/rr))
-          !S_r = max(ul + sqrt(gamcl*pl/rl), ur + sqrt(gamcr*pr/rr))
+          ! Enforce that the fluxes through a symmetry plane or wall are hard zero.
+          if ( special_bnd_lo_x .and. i== domlo(1) .or. &
+               special_bnd_hi_x .and. i== domhi(1)+1 ) then
+             bnd_fac_x = 0
+          else
+             bnd_fac_x = 1
+          end if
 
-          !write(*,*) "Sl, Sr, pl, pr", S_l, S_r, pl, pr
+          bnd_fac = bnd_fac_x*bnd_fac_y*bnd_fac_z
 
+          ! signal speeds
           S_l = -Smax
           S_r = Smax
 

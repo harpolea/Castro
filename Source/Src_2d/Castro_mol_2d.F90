@@ -198,10 +198,6 @@ subroutine ca_mol_single_stage(time, &
      enddo
   enddo
 
-  !write(*,*) "flux_x", maxval(abs(update(:,:,UMX)))
-  !write(*,*) NVAR, UMX
-!stop
-
   ! Scale the fluxes for the form we expect later in refluxing.
   do n = 1, NVAR
      do j = lo(2), hi(2)

@@ -429,22 +429,6 @@ contains
           enddo
        enddo
     enddo
-    !stop
-
-    !write(*,*) "rho = ", q(:,:,:,QRHO)
-
-    ! Load passively advected quatities into q
-    !do ipassive = 1, npassive
-    !   n  = upass_map(ipassive)
-    !   iq = qpass_map(ipassive)
-    !   do k = lo(3),hi(3)
-!          do j = lo(2),hi(2)
-            ! do i = lo(1),hi(1)
-    !!            q(i,j,k,iq) = uin(i,j,k,n)/q(i,j,k,QRHO)
-        !     enddo
-    !      enddo
-    !   enddo
-    !enddo
 
 end subroutine swectoprim
 
