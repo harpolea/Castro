@@ -97,7 +97,7 @@ Castro::do_new_sources(Real time, Real dt, int amr_iteration, int amr_ncycle)
     	    construct_new_source(n, time, dt, amr_iteration, amr_ncycle);
     	    if (source_flag(n)) {
         		apply_source_to_state(S_new, *new_sources[n], dt);
-        		clean_state(S_new);
+        		//clean_state(S_new);
     	    }
     	}
 
@@ -114,7 +114,7 @@ Castro::do_new_sources(Real time, Real dt, int amr_iteration, int amr_ncycle)
     	    if (source_flag(n))
     		      apply_source_to_state(S_new, *new_sources[n], dt);
 
-    	clean_state(S_new);
+    	//clean_state(S_new);
 
     }
 
@@ -154,6 +154,7 @@ Castro::construct_old_source(int src, Real time, Real dt, int amr_iteration, int
 void
 Castro::construct_new_source(int src, Real time, Real dt, int amr_iteration, int amr_ncycle)
 {
+
     BL_ASSERT(src >= 0 && src < num_src);
 
     switch(src) {
@@ -161,12 +162,6 @@ Castro::construct_new_source(int src, Real time, Real dt, int amr_iteration, int
         case ext_src:
     	construct_new_ext_source(time, dt);
     	break;
-
-#ifdef GRAVITY
-        case grav_src:
-    	construct_new_gravity_source(time, dt);
-    	break;
-#endif
 
         default:
     	break;

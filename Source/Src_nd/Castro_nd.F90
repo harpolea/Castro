@@ -349,7 +349,7 @@ end subroutine swap_outflow_data
 ! ::: ----------------------------------------------------------------
 ! :::
 
-subroutine ca_set_method_params(dm,Density,Xmom,Eden,Eint,Temp, &
+subroutine ca_set_method_params(dm,Density,Xmom, &
                                 FirstAdv,FirstSpec,FirstAux,numadv, &
                                 gravity_type_in, gravity_type_len) &
                                 bind(C, name="ca_set_method_params")
@@ -365,7 +365,7 @@ subroutine ca_set_method_params(dm,Density,Xmom,Eden,Eint,Temp, &
   implicit none
 
   integer, intent(in) :: dm
-  integer, intent(in) :: Density, Xmom, Eden, Eint, Temp, &
+  integer, intent(in) :: Density, Xmom, &
        FirstAdv, FirstSpec, FirstAux
   integer, intent(in) :: numadv
   integer, intent(in) :: gravity_type_len

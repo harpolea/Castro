@@ -20,10 +20,8 @@ subroutine ca_mol_single_stage(time, &
                                vol, vol_lo, vol_hi, &
                                courno, verbose) bind(C, name="ca_mol_single_stage")
 
-  use meth_params_module, only : NQ, QVAR, NVAR, NGDNV, GDPRES, &
-                                 UTEMP, UMX, GDU, GDV, &
-                                 QPRES, NQAUX, &
-                                 QTEMP, QFS, QFX, QRHO, QREINT,&
+  use meth_params_module, only : NQ, QVAR, NVAR, UMX, &
+                                 NQAUX, QFS, QFX, QRHO,&
                                  first_order_hydro, difmag, URHO
   use advection_util_2d_module, only : divu, normalize_species_fluxes
   use advection_util_module, only : compute_cfl
@@ -195,10 +193,14 @@ subroutine ca_mol_single_stage(time, &
 
            ! include source terms
            update(i,j,n) = update(i,j,n) + srcU(i,j,n)
-
         enddo
+
      enddo
   enddo
+
+  !write(*,*) "flux_x", maxval(abs(update(:,:,UMX)))
+  !write(*,*) NVAR, UMX
+!stop
 
   ! Scale the fluxes for the form we expect later in refluxing.
   do n = 1, NVAR
@@ -216,5 +218,4 @@ subroutine ca_mol_single_stage(time, &
         enddo
      enddo
   enddo
-
 end subroutine ca_mol_single_stage

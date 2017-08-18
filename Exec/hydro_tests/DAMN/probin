@@ -1,0 +1,22 @@
+&fortin
+
+   h_in = 2.0
+   h_out = 1.0
+   damn_rad = 0.25
+
+   g = 1.0
+
+/
+
+&tagging
+
+  dengrad = 0.1
+  velgrad = 1.0
+
+/
+
+&extern
+
+  eos_assume_neutral = T
+
+/

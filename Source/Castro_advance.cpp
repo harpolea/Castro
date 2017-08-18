@@ -131,16 +131,7 @@ Castro::do_advance (Real time,
       MultiFab::Saxpy(S_new, dt, hydro_source, 0, 0, S_new.nComp(), 0);
 
       // define the temperature now
-      clean_state(S_new);
-
-    }
-    // if we are done with the update do the source correction and
-    // then the second half of the reactions
-
-    if (mol_iteration == MOL_STAGES-1) {
-
-      // Construct and apply new-time source terms.
-      do_new_sources(cur_time, dt, amr_iteration, amr_ncycle);
+      //clean_state(S_new);
 
     }
 
@@ -282,7 +273,7 @@ Castro::initialize_advance(Real time, Real dt, int amr_iteration, int amr_ncycle
     // trusted to respect the consistency between certain state variables
     // (e.g. UEINT and UEDEN) that we demand in every zone.
 
-    clean_state(get_old_data(State_Type));
+    //clean_state(get_old_data(State_Type));
 
     // Make a copy of the MultiFabs in the old and new state data in case we may do a retry.
 

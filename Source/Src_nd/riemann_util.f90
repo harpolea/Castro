@@ -63,6 +63,10 @@ contains
 
     integer  :: ipassive, n, nq
 
+    U(:) = 0.0d0
+
+    U(:UMZ) = q(:UMZ)
+
     U(URHO) = q(QRHO)
 
     ! since we advect all 3 velocity components regardless of dimension, this
@@ -71,16 +75,16 @@ contains
     U(UMY)  = q(QRHO) * q(QV)
     U(UMZ)  = q(QRHO) * q(QW)
 
-    do ipassive = 1, npassive
-       n  = upass_map(ipassive)
-       nq = qpass_map(ipassive)
-       U(n) = q(QRHO)*q(nq)
-    enddo
+    !do ipassive = 1, npassive
+    !   n  = upass_map(ipassive)
+    !   nq = qpass_map(ipassive)
+    !   U(n) = q(QRHO)*q(nq)
+    !enddo
 
 end subroutine swe_cons_state
 
 
-  pure subroutine swe_compute_flux(idir, bnd_fac, U, p, F)
+  subroutine swe_compute_flux(idir, bnd_fac, U, F)
     ! returns the GR flux in direction idir
     use meth_params_module, only: NVAR, URHO, UMX, UMY, UMZ, &
          npassive, upass_map
@@ -88,7 +92,6 @@ end subroutine swe_cons_state
 
     integer, intent(in) :: idir, bnd_fac
     real(rt)        , intent(in) :: U(NVAR)
-    real(rt)        , intent(in) :: p
     real(rt)        , intent(out) :: F(NVAR)
 
     integer :: ipassive, n
@@ -102,9 +105,10 @@ end subroutine swe_cons_state
        u_flx = U(UMZ)
     endif
 
-    if (bnd_fac == 0) then
-       u_flx = ZERO
-    endif
+    !if (bnd_fac == 0) then
+    !   u_flx = ZERO
+    !endif
+    F(:) = 0.0d0
 
     F(URHO) = u_flx
 
@@ -114,10 +118,10 @@ end subroutine swe_cons_state
 
     F(UMX-1+idir) = F(UMX-1+idir) + 0.5d0 * g * U(URHO)**2
 
-    do ipassive = 1, npassive
-       n = upass_map(ipassive)
-       F(n) = U(n) * u_flx / U(URHO)
-    enddo
+    !do ipassive = 1, npassive
+    !   n = upass_map(ipassive)
+    !   F(n) = U(n) * u_flx / U(URHO)
+    !enddo
 
 end subroutine swe_compute_flux
 

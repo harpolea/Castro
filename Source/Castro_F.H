@@ -40,8 +40,7 @@ extern "C"
   void ca_set_method_params
     (const int& dm,
      const int& Density, const int& Xmom,
-     const int& Eden,    const int& Eint,
-     const int& Temp     , const int& FirstAdv,
+     const int& FirstAdv,
      const int& FirstSpec, const int& FirstAux,
      const int& NumAdv,
      const int* gravity_type, const int& gravity_type_len);

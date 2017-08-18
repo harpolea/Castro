@@ -35,6 +35,7 @@ contains
     ! them both to +-1.
     use prob_params_module, only : physbc_lo, physbc_hi, &
                                    Symmetry, SlipWall, NoSlipWall
+    use probdata_module, only : g
 
     implicit none
 
@@ -70,21 +71,12 @@ contains
 
     integer :: i, j
 
-    real(rt) :: rgdnv, regdnv
-    real(rt) :: rl, ul, v1l, v2l, pl, rel, cl
-    real(rt) :: rr, ur, v1r, v2r, pr, rer, cr
-    real(rt) :: wl, wr, scr
-    real(rt) :: sgnm, spin, spout, ushock, frac
-    real(rt) :: wsmall, csmall
-    real(rt) :: cavg, gamcl, gamcr
-
     integer :: iu, iv1, iv2, sx, sy, sz
     logical :: special_bnd_lo, special_bnd_hi, special_bnd_lo_x, special_bnd_hi_x
     integer :: bnd_fac_x, bnd_fac_y, bnd_fac_z, bnd_fac
 
     real(rt) :: U_hll_state(NVAR), U_state(NVAR), F_state(NVAR), Fr_state(NVAR)
-    real(rt) :: S_l, S_r, S_c
-    real(rt) :: sigmal, sigmar, l1, l2
+    real(rt) :: S_l, S_r, S_c, Smax_l, Smax_r, Smax
 
     if (idir == 1) then
        iu = QU
@@ -132,6 +124,10 @@ contains
        end if
     end if
 
+    Smax_l = maxval(abs(ql(:,:,:,QU-1+idir))) + maxval(sqrt(g * ql(:,:,:,QRHO)))
+    Smax_r = maxval(abs(qr(:,:,:,QU-1+idir))) + maxval(sqrt(g * qr(:,:,:,QRHO)))
+    Smax = max(Smax_r, Smax_l)
+
     do j = jlo, jhi
 
        bnd_fac_y = 1
@@ -151,21 +147,21 @@ contains
 
           !write(*,*) "Sl, Sr, pl, pr", S_l, S_r, pl, pr
 
-          S_l = -1.0d0
-          S_r = 1.0d0
+          S_l = -Smax
+          S_r = Smax
 
           if (S_r <= ZERO) then
              ! R region
              call swe_cons_state(qr(i,j,kc,:), U_state)
-             call swe_compute_flux(idir, bnd_fac, U_state, pr, F_state)
+             call swe_compute_flux(idir, bnd_fac, U_state, F_state)
 
          else if (S_r > ZERO .and. S_l <= ZERO) then
              ! * region
              call swe_cons_state(ql(i,j,kc,:), U_state)
-             call swe_compute_flux(idir, bnd_fac, U_state, pl, F_state)
+             call swe_compute_flux(idir, bnd_fac, U_state, F_state)
 
              call swe_cons_state(qr(i,j,kc,:), U_hll_state)
-             call swe_compute_flux(idir, bnd_fac, U_hll_state, pr, Fr_state)
+             call swe_compute_flux(idir, bnd_fac, U_hll_state, Fr_state)
 
              ! correct the flux
              F_state(:) = (S_r * F_state(:) - S_l * Fr_state(:) + S_r * S_l * (U_hll_state(:) - U_state(:)))/ (S_r - S_l)
@@ -173,7 +169,7 @@ contains
           else
              ! L region
              call swe_cons_state(ql(i,j,kc,:), U_state)
-             call swe_compute_flux(idir, bnd_fac, U_state, pl, F_state)
+             call swe_compute_flux(idir, bnd_fac, U_state, F_state)
 
           endif
 

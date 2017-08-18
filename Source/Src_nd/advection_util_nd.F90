@@ -46,6 +46,8 @@ contains
     real(rt)   :: qaux(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),NQAUX)
     real(rt)     :: qout(uout_lo(1):uout_hi(1),uout_lo(2):uout_hi(2),uout_lo(3):uout_hi(3),NQ)
 
+    return
+
     max_dens = ZERO
 
     have_reset = .false.
@@ -209,6 +211,8 @@ contains
     ! equal to small_temp. We set the velocities to zero,
     ! though any choice here would be arbitrary.
 
+    return
+
     if (verbose .gt. 0) then
        print *,'   '
        if (new_state(QRHO) < ZERO) then
@@ -246,6 +250,8 @@ contains
 
     real(rt)         :: old_state(NQ), new_state(NQ), input_state(NQ)
     integer          :: idx(3), lo(3), hi(3), verbose
+
+    return
 
     if (verbose .gt. 0) then
        if (new_state(QRHO) < ZERO) then
@@ -388,6 +394,8 @@ contains
     integer          :: i, j, k, g
     integer          :: n, iq, ipassive
 
+    q(:,:,:,:) = 0.0d0
+
     do k = lo(3), hi(3)
        do j = lo(2), hi(2)
 
@@ -413,6 +421,8 @@ contains
 
           do i = lo(1), hi(1)
 
+              q(i,j,k,:QW) = uin(i,j,k,:QW)
+
               q(i,j,k,QRHO) = uin(i,j,k,URHO)
               q(i,j,k,QU:QW) = uin(i,j,k,UMX:UMZ) / uin(i,j,k,URHO)
 
@@ -424,17 +434,17 @@ contains
     !write(*,*) "rho = ", q(:,:,:,QRHO)
 
     ! Load passively advected quatities into q
-    do ipassive = 1, npassive
-       n  = upass_map(ipassive)
-       iq = qpass_map(ipassive)
-       do k = lo(3),hi(3)
-          do j = lo(2),hi(2)
-             do i = lo(1),hi(1)
-                q(i,j,k,iq) = uin(i,j,k,n)/q(i,j,k,QRHO)
-             enddo
-          enddo
-       enddo
-    enddo
+    !do ipassive = 1, npassive
+    !   n  = upass_map(ipassive)
+    !   iq = qpass_map(ipassive)
+    !   do k = lo(3),hi(3)
+!          do j = lo(2),hi(2)
+            ! do i = lo(1),hi(1)
+    !!            q(i,j,k,iq) = uin(i,j,k,n)/q(i,j,k,QRHO)
+        !     enddo
+    !      enddo
+    !   enddo
+    !enddo
 
 end subroutine swectoprim
 

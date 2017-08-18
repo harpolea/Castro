@@ -23,7 +23,3 @@ CEXE_sources += Prob.cpp
 FEXE_headers += Castro_F.H
 FEXE_headers += Problem_F.H
 FEXE_headers += Castro_error_F.H
-
-ifeq ($(USE_GRAV), TRUE)
-CEXE_sources += Castro_gravity.cpp
-endif

@@ -221,7 +221,7 @@ Castro::variableSetUp ()
 
   ca_set_castro_method_params();
 
-  ca_set_method_params(dm, Density, Xmom, Eden, Eint, Temp, FirstAdv, FirstSpec, FirstAux,
+  ca_set_method_params(dm, Density, Xmom, FirstAdv, FirstSpec, FirstAux,
 		       NumAdv,
 		       gravity_type_name.dataPtr(), gravity_type_length);
 

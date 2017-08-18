@@ -349,48 +349,6 @@ contains
     call pp%query("react_rho_min", react_rho_min)
     call pp%query("react_rho_max", react_rho_max)
     call pp%query("disable_shock_burning", disable_shock_burning)
-#ifdef DIFFUSION
-    call pp%query("diffuse_cutoff_density", diffuse_cutoff_density)
-#endif
-#ifdef DIFFUSION
-    call pp%query("diffuse_cond_scale_fac", diffuse_cond_scale_fac)
-#endif
-    call pp%query("do_grav", do_grav)
-    call pp%query("grav_source_type", grav_source_type)
-    call pp%query("do_rotation", do_rotation)
-#ifdef ROTATION
-    call pp%query("rotational_period", rot_period)
-#endif
-#ifdef ROTATION
-    call pp%query("rotational_dPdt", rot_period_dot)
-#endif
-#ifdef ROTATION
-    call pp%query("rotation_include_centrifugal", rotation_include_centrifugal)
-#endif
-#ifdef ROTATION
-    call pp%query("rotation_include_coriolis", rotation_include_coriolis)
-#endif
-#ifdef ROTATION
-    call pp%query("rotation_include_domegadt", rotation_include_domegadt)
-#endif
-#ifdef ROTATION
-    call pp%query("state_in_rotating_frame", state_in_rotating_frame)
-#endif
-#ifdef ROTATION
-    call pp%query("rot_source_type", rot_source_type)
-#endif
-#ifdef ROTATION
-    call pp%query("implicit_rotation_update", implicit_rotation_update)
-#endif
-#ifdef ROTATION
-    call pp%query("rot_axis", rot_axis)
-#endif
-#ifdef POINTMASS
-    call pp%query("point_mass", point_mass)
-#endif
-#ifdef POINTMASS
-    call pp%query("point_mass_fix_solution", point_mass_fix_solution)
-#endif
     call pp%query("do_acc", do_acc)
     call pp%query("grown_factor", grown_factor)
     call pp%query("track_grid_losses", track_grid_losses)
