@@ -1385,6 +1385,52 @@ contains
 
   end subroutine ca_derprim_u
 
+  subroutine ca_derprim_v(u,u_lo,u_hi,ncomp_u, &
+                        dat,d_lo,d_hi,nc,&
+                        lo,hi,domlo, &
+                        domhi,dx,xlo,time,dt,bc,level,grid_no) &
+                        bind(C, name="ca_derprim_u")
+    ! calculate the Lorentz factor
+
+    use bl_constants_module
+    use meth_params_module, only: NQ, NQAUX, NVAR, QV
+    use metric_module, only: calculate_scalar_W, calculate_gamma_up
+
+    use amrex_fort_module, only : rt => amrex_real
+    implicit none
+
+    integer          :: lo(3), hi(3)
+    integer          :: u_lo(3), u_hi(3), ncomp_u
+    integer          :: d_lo(3), d_hi(3), nc
+    integer          :: domlo(3), domhi(3)
+    real(rt)         :: u(u_lo(1):u_hi(1),u_lo(2):u_hi(2),u_lo(3):u_hi(3),ncomp_u)
+    real(rt)         :: dat(d_lo(1):d_hi(1),d_lo(2):d_hi(2),d_lo(3):d_hi(3),nc)
+    real(rt)         :: dx(3), xlo(3), time, dt
+    integer          :: bc(3,2,nc), level, grid_no
+
+    integer          :: i, j, k
+
+    real(rt)     :: s(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),NVAR)
+    real(rt)     :: q(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),NQ)
+    real(rt)   :: qaux(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),NQAUX)
+
+    s(:,:,:,:nc) = dat(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),:)
+
+    call ca_ctoprim(lo, hi, &
+                      s, lo, hi, &
+                      q,     lo, hi, &
+                      qaux,  lo, hi, 0)
+
+    do k = lo(3), hi(3)
+      do j = lo(2), hi(2)
+          do i = lo(1), hi(1)
+              u(i,j,k,1) = q(i,j,k,QV)
+          end do
+      end do
+    end do
+
+  end subroutine ca_derprim_v
+
 
 
 end module derive_module
