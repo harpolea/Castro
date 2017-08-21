@@ -801,5 +801,39 @@ contains
 
   end subroutine ca_dernull
 
+  subroutine ca_derheight(height,h_lo,h_hi,nh, &
+                        dat,d_lo,d_hi,nc, &
+                        lo,hi,domlo,domhi,delta, &
+                        xlo,time,dt,bc,level,grid_no) &
+                        bind(C, name="ca_derheight")
+    !
+    ! This routine is used by particle_count.  Yes it does nothing.
+    !
+    use amrex_fort_module, only : rt => amrex_real
+    use probdata_module, only : radius
+    implicit none
+
+    integer          :: lo(3), hi(3)
+    integer          :: h_lo(3), h_hi(3), nh
+    integer          :: d_lo(3), d_hi(3), nc
+    integer          :: domlo(3), domhi(3)
+    integer          :: bc(3,2,nc)
+    real(rt)         :: delta(3), xlo(3), time, dt
+    real(rt)         :: height(h_lo(1):h_hi(1),h_lo(2):h_hi(2),h_lo(3):h_hi(3),nh)
+    real(rt)         ::    dat(d_lo(1):d_hi(1),d_lo(2):d_hi(2),d_lo(3):d_hi(3),nc)
+    integer          :: level, grid_no
+
+    integer i,j,k
+
+    do k = lo(3), hi(3)
+        do j = lo(2), hi(2)
+            do i = lo(1), hi(1)
+                height(i,j,k,1) = 2.0d0 / (1.0d0 - exp(-2.0d0 * dat(i,j,k,1))) - radius
+            end do
+        end do
+    end do
+
+end subroutine ca_derheight
+
 
 end module derive_module

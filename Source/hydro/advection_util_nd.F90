@@ -268,7 +268,7 @@ contains
                 print *,'   '
                 print *,'>>> Error: advection_util_nd.F90::swectoprim ',i, j, k
                 print *,'>>> ... negative density ', uin(i,j,k,URHO)
-                !call bl_error("Error:: advection_util_nd.f90 :: swectoprim")
+                call bl_error("Error:: advection_util_nd.f90 :: swectoprim")
              else if (uin(i,j,k,URHO) /= uin(i,j,k,URHO)) then
                  print *,'   '
                  print *,'>>> Error: advection_util_nd.F90::swectoprim ',i, j, k
@@ -290,11 +290,22 @@ contains
               ! W^2 = 1 + S_jS^j / D^2
               W = sqrt(1.0d0 + ss / uin(i,j,k,URHO)**2)
 
+              if (abs(W - 1.0d0) > 0.0001d0) then
+                  write(*,*) "W = ", W
+              end if
+
               ! initialise
               q(i,j,k,:QW) = uin(i,j,k,:QW)
 
               q(i,j,k,QRHO) = uin(i,j,k,URHO) / W
               q(i,j,k,QU:QW) = uin(i,j,k,UMX:UMZ) / (uin(i,j,k,URHO) * W)
+
+              if (uin(i,j,k,URHO) < 0.0d0 .or. q(i,j,k,QRHO) < 0.0d0 ) then
+                  write(*,*) "D, rho", uin(i,j,k,URHO), q(i,j,k,QRHO)
+                  stop
+              end if
+
+              q(i,j,k,QW+1:) = q(i,j,k,QW+1:) / W
 
           enddo
        enddo

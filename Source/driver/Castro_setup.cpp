@@ -407,6 +407,12 @@ Castro::variableSetUp ()
   derive_lst.addComponent("kineng",desc_lst,State_Type,Xmom,3);
 
   //
+  // height
+  //
+  derive_lst.add("height",IndexType::TheCellType(),1,ca_derheight,the_same_box);
+  derive_lst.addComponent("height",desc_lst,State_Type,Density,1);
+
+  //
   // Sound speed (c)
   //
   derive_lst.add("soundspeed",IndexType::TheCellType(),1,ca_dersoundspeed,the_same_box);

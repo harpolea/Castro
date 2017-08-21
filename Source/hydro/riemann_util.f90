@@ -74,9 +74,7 @@ contains
 
     ! since we advect all 3 velocity components regardless of dimension, this
     ! will be general
-    U(UMX)  = q(QRHO) * W**2 * q(QU)
-    U(UMY)  = q(QRHO) * W**2 * q(QV)
-    U(UMZ)  = q(QRHO) * W**2 * q(QW)
+    U(UMX:UMZ)  = q(QRHO) * W**2 * q(QU:QW)
 
   end subroutine grswe_cons_state
 

@@ -170,8 +170,8 @@ contains
           bnd_fac = bnd_fac_x*bnd_fac_y*bnd_fac_z
 
           ! signal speeds
-          S_l = -1.0d0 !-Smax
-          S_r = 1.0d0 !Smax
+          S_l = -1.0d0!Smax
+          S_r = 1.0d0!Smax
 
           if (S_r <= ZERO) then
              ! R region
