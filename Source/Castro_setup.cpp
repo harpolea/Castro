@@ -449,6 +449,9 @@ Castro::variableSetUp ()
   derive_lst.add("prim_u",IndexType::TheCellType(),1,ca_derprim_u,the_same_box);
   derive_lst.addComponent("prim_u",desc_lst,State_Type,Density,NUM_STATE);
 
+  derive_lst.add("prim_v",IndexType::TheCellType(),1,ca_derprim_v,the_same_box);
+  derive_lst.addComponent("prim_v",desc_lst,State_Type,Density,NUM_STATE);
+
 #if (BL_SPACEDIM == 1)
   //
   // Wave speed u+c

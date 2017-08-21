@@ -1389,7 +1389,7 @@ contains
                         dat,d_lo,d_hi,nc,&
                         lo,hi,domlo, &
                         domhi,dx,xlo,time,dt,bc,level,grid_no) &
-                        bind(C, name="ca_derprim_u")
+                        bind(C, name="ca_derprim_v")
     ! calculate the Lorentz factor
 
     use bl_constants_module
