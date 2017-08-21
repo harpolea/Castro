@@ -6,24 +6,43 @@ module metric_module
 
 contains
 
-    subroutine calculate_gamma_up(gamma_up, glo, ghi)
+    subroutine calculate_gamma_up(lo, hi, gamma_up, glo, ghi, phi, p_lo, p_hi)
 
-        integer, intent(in) :: glo(3), ghi(3)
+        integer, intent(in) :: lo(3), hi(3), glo(3), ghi(3), p_lo(3), p_hi(3)
+        real(rt), intent(in) :: phi(p_lo(1):p_hi(1), p_lo(2):p_hi(2), p_lo(3):p_hi(3))
         real(rt), intent(out) :: gamma_up(glo(1):ghi(1), glo(2):ghi(2), glo(3):ghi(3), 9)
+
+        integer :: i,j,k
 
         gamma_up(:,:,:,:) = 0.0d0
         gamma_up(:,:,:,1) = 1.0d0
         gamma_up(:,:,:,5) = 1.0d0
-        gamma_up(:,:,:,9) = 1.0d0
+
+        do k = lo(3), hi(3)
+            do j = lo(2), hi(2)
+                do i = lo(1), hi(1)
+                    gamma_up(i,j,k,9) = exp(-2.0d0 * phi(i,j,k))
+                end do
+            end do
+        end do
 
     end subroutine calculate_gamma_up
 
-    subroutine calculate_alpha(alpha, alo, ahi)
+    subroutine calculate_alpha(lo, hi, alpha, alo, ahi, phi, p_lo, p_hi)
 
-        integer, intent(in) :: alo(3), ahi(3)
+        integer, intent(in) :: lo(3), hi(3), alo(3), ahi(3), p_lo(3), p_hi(3)
+        real(rt), intent(in) :: phi(p_lo(1):p_hi(1), p_lo(2):p_hi(2), p_lo(3):p_hi(3))
         real(rt), intent(out) :: alpha(alo(1):ahi(1), alo(2):ahi(2), alo(3):ahi(3))
 
-        alpha(:,:,:) = 1.0d0
+        integer :: i,j,k
+
+        do k = lo(3), hi(3)
+            do j = lo(2), hi(2)
+                do i = lo(1), hi(1)
+                    alpha(i,j,k) = exp(-phi(i,j,k))
+                end do
+            end do
+        end do
 
     end subroutine calculate_alpha
 

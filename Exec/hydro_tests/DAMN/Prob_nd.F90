@@ -15,7 +15,7 @@ subroutine amrex_probinit (init,name,namlen,problo,probhi) bind(c)
    integer :: untin
    integer :: i
 
-   namelist /fortin/ h_in, h_out, damn_rad, g
+   namelist /fortin/ h_in, h_out, damn_rad, radius
 
    integer, parameter :: maxlen=127
    character :: probin*(maxlen)
@@ -44,7 +44,7 @@ subroutine amrex_probinit (init,name,namlen,problo,probhi) bind(c)
    h_out = 1.0d0
    damn_rad = 0.2d0
 
-   g = 1.0d0
+   radius = 100.0d0
 
    ! Read namelists -- override the defaults
 
@@ -123,6 +123,8 @@ subroutine ca_initdata(level,time,lo,hi,nscal, &
            else
                state(i,j,k,URHO) = h_out
            end if
+
+           state(i,j,k,URHO) = -0.5d0 * log(1.0d0 - 2.0d0 / (radius+state(i,j,k,URHO)))
 
            state(i,j,k,UFA)  = dye
            state(i,j,k,UFS:UFS-1+nspec) = ONE / nspec

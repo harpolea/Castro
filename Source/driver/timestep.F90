@@ -14,11 +14,11 @@ contains
   subroutine ca_estdt(lo,hi,u,u_lo,u_hi,dx,dt) bind(C, name="ca_estdt")
 
     use network, only: nspec, naux
-    use meth_params_module, only: NVAR, URHO, UMX, UMY, UMZ
+    use meth_params_module, only: NVAR, URHO, UMX, UMY, UMZ, QVAR, NQAUX, QU, QV, QW
     use prob_params_module, only: dim
     use bl_constants_module
     use amrex_fort_module, only : rt => amrex_real
-    use probdata_module, only : g
+    use c_interface_modules, only : ca_ctoprim
 
     implicit none
 
@@ -28,6 +28,10 @@ contains
     real(rt)         :: dx(3), dt, dt_tmp
     real(rt)         :: rhoInv, ux, uy, uz, c, dt1, dt2, dt3
     integer          :: i, j, k
+    real(rt)         :: q(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),QVAR)
+    real(rt)         :: qaux(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),NQAUX)
+
+    call ca_ctoprim(lo, hi, u, u_lo, u_hi, q, lo, hi, qaux, lo, hi, 0)
 
     ! Call EOS for the purpose of computing sound speed
 
@@ -38,11 +42,11 @@ contains
 
              ! Compute velocity and then calculate CFL timestep.
 
-             ux = u(i,j,k,UMX) * rhoInv
-             uy = u(i,j,k,UMY) * rhoInv
-             uz = u(i,j,k,UMZ) * rhoInv
+             ux = q(i,j,k,QU)
+             uy = q(i,j,k,QV)
+             uz = q(i,j,k,QW)
 
-             c = sqrt(g * u(i,j,k,URHO)) ! sound speed is sqrt(gh)
+             c = sqrt(u(i,j,k,URHO)) ! sound speed is sqrt(phi)
 
              dt1 = dx(1)/(c + abs(ux))
              if (dim >= 2) then
@@ -82,11 +86,11 @@ contains
                                bind(C, name="ca_check_timestep")
 
     use bl_constants_module, only: HALF, ONE
-    use meth_params_module, only: NVAR, URHO, UMX, UMZ, cfl
+    use meth_params_module, only: NVAR, QRHO, QU, QW, cfl, QVAR, NQAUX
     use prob_params_module, only: dim
-    use probdata_module, only : g
     use network, only: nspec, naux
     use amrex_fort_module, only : rt => amrex_real
+    use c_interface_modules, only : ca_ctoprim
 
     implicit none
 
@@ -100,6 +104,12 @@ contains
     integer          :: i, j, k
     real(rt)         :: tau_CFL
     real(rt)         :: h, v(3), c
+    real(rt)         :: qo(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),QVAR)
+    real(rt)         :: qn(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),QVAR)
+    real(rt)         :: qaux(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),NQAUX)
+
+    call ca_ctoprim(lo, hi, s_old, so_lo, so_hi, qo, lo, hi, qaux, lo, hi, 0)
+    call ca_ctoprim(lo, hi, s_new, sn_lo, sn_hi, qn, lo, hi, qaux, lo, hi, 0)
 
     do k = lo(3), hi(3)
        do j = lo(2), hi(2)
@@ -121,11 +131,10 @@ contains
              ! want to trigger a retry if the timestep strongly violated
              ! the stability criterion.
 
-            v = HALF * (s_old(i,j,k,UMX:UMZ) / s_old(i,j,k,URHO) + &
-                s_new(i,j,k,UMX:UMZ) / s_new(i,j,k,URHO))
-            h = HALF * (s_old(i,j,k,URHO) + s_new(i,j,k,URHO))
+            v = HALF * (qo(i,j,k,QU:QW) + qn(i,j,k,QU:QW))
+            h = HALF * (qo(i,j,k,QRHO) + qn(i,j,k,QRHO))
 
-            c = sqrt(g * h) ! sound speed is sqrt(gh)
+            c = sqrt(h) ! sound speed is sqrt(phi)
 
             tau_CFL = minval(dx(1:dim) / (c + abs(v(1:dim))))
 

@@ -7,13 +7,11 @@ ca_F90EXE_sources += reconstruct_nd.F90
 
 ca_F90EXE_sources += riemann_nd.F90
 ca_f90EXE_sources += riemann_util.f90
-ca_F90EXE_sources += slope_nd.F90
 
 ca_F90EXE_sources += Castro_mol_$(DIM)d.F90
 ca_F90EXE_sources += riemann_$(DIM)d.F90
 
 ifeq ($(DIM), 2)
-  ca_f90EXE_sources += multid_slope_$(DIM)d.f90
   ca_f90EXE_sources += advection_util_2d.f90
 endif
 

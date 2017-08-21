@@ -77,24 +77,24 @@ contains
 
     real(rt) :: U_hll_state(NVAR), U_state(NVAR), F_state(NVAR), Fr_state(NVAR)
     real(rt) :: S_l, S_r, S_c, Smax_l, Smax_r, Smax
-    real(rt) :: gamma_upl(ilo:ihi, jlo:jhi, domlo(3):domhi(3), 9)
-    real(rt) :: gamma_upr(ilo:ihi, jlo:jhi, domlo(3):domhi(3), 9)
-    real(rt) :: alphal(ilo:ihi, jlo:jhi, domlo(3):domhi(3))
-    real(rt) :: alphar(ilo:ihi, jlo:jhi, domlo(3):domhi(3))
-    real(rt) :: betal(ilo:ihi, jlo:jhi, domlo(3):domhi(3), 3)
-    real(rt) :: betar(ilo:ihi, jlo:jhi, domlo(3):domhi(3), 3)
+    real(rt) :: gamma_upl(ilo:ihi, jlo:jhi, qpd_lo(3):qpd_hi(3), 9)
+    real(rt) :: gamma_upr(ilo:ihi, jlo:jhi, qpd_lo(3):qpd_hi(3), 9)
+    real(rt) :: alphal(ilo:ihi, jlo:jhi, qpd_lo(3):qpd_hi(3))
+    real(rt) :: alphar(ilo:ihi, jlo:jhi, qpd_lo(3):qpd_hi(3))
+    real(rt) :: betal(ilo:ihi, jlo:jhi, qpd_lo(3):qpd_hi(3), 3)
+    real(rt) :: betar(ilo:ihi, jlo:jhi, qpd_lo(3):qpd_hi(3), 3)
 
-    lo = [ilo, jlo, domlo(3)]
-    hi = [ihi, jhi, domhi(3)]
+    lo = [ilo, jlo, qpd_lo(3)]
+    hi = [ihi, jhi, qpd_hi(3)]
 
-    call calculate_alpha(alphal, lo, hi)
-    call calculate_alpha(alphar, lo, hi)
+    call calculate_alpha(lo, hi, alphal, lo, hi, ql(:,:,:,QRHO), qpd_lo, qpd_hi)
+    call calculate_alpha(lo, hi, alphar, lo, hi, qr(:,:,:,QRHO), qpd_lo, qpd_hi)
 
     call calculate_beta(betal, lo, hi)
     call calculate_beta(betar, lo, hi)
 
-    call calculate_gamma_up(gamma_upl, lo, hi)
-    call calculate_gamma_up(gamma_upr, lo, hi)
+    call calculate_gamma_up(lo, hi, gamma_upl, lo, hi, ql(:,:,:,QRHO), qpd_lo, qpd_hi)
+    call calculate_gamma_up(lo, hi, gamma_upr, lo, hi, qr(:,:,:,QRHO), qpd_lo, qpd_hi)
 
     if (idir == 1) then
        iu = QU
@@ -170,8 +170,8 @@ contains
           bnd_fac = bnd_fac_x*bnd_fac_y*bnd_fac_z
 
           ! signal speeds
-          S_l = -Smax
-          S_r = Smax
+          S_l = -1.0d0 !-Smax
+          S_r = 1.0d0 !Smax
 
           if (S_r <= ZERO) then
              ! R region

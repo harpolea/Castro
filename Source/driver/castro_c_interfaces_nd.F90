@@ -1,6 +1,6 @@
 module c_interface_modules
 
-  use meth_params_module, only: NVAR, NQAUX, NQ, QVAR
+  use meth_params_module, only: NVAR, NQAUX, NQ, QVAR, URHO
   use amrex_fort_module, only: rt => amrex_real
 
 #ifdef CUDA
@@ -81,6 +81,7 @@ contains
                         qaux, qa_lo,  qa_hi, idx) bind(C, name = "ca_ctoprim")
 
     use advection_util_module, only: swectoprim
+    use metric_module, only : calculate_gamma_up
 
     implicit none
 
@@ -95,10 +96,15 @@ contains
     real(rt)        , intent(inout) :: qaux(qa_lo(1):qa_hi(1),qa_lo(2):qa_hi(2),qa_lo(3):qa_hi(3),NQAUX)
     integer, intent(in)     :: idx
 
+    real(rt) :: gamma_up(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),9)
+
+    call calculate_gamma_up(lo, hi, gamma_up, lo, hi, uin(:,:,:,URHO), uin_lo, uin_hi)
+
     call swectoprim(lo, hi, &
                  uin, uin_lo, uin_hi, &
                  q,     q_lo,   q_hi, &
-                 qaux, qa_lo,  qa_hi)
+                 qaux, qa_lo,  qa_hi, &
+                 gamma_up, lo, hi)
 
   end subroutine ca_ctoprim
 

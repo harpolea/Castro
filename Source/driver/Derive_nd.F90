@@ -104,7 +104,6 @@ contains
     use meth_params_module, only : URHO
     use bl_constants_module
     use amrex_fort_module, only : rt => amrex_real
-    use probdata_module, only : g
 
     implicit none
 
@@ -125,7 +124,7 @@ contains
        do j = lo(2), hi(2)
           do i = lo(1), hi(1)
 
-              cs = sqrt(g * dat(i,j,k,URHO))
+              cs = sqrt(dat(i,j,k,URHO))
 
              vel(i,j,k,1) = dat(i,j,k,2) / dat(i,j,k,URHO) + cs
           enddo
@@ -144,7 +143,6 @@ contains
     use meth_params_module, only : URHO
     use bl_constants_module
     use amrex_fort_module, only : rt => amrex_real
-    use probdata_module, only : g
 
     implicit none
 
@@ -165,7 +163,7 @@ contains
        do j = lo(2), hi(2)
           do i = lo(1), hi(1)
 
-             cs = sqrt(g * dat(i,j,k,URHO))
+             cs = sqrt(dat(i,j,k,URHO))
 
              vel(i,j,k,1) = dat(i,j,k,2) / dat(i,j,k,URHO) - cs
           end do
@@ -467,7 +465,6 @@ contains
     use meth_params_module, only: URHO
     use bl_constants_module
     use amrex_fort_module, only : rt => amrex_real
-    use probdata_module, only : g
 
     implicit none
 
@@ -503,7 +500,6 @@ contains
     use meth_params_module, only: URHO, UMX, UMZ
     use bl_constants_module
     use amrex_fort_module, only : rt => amrex_real
-    use probdata_module, only : g
 
     implicit none
 
@@ -524,7 +520,7 @@ contains
        do j = lo(2), hi(2)
           do i = lo(1), hi(1)
 
-              cs = sqrt(g * u(i,j,k,URHO))
+              cs = sqrt(u(i,j,k,URHO))
 
              mach(i,j,k,1) = sum(u(i,j,k,UMX:UMZ)**2)**0.5 / (cs * u(i,j,k,URHO))
           enddo

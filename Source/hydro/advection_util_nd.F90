@@ -145,7 +145,6 @@ contains
     use bl_constants_module, only: ZERO, ONE
     use meth_params_module, only: NQ, QRHO, QU, QV, QW, QC, NQAUX
     use prob_params_module, only: dim
-    use probdata_module, only : g
 
     use amrex_fort_module, only : rt => amrex_real
     implicit none
@@ -185,7 +184,7 @@ contains
        do j = lo(2),hi(2)
           do i = lo(1),hi(1)
 
-              c = sqrt(q(i,j,k,QRHO) * g)
+              c = sqrt(q(i,j,k,QRHO))
 
              courx = ( c + abs(q(i,j,k,QU)) ) * dtdx
              coury = ( c + abs(q(i,j,k,QV)) ) * dtdy
@@ -223,7 +222,8 @@ contains
   subroutine swectoprim(lo, hi, &
                      uin, uin_lo, uin_hi, &
                      q,     q_lo,   q_hi, &
-                     qaux, qa_lo,  qa_hi)
+                     qaux, qa_lo,  qa_hi, &
+                     gamma_up, glo, ghi)
 
     use mempool_module, only : bl_allocate, bl_deallocate
     use actual_network, only : nspec, naux
@@ -234,6 +234,7 @@ contains
                                    small_dens
     use bl_constants_module, only: ZERO, HALF, ONE
     use castro_util_module, only: position
+    use metric_module, only: calculate_norm
 
     use amrex_fort_module, only : rt => amrex_real
 
@@ -243,16 +244,19 @@ contains
     integer, intent(in) :: uin_lo(3), uin_hi(3)
     integer, intent(in) :: q_lo(3), q_hi(3)
     integer, intent(in) :: qa_lo(3), qa_hi(3)
+    integer, intent(in) :: glo(3), ghi(3)
 
     real(rt)        , intent(in ) :: uin(uin_lo(1):uin_hi(1),uin_lo(2):uin_hi(2),uin_lo(3):uin_hi(3),NVAR)
+    real(rt)        , intent(in ) :: gamma_up(glo(1):ghi(1),glo(2):ghi(2),glo(3):ghi(3),9)
 
     real(rt)        , intent(inout) :: q(q_lo(1):q_hi(1),q_lo(2):q_hi(2),q_lo(3):q_hi(3),NQ)
     real(rt)        , intent(inout) :: qaux(qa_lo(1):qa_hi(1),qa_lo(2):qa_hi(2),qa_lo(3):qa_hi(3),NQAUX)
 
-    real(rt)        , parameter :: small = 1.d-8
+    real(rt)        , parameter :: small = 1.d-20
 
-    integer          :: i, j, k, g
+    integer          :: i, j, k
     integer          :: n, iq, ipassive
+    real(rt)         :: W, ss
 
     q(:,:,:,:) = 0.0d0
 
@@ -262,29 +266,35 @@ contains
           do i = lo(1), hi(1)
              if (uin(i,j,k,URHO) .le. ZERO) then
                 print *,'   '
-                print *,'>>> Error: advection_util_nd.F90::grctoprim ',i, j, k
+                print *,'>>> Error: advection_util_nd.F90::swectoprim ',i, j, k
                 print *,'>>> ... negative density ', uin(i,j,k,URHO)
-                call bl_error("Error:: advection_util_nd.f90 :: grctoprim")
+                !call bl_error("Error:: advection_util_nd.f90 :: swectoprim")
              else if (uin(i,j,k,URHO) /= uin(i,j,k,URHO)) then
                  print *,'   '
-                 print *,'>>> Error: advection_util_nd.F90::grctoprim ',i, j, k
+                 print *,'>>> Error: advection_util_nd.F90::swectoprim ',i, j, k
                  print *,'>>> ... density is nan ', uin(i,j,k,URHO)
                  write(*,*) uin(:,:,:,URHO)
-                 call bl_error("Error:: advection_util_nd.f90 :: grctoprim")
+                 call bl_error("Error:: advection_util_nd.f90 :: swectoprim")
              else if (uin(i,j,k,URHO) .lt. small_dens) then
                 print *,'   '
-                print *,'>>> Error: advection_util_nd.F90::grctoprim ',i, j, k
+                print *,'>>> Error: advection_util_nd.F90::swectoprim ',i, j, k
                 print *,'>>> ... small density ', uin(i,j,k,URHO)
-                call bl_error("Error:: advection_util_nd.f90 :: grctoprim")
+                call bl_error("Error:: advection_util_nd.f90 :: swectoprim")
              endif
           end do
 
           do i = lo(1), hi(1)
 
+              call calculate_norm(uin(i,j,k,UMX:UMZ), gamma_up(i,j,k,:), ss)
+
+              ! W^2 = 1 + S_jS^j / D^2
+              W = sqrt(1.0d0 + ss / uin(i,j,k,URHO)**2)
+
+              ! initialise
               q(i,j,k,:QW) = uin(i,j,k,:QW)
 
-              q(i,j,k,QRHO) = uin(i,j,k,URHO)
-              q(i,j,k,QU:QW) = uin(i,j,k,UMX:UMZ) / uin(i,j,k,URHO)
+              q(i,j,k,QRHO) = uin(i,j,k,URHO) / W
+              q(i,j,k,QU:QW) = uin(i,j,k,UMX:UMZ) / (uin(i,j,k,URHO) * W)
 
           enddo
        enddo
