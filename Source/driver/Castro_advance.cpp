@@ -107,7 +107,7 @@ Castro::do_advance (Real time,
       // MOL integrator.  Also note -- this does not affect the
       // prediction of the interface state, an explict source will be
       // traced there as needed.
-      do_old_sources(prev_time, dt, amr_iteration, amr_ncycle);
+      //do_old_sources(prev_time, dt, amr_iteration, amr_ncycle);
 
       // store the result of the burn and old-time sources in Sburn for later stages
       MultiFab::Copy(Sburn, S_new, 0, 0, NUM_STATE, S_new.nGrow());
@@ -129,9 +129,6 @@ Castro::do_advance (Real time,
       // start with that state
       MultiFab::Copy(S_new, Sburn, 0, 0, S_new.nComp(), 0);
       MultiFab::Saxpy(S_new, dt, hydro_source, 0, 0, S_new.nComp(), 0);
-
-      // define the temperature now
-      //clean_state(S_new);
 
     }
 

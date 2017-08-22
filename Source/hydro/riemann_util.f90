@@ -54,27 +54,26 @@ contains
 
   subroutine grswe_cons_state(q, U, gamma_up)
     ! calculates the conserved state from the primitive variables
-    use meth_params_module, only: QVAR, QRHO, QU, QV, QW, &
+    use meth_params_module, only: NQ, QRHO, QU, QV, QW, &
          NVAR, URHO, UMX, UMY, UMZ
     use metric_module, only : calculate_scalar_W
 
-    real(rt)        , intent(in)  :: q(QVAR), gamma_up(9)
+    real(rt)        , intent(in)  :: q(NQ), gamma_up(9)
     real(rt)        , intent(out) :: U(NVAR)
-
-    integer  :: ipassive, n, nq
+    
     real(rt) :: W
 
     U(:) = 0.0d0
 
-    U(:UMZ) = q(:UMZ)
+    !U(:UMZ) = q(:UMZ)
 
     call calculate_scalar_W(q(QU:QW), gamma_up, W)
 
     U(URHO) = q(QRHO) * W
 
-    ! since we advect all 3 velocity components regardless of dimension, this
-    ! will be general
-    U(UMX:UMZ)  = q(QRHO) * W**2 * q(QU:QW)
+    U(UMX)  = q(QRHO) * W**2 * q(QU)
+    U(UMY)  = q(QRHO) * W**2 * q(QV)
+    U(UMZ)  = q(QRHO) * W**2 * q(QW)
 
   end subroutine grswe_cons_state
 
@@ -82,10 +81,10 @@ contains
   subroutine grswe_compute_flux(idir, bnd_fac, q, U, F, alpha, beta, gamma_up)
     ! returns the GR flux in direction idir
     use meth_params_module, only: NVAR, URHO, UMX, UMY, UMZ, &
-         QVAR, QRHO, QU, QV, QW
+         NQ, QRHO, QU, QV, QW
 
     integer, intent(in) :: idir, bnd_fac
-    real(rt)        , intent(in) :: U(NVAR), q(QVAR), alpha, beta(3), gamma_up(9)
+    real(rt)        , intent(in) :: U(NVAR), q(NQ), alpha, beta(3), gamma_up(9)
     real(rt)        , intent(out) :: F(NVAR)
 
     integer :: ipassive, n
@@ -101,9 +100,9 @@ contains
 
     u_flx = u_flx - beta(idir) / alpha
 
-    if (bnd_fac == 0) then
-       u_flx = ZERO
-    endif
+    !if (bnd_fac == 0) then
+       !u_flx = ZERO
+    !endif
 
     F(:) = 0.0d0
 
@@ -112,7 +111,15 @@ contains
     F(UMY) = U(UMY) * u_flx
     F(UMZ) = U(UMZ) * u_flx
 
-    F(UMX-1+idir) = F(UMX-1+idir) + 0.5d0 * q(QRHO)**2
+    if (idir==1) then
+        F(UMX) = F(UMX) + 0.5d0 * q(QRHO)**2
+    elseif (idir==2) then
+        F(UMY) = F(UMY) + 0.5d0 * q(QRHO)**2
+    else
+        F(UMZ) = F(UMZ) + 0.5d0 * q(QRHO)**2
+    endif
+
+    !F(UMX-1+idir) = F(UMX-1+idir) + 0.5d0 * q(QRHO)**2
 
   end subroutine grswe_compute_flux
 

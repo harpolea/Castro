@@ -14,7 +14,7 @@ contains
   subroutine ca_estdt(lo,hi,u,u_lo,u_hi,dx,dt) bind(C, name="ca_estdt")
 
     use network, only: nspec, naux
-    use meth_params_module, only: NVAR, URHO, UMX, UMY, UMZ, QVAR, NQAUX, QU, QV, QW
+    use meth_params_module, only: NVAR, QRHO, NQ, NQAUX, QU, QV, QW
     use prob_params_module, only: dim
     use bl_constants_module
     use amrex_fort_module, only : rt => amrex_real
@@ -26,9 +26,9 @@ contains
     integer          :: u_lo(3), u_hi(3)
     real(rt)         :: u(u_lo(1):u_hi(1),u_lo(2):u_hi(2),u_lo(3):u_hi(3),NVAR)
     real(rt)         :: dx(3), dt, dt_tmp
-    real(rt)         :: rhoInv, ux, uy, uz, c, dt1, dt2, dt3
+    real(rt)         :: ux, uy, uz, c, dt1, dt2, dt3
     integer          :: i, j, k
-    real(rt)         :: q(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),QVAR)
+    real(rt)         :: q(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),NQ)
     real(rt)         :: qaux(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),NQAUX)
 
     call ca_ctoprim(lo, hi, u, u_lo, u_hi, q, lo, hi, qaux, lo, hi, 0)
@@ -38,15 +38,13 @@ contains
     do k = lo(3), hi(3)
        do j = lo(2), hi(2)
           do i = lo(1), hi(1)
-             rhoInv = ONE / u(i,j,k,URHO)
-
              ! Compute velocity and then calculate CFL timestep.
 
              ux = q(i,j,k,QU)
              uy = q(i,j,k,QV)
              uz = q(i,j,k,QW)
 
-             c = sqrt(u(i,j,k,URHO)) ! sound speed is sqrt(phi)
+             c = sqrt(q(i,j,k,QRHO)) ! sound speed is sqrt(phi)
 
              dt1 = dx(1)/(c + abs(ux))
              if (dim >= 2) then
@@ -86,7 +84,7 @@ contains
                                bind(C, name="ca_check_timestep")
 
     use bl_constants_module, only: HALF, ONE
-    use meth_params_module, only: NVAR, QRHO, QU, QW, cfl, QVAR, NQAUX
+    use meth_params_module, only: NVAR, QRHO, QU, QW, cfl, NQ, NQAUX
     use prob_params_module, only: dim
     use network, only: nspec, naux
     use amrex_fort_module, only : rt => amrex_real
@@ -104,8 +102,8 @@ contains
     integer          :: i, j, k
     real(rt)         :: tau_CFL
     real(rt)         :: h, v(3), c
-    real(rt)         :: qo(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),QVAR)
-    real(rt)         :: qn(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),QVAR)
+    real(rt)         :: qo(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),NQ)
+    real(rt)         :: qn(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),NQ)
     real(rt)         :: qaux(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),NQAUX)
 
     call ca_ctoprim(lo, hi, s_old, so_lo, so_hi, qo, lo, hi, qaux, lo, hi, 0)

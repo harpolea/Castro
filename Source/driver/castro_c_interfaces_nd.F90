@@ -98,6 +98,8 @@ contains
 
     real(rt) :: gamma_up(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),9)
 
+    ! passing in PhiW here rather than Phi -  may actually need to root
+    ! find here instead
     call calculate_gamma_up(lo, hi, gamma_up, lo, hi, uin(:,:,:,URHO), uin_lo, uin_hi)
 
     call swectoprim(lo, hi, &

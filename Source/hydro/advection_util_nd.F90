@@ -229,8 +229,7 @@ contains
     use actual_network, only : nspec, naux
     use meth_params_module, only : NVAR, URHO, UMX, UMY, UMZ, &
                                    QRHO, QU, QV, QW, &
-                                   NQ, QC, QCSML, QGAMC, QDPDR, QDPDE, NQAUX, &
-                                   npassive, upass_map, qpass_map, dual_energy_eta1, &
+                                   NQ, NQAUX, &
                                    small_dens
     use bl_constants_module, only: ZERO, HALF, ONE
     use castro_util_module, only: position
@@ -255,7 +254,6 @@ contains
     real(rt)        , parameter :: small = 1.d-20
 
     integer          :: i, j, k
-    integer          :: n, iq, ipassive
     real(rt)         :: W, ss
 
     q(:,:,:,:) = 0.0d0
@@ -290,27 +288,32 @@ contains
               ! W^2 = 1 + S_jS^j / D^2
               W = sqrt(1.0d0 + ss / uin(i,j,k,URHO)**2)
 
-              if (abs(W - 1.0d0) > 0.0001d0) then
-                  write(*,*) "W = ", W
-              end if
+              !if (abs(W - 1.0d0) > 0.0001d0) then
+                 ! write(*,*) "W = ", W
+              !end if
+
+              ! HACK
+              W = 1.0d0
 
               ! initialise
-              q(i,j,k,:QW) = uin(i,j,k,:QW)
+              q(i,j,k,:) = 0.0d0!uin(i,j,k,:QW)
 
               q(i,j,k,QRHO) = uin(i,j,k,URHO) / W
-              q(i,j,k,QU:QW) = uin(i,j,k,UMX:UMZ) / (uin(i,j,k,URHO) * W)
+              q(i,j,k,QU) = uin(i,j,k,UMX) / (uin(i,j,k,URHO) * W)
+              q(i,j,k,QV) = uin(i,j,k,UMY) / (uin(i,j,k,URHO) * W)
+              q(i,j,k,QW) = uin(i,j,k,UMZ) / (uin(i,j,k,URHO) * W)
 
               if (uin(i,j,k,URHO) < 0.0d0 .or. q(i,j,k,QRHO) < 0.0d0 ) then
                   write(*,*) "D, rho", uin(i,j,k,URHO), q(i,j,k,QRHO)
                   stop
               end if
 
-              q(i,j,k,QW+1:) = q(i,j,k,QW+1:) / W
+              !q(i,j,k,QW+1:) = q(i,j,k,QW+1:) / W
 
           enddo
        enddo
     enddo
 
-end subroutine swectoprim
+  end subroutine swectoprim
 
 end module advection_util_module

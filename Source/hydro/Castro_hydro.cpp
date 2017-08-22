@@ -27,8 +27,8 @@ Castro::construct_mol_hydro_source(Real time, Real dt)
 
   sources_for_hydro.setVal(0.0);
 
-  for (int n = 0; n < num_src; ++n)
-    MultiFab::Add(sources_for_hydro, *old_sources[n], 0, 0, NUM_STATE, 0);
+  //for (int n = 0; n < num_src; ++n)
+//    MultiFab::Add(sources_for_hydro, *old_sources[n], 0, 0, NUM_STATE, 0);
 
   int finest_level = parent->finestLevel();
 
@@ -96,12 +96,6 @@ Castro::construct_mol_hydro_source(Real time, Real dt)
     	  flux[i].resize(bxtmp,NUM_STATE);
     	}
 
-#if (BL_SPACEDIM <= 2)
-    	if (!Geometry::IsCartesian()) {
-    	  pradial.resize(amrex::surroundingNodes(bx,0),1);
-    	}
-#endif
-
     	ca_mol_single_stage
     	  (&time,
     	   lo, hi, domain_lo, domain_hi,
@@ -136,11 +130,6 @@ Castro::construct_mol_hydro_source(Real time, Real dt)
     				      mfi.nodaltilebox(i), mfi.nodaltilebox(i), 0, 0, NUM_STATE);
     	}
 
-#if (BL_SPACEDIM <= 2)
-    	if (!Geometry::IsCartesian()) {
-    	  P_radial[mfi].plus(pradial,mfi.nodaltilebox(0),0,0,1);
-    	}
-#endif
       } // MFIter loop
 
 #ifdef _OPENMP

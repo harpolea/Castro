@@ -20,7 +20,7 @@ subroutine ca_mol_single_stage(time, &
                                vol, vol_lo, vol_hi, &
                                courno, verbose) bind(C, name="ca_mol_single_stage")
 
-  use meth_params_module, only : NQ, QVAR, NVAR, UMX, &
+  use meth_params_module, only : NQ, QVAR, NVAR, UMX, UMY,&
                                  NQAUX, QFS, QFX, QRHO,&
                                  first_order_hydro, difmag, URHO
   use advection_util_2d_module, only : normalize_species_fluxes
@@ -168,8 +168,6 @@ subroutine ca_mol_single_stage(time, &
 
   deallocate(qxm, qxp, qym, qyp)
 
-  !stop
-
   ! Normalize the species fluxes
   call normalize_species_fluxes(flux1, flux1_lo, flux1_hi, &
                                 flux2, flux2_lo, flux2_hi, &
@@ -185,6 +183,10 @@ subroutine ca_mol_single_stage(time, &
   do n = 1, NVAR
      do j = lo(2), hi(2)
         do i = lo(1), hi(1)
+
+            !write(*,*) "f1_ux", flux1(i,j,UMY) - flux1(i+1,j,UMY), "f2_uy", flux2(i,j,UMX) - flux2(i,j+1,UMX)
+
+            update_flux(i,j,n) = 0.0d0
 
            update(i,j,n) = update(i,j,n) + &
                 ( flux1(i,j,n) * area1(i,j) - flux1(i+1,j,n) * area1(i+1,j) + &
