@@ -1,6 +1,6 @@
 module c_interface_modules
 
-  use meth_params_module, only: NVAR, NQAUX, NQ, QVAR, URHO
+  use meth_params_module, only: NVAR, NQAUX, NQ, URHO
   use amrex_fort_module, only: rt => amrex_real
 
 #ifdef CUDA

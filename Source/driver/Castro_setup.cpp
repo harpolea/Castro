@@ -413,6 +413,24 @@ Castro::variableSetUp ()
   derive_lst.addComponent("height",desc_lst,State_Type,Density,1);
 
   //
+  // primitive u
+  //
+  derive_lst.add("prim_u",IndexType::TheCellType(),1,ca_derprim_u,the_same_box);
+  derive_lst.addComponent("prim_u",desc_lst,State_Type,Density,NUM_STATE);
+
+  //
+  // primitive u
+  //
+  derive_lst.add("prim_v",IndexType::TheCellType(),1,ca_derprim_v,the_same_box);
+  derive_lst.addComponent("prim_v",desc_lst,State_Type,Density,NUM_STATE);
+
+  //
+  // Lorentz factor
+  //
+  derive_lst.add("W",IndexType::TheCellType(),1,ca_derW,the_same_box);
+  derive_lst.addComponent("W",desc_lst,State_Type,Density,NUM_STATE);
+
+  //
   // Sound speed (c)
   //
   derive_lst.add("soundspeed",IndexType::TheCellType(),1,ca_dersoundspeed,the_same_box);
