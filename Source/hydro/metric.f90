@@ -21,7 +21,7 @@ contains
         do k = lo(3), hi(3)
             do j = lo(2), hi(2)
                 do i = lo(1), hi(1)
-                    gamma_up(i,j,k,9) = 1.0d0!exp(-2.0d0 * phi(i,j,k))
+                    gamma_up(i,j,k,9) = exp(-2.0d0 * phi(i,j,k))
                 end do
             end do
         end do
@@ -39,7 +39,7 @@ contains
         do k = lo(3), hi(3)
             do j = lo(2), hi(2)
                 do i = lo(1), hi(1)
-                    alpha(i,j,k) = 1.0d0!exp(-phi(i,j,k))
+                    alpha(i,j,k) = exp(-phi(i,j,k))
                 end do
             end do
         end do
@@ -88,7 +88,7 @@ contains
             2.0d0 * v(2) * v(3) * gamma_up(6) + &
             v(3)**2 * gamma_up(9)
 
-        W = 1.0d0 !/ sqrt(1.0d0 - W)
+        W = 1.0d0 / sqrt(1.0d0 - W)
 
     end subroutine calculate_scalar_W
 

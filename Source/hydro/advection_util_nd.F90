@@ -33,19 +33,6 @@ contains
     real(rt)        , intent(in) ::  vol( vol_lo(1): vol_hi(1), vol_lo(2): vol_hi(2), vol_lo(3): vol_hi(3))
     real(rt)        , intent(inout) :: frac_change
 
-    ! Local variables
-    integer          :: i,ii,j,jj,k,kk
-    integer          :: i_set, j_set, k_set
-    real(rt)         :: max_dens
-    real(rt)         :: qnew(NQ)
-    integer          :: num_positive_zones
-
-    logical :: have_reset
-
-    real(rt)     :: qin(uin_lo(1):uin_hi(1),uin_lo(2):uin_hi(2),uin_lo(3):uin_hi(3),NQ)
-    real(rt)   :: qaux(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),NQAUX)
-    real(rt)     :: qout(uout_lo(1):uout_hi(1),uout_lo(2):uout_hi(2),uout_lo(3):uout_hi(3),NQ)
-
     return
 
   end subroutine enforce_minimum_density
@@ -288,27 +275,13 @@ contains
               ! W^2 = 1 + S_jS^j / D^2
               W = sqrt(1.0d0 + ss / uin(i,j,k,URHO)**2)
 
-              !if (abs(W - 1.0d0) > 0.0001d0) then
-                 ! write(*,*) "W = ", W
-              !end if
-
-              ! HACK
-              W = 1.0d0
-
               ! initialise
-              q(i,j,k,:) = 0.0d0!uin(i,j,k,:QW)
+              q(i,j,k,:) = 0.0d0
 
               q(i,j,k,QRHO) = uin(i,j,k,URHO) / W
               q(i,j,k,QU) = uin(i,j,k,UMX) / (uin(i,j,k,URHO) * W)
               q(i,j,k,QV) = uin(i,j,k,UMY) / (uin(i,j,k,URHO) * W)
               q(i,j,k,QW) = uin(i,j,k,UMZ) / (uin(i,j,k,URHO) * W)
-
-              if (uin(i,j,k,URHO) < 0.0d0 .or. q(i,j,k,QRHO) < 0.0d0 ) then
-                  write(*,*) "D, rho", uin(i,j,k,URHO), q(i,j,k,QRHO)
-                  stop
-              end if
-
-              !q(i,j,k,QW+1:) = q(i,j,k,QW+1:) / W
 
           enddo
        enddo

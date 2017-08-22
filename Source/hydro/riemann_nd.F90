@@ -87,7 +87,6 @@ contains
     lo = [ilo, jlo, 0]
     hi = [ihi, jhi, 0]
 
-
     call calculate_alpha(lo, hi, alphal, lo, hi, ql(:,:,kc,QRHO), [qpd_lo(1), qpd_lo(2), 0], [qpd_hi(1), qpd_hi(2), 0])
     call calculate_alpha(lo, hi, alphar, lo, hi, qr(:,:,kc,QRHO), [qpd_lo(1), qpd_lo(2), 0], [qpd_hi(1), qpd_hi(2), 0])
 

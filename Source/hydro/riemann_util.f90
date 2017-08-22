@@ -60,20 +60,16 @@ contains
 
     real(rt)        , intent(in)  :: q(NQ), gamma_up(9)
     real(rt)        , intent(out) :: U(NVAR)
-    
+
     real(rt) :: W
 
     U(:) = 0.0d0
-
-    !U(:UMZ) = q(:UMZ)
 
     call calculate_scalar_W(q(QU:QW), gamma_up, W)
 
     U(URHO) = q(QRHO) * W
 
-    U(UMX)  = q(QRHO) * W**2 * q(QU)
-    U(UMY)  = q(QRHO) * W**2 * q(QV)
-    U(UMZ)  = q(QRHO) * W**2 * q(QW)
+    U(UMX:UMZ)  = q(QRHO) * W**2 * q(QU:QW)
 
   end subroutine grswe_cons_state
 
@@ -100,9 +96,9 @@ contains
 
     u_flx = u_flx - beta(idir) / alpha
 
-    !if (bnd_fac == 0) then
-       !u_flx = ZERO
-    !endif
+    if (bnd_fac == 0) then
+       u_flx = ZERO
+    endif
 
     F(:) = 0.0d0
 
@@ -111,15 +107,7 @@ contains
     F(UMY) = U(UMY) * u_flx
     F(UMZ) = U(UMZ) * u_flx
 
-    if (idir==1) then
-        F(UMX) = F(UMX) + 0.5d0 * q(QRHO)**2
-    elseif (idir==2) then
-        F(UMY) = F(UMY) + 0.5d0 * q(QRHO)**2
-    else
-        F(UMZ) = F(UMZ) + 0.5d0 * q(QRHO)**2
-    endif
-
-    !F(UMX-1+idir) = F(UMX-1+idir) + 0.5d0 * q(QRHO)**2
+    F(UMX-1+idir) = F(UMX-1+idir) + 0.5d0 * q(QRHO)**2
 
   end subroutine grswe_compute_flux
 

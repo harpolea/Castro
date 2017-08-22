@@ -184,10 +184,6 @@ subroutine ca_mol_single_stage(time, &
      do j = lo(2), hi(2)
         do i = lo(1), hi(1)
 
-            !write(*,*) "f1_ux", flux1(i,j,UMY) - flux1(i+1,j,UMY), "f2_uy", flux2(i,j,UMX) - flux2(i,j+1,UMX)
-
-            update_flux(i,j,n) = 0.0d0
-
            update(i,j,n) = update(i,j,n) + &
                 ( flux1(i,j,n) * area1(i,j) - flux1(i+1,j,n) * area1(i+1,j) + &
                   flux2(i,j,n) * area2(i,j) - flux2(i,j+1,n) * area2(i,j+1) ) / vol(i,j)
@@ -218,6 +214,5 @@ subroutine ca_mol_single_stage(time, &
         enddo
      enddo
   enddo
-
 
 end subroutine ca_mol_single_stage
