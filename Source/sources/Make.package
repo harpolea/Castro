@@ -1,0 +1,10 @@
+# source term sources -- this is always included
+
+CEXE_sources += Castro_sources.cpp
+CEXE_sources += Castro_external.cpp
+
+ifeq ($(DIMENSION_AGNOSTIC), TRUE)
+  ca_F90EXE_sources += ext_src_nd.F90
+else
+  ca_f90EXE_sources += ext_src_$(DIM)d.f90
+endif

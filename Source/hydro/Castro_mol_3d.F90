@@ -1,0 +1,302 @@
+! advection routines in support of method of lines integration
+
+subroutine ca_mol_single_stage(time, &
+                               lo, hi, domlo, domhi, &
+                               stage_weight, &
+                               uin, uin_lo, uin_hi, &
+                               uout, uout_lo, uout_hi, &
+                               q, q_lo, q_hi, &
+                               qaux, qa_lo, qa_hi, &
+                               srcU, srU_lo, srU_hi, &
+                               update, updt_lo, updt_hi, &
+                               update_flux, uf_lo, uf_hi, &
+                               dx, dt, &
+                               flux1, flux1_lo, flux1_hi, &
+                               flux2, flux2_lo, flux2_hi, &
+                               flux3, flux3_lo, flux3_hi, &
+                               area1, area1_lo, area1_hi, &
+                               area2, area2_lo, area2_hi, &
+                               area3, area3_lo, area3_hi, &
+                               vol, vol_lo, vol_hi, &
+                               courno, verbose) bind(C, name="ca_mol_single_stage")
+
+  use mempool_module, only : bl_allocate, bl_deallocate
+  use meth_params_module, only : NQ, QVAR, NVAR, NQAUX
+  use advection_util_module, only : compute_cfl, normalize_species_fluxes
+  use bl_constants_module, only : ZERO, HALF, ONE
+  use riemann_module, only: cmpflx
+  use metric_module, only: calculate_gamma_up
+  use reconstruct_module, only : compute_reconstruction_tvd
+  use amrex_fort_module, only : rt => amrex_real
+  use eos_type_module, only : eos_t, eos_input_rt
+  use eos_module, only : eos
+
+  implicit none
+
+  integer, intent(in) :: lo(3), hi(3), verbose
+  integer, intent(in) ::  domlo(3), domhi(3)
+  real(rt), intent(in) :: stage_weight
+  integer, intent(in) :: uin_lo(3), uin_hi(3)
+  integer, intent(in) :: uout_lo(3), uout_hi(3)
+  integer, intent(in) :: q_lo(3), q_hi(3)
+  integer, intent(in) :: qa_lo(3), qa_hi(3)
+  integer, intent(in) :: srU_lo(3), srU_hi(3)
+  integer, intent(in) :: updt_lo(3), updt_hi(3)
+  integer, intent(in) :: uf_lo(3), uf_hi(3)
+  integer, intent(in) :: flux1_lo(3), flux1_hi(3)
+  integer, intent(in) :: flux2_lo(3), flux2_hi(3)
+  integer, intent(in) :: flux3_lo(3), flux3_hi(3)
+  integer, intent(in) :: area1_lo(3), area1_hi(3)
+  integer, intent(in) :: area2_lo(3), area2_hi(3)
+  integer, intent(in) :: area3_lo(3), area3_hi(3)
+  integer, intent(in) :: vol_lo(3), vol_hi(3)
+
+  real(rt)        , intent(in) :: uin(uin_lo(1):uin_hi(1), uin_lo(2):uin_hi(2), uin_lo(3):uin_hi(3), NVAR)
+  real(rt)        , intent(inout) :: uout(uout_lo(1):uout_hi(1), uout_lo(2):uout_hi(2), uout_lo(3):uout_hi(3), NVAR)
+  real(rt)        , intent(inout) :: q(q_lo(1):q_hi(1), q_lo(2):q_hi(2), q_lo(3):q_hi(3), NQ)
+  real(rt)        , intent(inout) :: qaux(qa_lo(1):qa_hi(1), qa_lo(2):qa_hi(2), qa_lo(3):qa_hi(3), NQAUX)
+  real(rt)        , intent(in) :: srcU(srU_lo(1):srU_hi(1), srU_lo(2):srU_hi(2), srU_lo(3):srU_hi(3), NVAR)
+  real(rt)        , intent(inout) :: update(updt_lo(1):updt_hi(1), updt_lo(2):updt_hi(2), updt_lo(3):updt_hi(3), NVAR)
+  real(rt)        , intent(inout) :: update_flux(uf_lo(1):uf_hi(1), uf_lo(2):uf_hi(2), uf_lo(3):uf_hi(3), NVAR)
+  real(rt)        , intent(inout) :: flux1(flux1_lo(1):flux1_hi(1), flux1_lo(2):flux1_hi(2), flux1_lo(3):flux1_hi(3), NVAR)
+  real(rt)        , intent(inout) :: flux2(flux2_lo(1):flux2_hi(1), flux2_lo(2):flux2_hi(2), flux2_lo(3):flux2_hi(3), NVAR)
+  real(rt)        , intent(inout) :: flux3(flux3_lo(1):flux3_hi(1), flux3_lo(2):flux3_hi(2), flux3_lo(3):flux3_hi(3), NVAR)
+  real(rt)        , intent(in) :: area1(area1_lo(1):area1_hi(1), area1_lo(2):area1_hi(2), area1_lo(3):area1_hi(3))
+  real(rt)        , intent(in) :: area2(area2_lo(1):area2_hi(1), area2_lo(2):area2_hi(2), area2_lo(3):area2_hi(3))
+  real(rt)        , intent(in) :: area3(area3_lo(1):area3_hi(1), area3_lo(2):area3_hi(2), area3_lo(3):area3_hi(3))
+  real(rt)        , intent(in) :: vol(vol_lo(1):vol_hi(1), vol_lo(2):vol_hi(2), vol_lo(3):vol_hi(3))
+  real(rt)        , intent(in) :: dx(3), dt, time
+  real(rt)        , intent(inout) :: courno
+
+  ! temporary interface values of the parabola
+  real(rt)        , pointer :: sxm(:,:,:), sym(:,:,:), szm(:,:,:)
+  real(rt)        , pointer :: sxp(:,:,:), syp(:,:,:), szp(:,:,:)
+
+  real(rt)        , pointer :: qxm(:,:,:,:), qym(:,:,:,:), qzm(:,:,:,:)
+  real(rt)        , pointer :: qxp(:,:,:,:), qyp(:,:,:,:), qzp(:,:,:,:)
+
+  integer :: It_lo(3), It_hi(3)
+  integer :: st_lo(3), st_hi(3)
+
+  real(rt) , pointer :: gamma_up(:,:,:,:)
+
+  integer :: i, j, k, n
+  integer :: kc, km, kt, k3d
+
+  type (eos_t) :: eos_state
+
+  It_lo = [lo(1) - 1, lo(2) - 1, 1]
+  It_hi = [hi(1) + 1, hi(2) + 1, 2]
+
+  st_lo = [lo(1) - 2, lo(2) - 2, 1]
+  st_hi = [hi(1) + 2, hi(2) + 2, 2]
+
+  call bl_allocate(sxm, st_lo, st_hi)
+  call bl_allocate(sxp, st_lo, st_hi)
+  call bl_allocate(sym, st_lo, st_hi)
+  call bl_allocate(syp, st_lo, st_hi)
+  call bl_allocate(szm, st_lo, st_hi)
+  call bl_allocate(szp, st_lo, st_hi)
+
+  call bl_allocate ( qxm, It_lo, It_hi, NQ)
+  call bl_allocate ( qxp, It_lo, It_hi, NQ)
+
+  call bl_allocate ( qym, It_lo, It_hi, NQ)
+  call bl_allocate ( qyp, It_lo, It_hi, NQ)
+
+  call bl_allocate ( qzm, It_lo, It_hi, NQ)
+  call bl_allocate ( qzp, It_lo, It_hi, NQ)
+
+  call bl_allocate(gamma_up, It_lo, It_hi, 9)
+
+  call calculate_gamma_up(gamma_up, It_lo, It_hi)
+
+  ! Check if we have violated the CFL criterion.
+  call compute_cfl(q, q_lo, q_hi, &
+                   qaux, qa_lo, qa_hi, &
+                   lo, hi, dt, dx, courno)
+
+  ! We come into this routine with a 3-d box of data, but we operate
+  ! on it locally by considering 2 planes that encompass all of the
+  ! x, y indices of the original box, but each plane corresponds to
+  ! a single z index.
+  !
+  ! In the notation below, k3d will always been the index into the
+  ! original 3-d box.  kc will be the z-index in the local "planar"
+  ! data and km will be the previously used index in the local
+  ! planar data.
+  !
+  ! With each loop in the k direction, we will overwrite the old
+  ! data in the planar arrays.
+
+  ! Initialize kc (current k-level) and km (previous k-level)
+  kc = 1
+  km = 2
+
+  do k3d = lo(3)-1, hi(3)+1
+
+     ! Swap pointers to levels
+     kt = km
+     km = kc
+     kc = kt
+
+     do n = 1, NQ
+        call compute_reconstruction_tvd(q(:,:,:,n), q_lo, q_hi, &
+                             sxm, sxp, sym, &
+                             syp, szm, szp, st_lo, st_hi, &
+                             lo, hi, dx, k3d, kc)
+
+        ! Construct the interface states -- this is essentially just a
+        ! reshuffling of interface states from zone-center indexing to
+        ! edge-centered indexing
+        do j = lo(2)-1, hi(2)+1
+           do i = lo(1)-1, hi(1)+1
+
+              ! x-edges
+
+              ! left state at i-1/2 interface
+              qxm(i,j,kc,n) = sxp(i-1,j,kc)
+
+              ! right state at i-1/2 interface
+              qxp(i,j,kc,n) = sxm(i,j,kc)
+
+              ! y-edges
+
+              ! left state at j-1/2 interface
+              qym(i,j,kc,n) = syp(i,j-1,kc)
+
+              ! right state at j-1/2 interface
+              qyp(i,j,kc,n) = sym(i,j,kc)
+
+              ! z-edges
+
+              ! left state at k3d-1/2 interface
+              qzm(i,j,kc,n) = szp(i,j,km)
+
+              ! right state at k3d-1/2 interface
+              qzp(i,j,kc,n) = szm(i,j,kc)
+
+           enddo
+        enddo
+     enddo
+
+
+     !write(*,*) "sxp: ", qxp(lo(1), lo(2), kc, :)
+     !write(*,*) "syp: ", qyp(lo(1), lo(2), kc, :)
+     !write(*,*) "szp: ", qzp(lo(1), lo(2), kc, :)
+     !stop
+
+     if (k3d >= lo(3)) then
+
+        ! Compute F^x at kc (k3d)
+        if (k3d <= hi(3)) then
+           call cmpflx(qxm, qxp, It_lo, It_hi, &
+                       flux1, flux1_lo, flux1_hi, &
+                       qaux, qa_lo, qa_hi, &
+                       1, lo(1), hi(1), lo(2), hi(2), kc, k3d, k3d, &
+                       domlo, domhi, gamma_up, It_lo, It_hi)
+
+           ! Compute F^y at kc (k3d)
+           call cmpflx(qym, qyp, It_lo, It_hi, &
+                       flux2, flux2_lo, flux2_hi, &
+                       qaux, qa_lo, qa_hi, &
+                       2, lo(1), hi(1), lo(2), hi(2), kc, k3d, k3d, &
+                       domlo, domhi, gamma_up, It_lo, It_hi)
+
+        endif
+
+        ! Compute F^z at kc (k3d)
+
+        call cmpflx(qzm, qzp, It_lo, It_hi, &
+                    flux3, flux3_lo, flux3_hi, &
+                    qaux, qa_lo, qa_hi, &
+                    3, lo(1), hi(1), lo(2), hi(2), kc, k3d, k3d, &
+                    domlo, domhi, gamma_up, It_lo, It_hi)
+     endif
+  enddo
+
+  call bl_deallocate(gamma_up)
+
+  call bl_deallocate(sxm)
+  call bl_deallocate(sxp)
+  call bl_deallocate(sym)
+  call bl_deallocate(syp)
+  call bl_deallocate(szm)
+  call bl_deallocate(szp)
+
+  call bl_deallocate(qxm)
+  call bl_deallocate(qxp)
+
+  call bl_deallocate(qym)
+  call bl_deallocate(qyp)
+
+  call bl_deallocate(qzm)
+  call bl_deallocate(qzp)
+
+  !write(*,*) "flux1: ", flux1(lo(1), lo(2), lo(3), :)
+  !write(*,*) "flux2: ", flux2(lo(1), lo(2), lo(3), :)
+  !write(*,*) "flux3: ", flux3(lo(1), lo(2), lo(3), :)
+  !stop
+
+  call normalize_species_fluxes(flux1,flux1_lo,flux1_hi, &
+                                flux2,flux2_lo,flux2_hi, &
+                                flux3,flux3_lo,flux3_hi, &
+                                lo,hi)
+
+  ! For hydro, we will create an update source term that is
+  ! essentially the flux divergence.  This can be added with dt to
+  ! get the update
+  do n = 1, NVAR
+     do k = lo(3), hi(3)
+        do j = lo(2), hi(2)
+           do i = lo(1), hi(1)
+
+              update(i,j,k,n) = update(i,j,k,n) + &
+                   (flux1(i,j,k,n) * area1(i,j,k) - flux1(i+1,j,k,n) * area1(i+1,j,k) + &
+                    flux2(i,j,k,n) * area2(i,j,k) - flux2(i,j+1,k,n) * area2(i,j+1,k) + &
+                    flux3(i,j,k,n) * area3(i,j,k) - flux3(i,j,k+1,n) * area3(i,j,k+1) ) / vol(i,j,k)
+
+              ! for storage
+              update_flux(i,j,k,n) = update_flux(i,j,k,n) + &
+                   stage_weight * update(i,j,k,n)
+
+              update(i,j,k,n) = update(i,j,k,n) + srcU(i,j,k,n)
+
+           enddo
+        enddo
+     enddo
+  enddo
+
+  ! Scale the fluxes for the form we expect later in refluxing.
+
+  do n = 1, NVAR
+     do k = lo(3), hi(3)
+        do j = lo(2), hi(2)
+           do i = lo(1), hi(1) + 1
+              flux1(i,j,k,n) = dt * flux1(i,j,k,n) * area1(i,j,k)
+           enddo
+        enddo
+     enddo
+  enddo
+
+  do n = 1, NVAR
+     do k = lo(3), hi(3)
+        do j = lo(2), hi(2) + 1
+           do i = lo(1), hi(1)
+              flux2(i,j,k,n) = dt * flux2(i,j,k,n) * area2(i,j,k)
+           enddo
+        enddo
+     enddo
+  enddo
+
+  do n = 1, NVAR
+     do k = lo(3), hi(3) + 1
+        do j = lo(2), hi(2)
+           do i = lo(1), hi(1)
+              flux3(i,j,k,n) = dt * flux3(i,j,k,n) * area3(i,j,k)
+           enddo
+        enddo
+     enddo
+  enddo
+
+end subroutine ca_mol_single_stage
