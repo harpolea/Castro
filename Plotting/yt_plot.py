@@ -4,6 +4,7 @@ import sys
 import re
 from matplotlib import animation
 from matplotlib import rc_context
+from functools import partial
 
 class Simulation(object):
 
@@ -117,31 +118,43 @@ class Simulation(object):
 
         return p
 
-    def load_time_series(self):
+    def load_time_series(self, force=False, setup_function=None):
         """
         Load output data for entire time series.
-        """
-        self.ts = DatasetSeries(self.plot_folders)
 
-    def plot_animation(self, field, animation_name=None, plot_modifier_functions=[]):
+        Parameters
+        ----------
+        force : bool
+            Force reload time series data. Defaults to false, so time series data only loaded if not currently there.
+        setup_function : callable, accepts a ds
+            Function passed to DatasetSeries constructor which is called whenever a dataset is loaded. If wish to use multiple functions here, recommend putting them inside a wrapper function. For functions with multiple arguments, recommend using partial to set all arguments other than ds (or could again use a wrapper function).
+        """
+        if self.ts is None or force:
+            self.ts = DatasetSeries(self.plot_folders, setup_function=setup_function)
+
+    def plot_animation(self, field, animation_name=None, plot_modifier_functions=[], save=True):
         """
         Create an animation for entire time series for given field and saves to file.
 
         Parameters
         ----------
-        field :
+        field : string
             Field to be plotted
-        animation_name :
+        animation_name : string
             Name of file to save animation to. Defaults to an mp4
             file with same prefix as dataset.
-        plot_modifier_functions :
+        plot_modifier_functions : list of callable, accept plot object
             A list of functions to apply to plot.
         """
-        if self.ts is None:
-            self.load_time_series()
+        self.load_time_series()
 
         plot = SlicePlot(self.ts[0], 'z', field, origin='native')
         plot.set_width(1., 'unitary')
+
+        # we want the colorbar to stay the same throughout - shall default to using the limits of the first dataset in the time series, but this can be overridden by using the plot modifier functions.
+        colourbar_limits = self.ts[0].all_data().quantities.extrema(field)
+        plot.set_zlim(field, colourbar_limits[0], colourbar_limits[1])
+
         for fun in plot_modifier_functions:
             fun(plot)
 
@@ -154,13 +167,36 @@ class Simulation(object):
 
         anim = animation.FuncAnimation(fig, animate, frames=len(self.ts))
 
-        if animation_name is None:
-            animation_name = self.prefix + '.mp4'
+        if save:
+            if animation_name is None:
+                animation_name = self.prefix + '.mp4'
 
-        with rc_context({'mathtext.fontset': 'stix'}):
-            anim.save(animation_name)
+            with rc_context({'mathtext.fontset': 'stix'}):
+                anim.save(animation_name)
 
         return anim
+
+    def set_display_name(self, old_name, new_name, ds):
+        """
+        Sets the name of the variable used in the plot.
+
+        Parameters
+        ----------
+        old_name : string
+            existing field name
+        new_name
+        """
+        # this was far harder to do than it should be.
+        # why is there no built in function for this????
+        try:
+            ds.field_info
+        except AttributeError:
+            ds.create_field_info()
+
+        ds.field_info[('boxlib', old_name)].display_name = new_name
+
+        if new_name not in self.fields:
+            self.fields.append(new_name)
 
     class InvalidFieldError(Exception):
         # Raise if field does not exist in dataset
