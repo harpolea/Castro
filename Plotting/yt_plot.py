@@ -5,6 +5,9 @@ import re
 from matplotlib import animation
 from matplotlib import rc_context
 from functools import partial
+import os
+import shutil
+from ffmpy import FFmpeg
 
 class Simulation(object):
 
@@ -118,7 +121,7 @@ class Simulation(object):
 
         return p
 
-    def load_time_series(self, force=False, setup_function=None):
+    def load_time_series(self, force=False, setup_function=None, n_processors=True):
         """
         Load output data for entire time series.
 
@@ -128,9 +131,11 @@ class Simulation(object):
             Force reload time series data. Defaults to false, so time series data only loaded if not currently there.
         setup_function : callable, accepts a ds
             Function passed to DatasetSeries constructor which is called whenever a dataset is loaded. If wish to use multiple functions here, recommend putting them inside a wrapper function. For functions with multiple arguments, recommend using partial to set all arguments other than ds (or could again use a wrapper function).
+        n_processors : bool or int
+            Behaviour when .piter() is called on DatasetSeries object. If True or integer, will be iterated with that integer number of processors assigned to each parameter file provided in loop.
         """
         if self.ts is None or force:
-            self.ts = DatasetSeries(self.plot_folders, setup_function=setup_function)
+            self.ts = DatasetSeries(self.plot_folders, setup_function=setup_function, parallel=n_processors)
 
     def plot_animation(self, field, animation_name=None, plot_modifier_functions=[], save=True):
         """
@@ -151,7 +156,7 @@ class Simulation(object):
         plot = SlicePlot(self.ts[0], 'z', field, origin='native')
         plot.set_width(1., 'unitary')
 
-        # we want the colorbar to stay the same throughout - shall default to using the limits of the first dataset in the time series, but this can be overridden by using the plot modifier functions.
+        # we want the colourbar to stay the same throughout - shall default to using the limits of the first dataset in the time series, but this can be overridden by using the plot modifier functions.
         colourbar_limits = self.ts[0].all_data().quantities.extrema(field)
         plot.set_zlim(field, colourbar_limits[0], colourbar_limits[1])
 
@@ -175,6 +180,63 @@ class Simulation(object):
                 anim.save(animation_name)
 
         return anim
+
+    def parallel_plot_animation(self, field, animation_name=None, plot_modifier_functions=[], save_frames=False):
+        """
+        Create an animation for entire time series for given field and saves to file.
+
+        Parameters
+        ----------
+        field : string
+            Field to be plotted
+        animation_name : string
+            Name of file to save animation to. Defaults to an mp4
+            file with same prefix as dataset.
+        plot_modifier_functions : list of callable, accept plot object
+            A list of functions to apply to plot.
+        save_frames :
+            don't delete frames after making animation
+        """
+        self.load_time_series()
+
+        plot = SlicePlot(self.ts[0], 'z', field, origin='native')
+        plot.set_width(1., 'unitary')
+
+        # we want the colourbar to stay the same throughout - shall default to using the limits of the first dataset in the time series, but this can be overridden by using the plot modifier functions.
+        colourbar_limits = self.ts[0].all_data().quantities.extrema(field)
+        plot.set_zlim(field, colourbar_limits[0], colourbar_limits[1])
+
+        for fun in plot_modifier_functions:
+            fun(plot)
+
+        fig = plot.plots[field].figure
+
+        try:
+            os.mkdir('frames')
+        except FileExistsError:
+            pass
+
+        for i, ds in enumerate(self.ts.piter()):
+            plot._switch_ds(ds)
+            plot.save('frames/' + self.plot_folders[i] + '.png')
+
+        if animation_name is None:
+            animation_name = self.prefix + '.mp4'
+
+        # stitch frames together
+        #ffmpeg -framerate 10 -pattern_type glob -i '../../Documents/Work/swerve/plotting/fv_?????.png' -c:v libx264 -r 10 " +  movie_filename
+        ff = FFmpeg(inputs={'frames/*.png': '-framerate 10 -pattern_type glob'},
+                    outputs={animation_name : '-y -c:v libx264 -r 10'})
+
+        # run this inside a try catch block so still deletes frames afterwards
+        try:
+            ff.run()
+        except FFRuntimeError:
+            print('Could not create animate using ffmpeg command: ')
+            print(ff.cmd)
+
+        if not save_frames:
+            shutil.rmtree('frames')
 
     def set_display_name(self, old_name, new_name, ds):
         """
