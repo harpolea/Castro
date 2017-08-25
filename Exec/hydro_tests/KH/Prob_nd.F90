@@ -93,11 +93,12 @@ subroutine ca_initdata(level,time,lo,hi,nscal, &
   use probdata_module
   use eos_module, only : eos
   use eos_type_module, only: eos_t, eos_input_rp
-  use meth_params_module, only : NVAR, URHO, UMX, UMY, UMZ, UTEMP, &
-       UEDEN, UEINT, UFS, UFA
+  use meth_params_module, only : NVAR, UTEMP, &
+       UFS, UFA, NQ, QRHO, QU, QV, QW, QREINT, QPRES, URHO, QTEMP, UMX, UMY, UMZ
   use network, only : nspec
   use bl_constants_module
   use prob_params_module, only: problo, center, probhi
+  use riemann_util_module, only: gr_cons_state
 
   use amrex_fort_module, only : rt => amrex_real
   implicit none
@@ -107,6 +108,7 @@ subroutine ca_initdata(level,time,lo,hi,nscal, &
   integer :: state_lo(3), state_hi(3)
   real(rt)         :: xlo(3), xhi(3), time, delta(3)
   real(rt)         :: state(state_lo(1):state_hi(1),state_lo(2):state_hi(2),state_lo(3):state_hi(3),NVAR)
+  real(rt)         :: q(state_lo(1):state_hi(1),state_lo(2):state_hi(2),state_lo(3):state_hi(3),NQ)
 
   real(rt)         :: xx, yy, zz
 
@@ -118,9 +120,9 @@ subroutine ca_initdata(level,time,lo,hi,nscal, &
   real(rt)         :: w0, sigma, ramp, delta_y
   real(rt)         :: vel1, vel2
   real(rt)         :: y1, y2
-  real(rt)         :: dye, rhoh, W, gamma_up(9), gamma
+  real(rt)         :: dye, gamma_up(9), gamma
 
-  integer :: sine_n
+  real(rt) :: sine_n
 
   vel1 = -0.2d0
   vel2 =  0.2d0
@@ -130,32 +132,12 @@ subroutine ca_initdata(level,time,lo,hi,nscal, &
   gamma_up(5) = 1.0d0
   gamma_up(9) = 1.0d0
 
-  gamma = 5.0d0 / 3.0d0
+  call eos(eos_input_rp, eos_state)
+  gamma = eos_state % gam1
 
-  if (problem .eq. 1) then
-     sine_n = 4
-     w0 = 0.1d-3
-     sigma = 0.05 / 2**0.5
-  else if (problem .eq. 2) then
-     sine_n = 2
-     w0 = 0.1d-3
-     delta_y = 0.05
-  else if (problem .eq. 3) then
-     sine_n = 4
-     w0 = 0.1
-     delta_y = 0.025
-  else if (problem .eq. 4) then
-     sine_n = 2
-     w0 = 0.01d-1
-     delta_y = 0.025
-  else if (problem .eq. 5) then
-     sine_n = 2
-     w0 = 0.01d-3
-     delta_y = 0.05
-     sigma = 0.2
-     vel1 = ONE
-     vel2 = ONE
-  endif
+  sine_n = 4.0d0
+  w0 = 0.1
+  delta_y = 0.025
 
   y1 = center(2) - (probhi(2) - problo(2)) * 0.25e0_rt
   y2 = center(2) + (probhi(2) - problo(2)) * 0.25e0_rt
@@ -178,100 +160,63 @@ subroutine ca_initdata(level,time,lo,hi,nscal, &
            vely = bulk_velocity
            dye = ZERO
 
-           if (problem .eq. 1) then
+          if ( yy .lt. y1 ) then
+             dens = rho1 - (rho1 - rho2) / 2 * exp( (yy-y1) / delta_y )
+             velx = vel1 - (vel1 - vel2) / 2 * exp( (yy-y1) / delta_y )
+          else if ( yy .le. HALF * (y1 + y2) ) then
+             dens = rho2 + (rho1 - rho2) / 2 * exp( (y1-yy) / delta_y )
+             velx = vel2 + (vel1 - vel2) / 2 * exp( (y1-yy) / delta_y )
+          else if ( yy .lt. y2 ) then
+             dens = rho2 + (rho1 - rho2) / 2 * exp( (yy-y2) / delta_y )
+             velx = vel2 + (vel1 - vel2) / 2 * exp( (yy-y2) / delta_y )
+          else
+             dens = rho1 - (rho1 - rho2) / 2 * exp( (y2-yy) / delta_y )
+             velx = vel1 - (vel1 - vel2) / 2 * exp( (y2-yy) / delta_y )
+          endif
 
-              if (abs(yy - HALF * (y1 + y2)) < HALF * (y2 - y1)) then
-                 dens = rho2
-                 velx = 0.5d-3
-              else
-                 dens = rho1
-                 velx = -0.5d-3
-              endif
+          vely = vely + w0 * sin(sine_n*M_PI*xx)
 
-              vely = vely + w0 * sin(sine_n*M_PI*xx) * (exp(-(yy-y1)**2/(2*sigma**2)) + exp(-(yy-y2)**2/(2*sigma**2)))
+           q(i,j,k,QRHO) = dens
+           q(i,j,k,QU) = velx
+           q(i,j,k,QV) = vely
+           q(i,j,k,QW) = velz
+           q(i,j,k,QPRES) = pressure
+           q(i,j,k,QREINT) = pressure / (gamma - 1.0d0)
 
-           else if (problem .eq. 2) then
-
-             ramp = ((ONE + exp(-TWO*(yy-y1)/delta_y))*(ONE + exp(TWO*(yy-y2)/delta_y)))**(-1)
-
-             dens = rho1 + ramp * (rho2 - rho1)
-             velx = vel1 + ramp * (vel2 - vel1)
-
-             vely = vely + w0 * sin(sine_n*M_PI*xx)
-
-           else if (problem .eq. 3 .or. problem .eq. 4) then
-
-              if ( yy .lt. y1 ) then
-                 dens = rho1 - (rho1 - rho2) / 2 * exp( (yy-y1) / delta_y )
-                 velx = vel1 - (vel1 - vel2) / 2 * exp( (yy-y1) / delta_y )
-              else if ( yy .le. HALF * (y1 + y2) ) then
-                 dens = rho2 + (rho1 - rho2) / 2 * exp( (y1-yy) / delta_y )
-                 velx = vel2 + (vel1 - vel2) / 2 * exp( (y1-yy) / delta_y )
-              else if ( yy .lt. y2 ) then
-                 dens = rho2 + (rho1 - rho2) / 2 * exp( (yy-y2) / delta_y )
-                 velx = vel2 + (vel1 - vel2) / 2 * exp( (yy-y2) / delta_y )
-              else
-                 dens = rho1 - (rho1 - rho2) / 2 * exp( (y2-yy) / delta_y )
-                 velx = vel1 - (vel1 - vel2) / 2 * exp( (y2-yy) / delta_y )
-              endif
-
-              vely = vely + w0 * sin(sine_n*M_PI*xx)
-
-           else if (problem .eq. 5) then
-
-              dens = rho1 + (rho2 - rho1) * HALF * (tanh( (yy - y1) / delta_y ) - tanh( (yy - y2) / delta_y ))
-              velx = vel1 * (tanh( (yy - y1) / delta_y) - tanh( (yy - y2) / delta_y ) - ONE)
-              vely = vely + w0 * sin(sine_n*M_PI*xx) * (exp(-(yy - y1)**2 / sigma**2) + exp(-(yy - y2)**2 / sigma**2))
-              dye  = HALF * (tanh( (yy - y2) / delta_y) - tanh( (yy - y1) / delta_y ) + TWO)
-
-           else
-
-              call bl_error("Error: This problem choice is undefined.")
-
-           endif
-
-           W = velx**2 * gamma_up(1) + &
-            2.0d0 * velx * vely * gamma_up(2) + &
-            2.0d0 * velx * velz * gamma_up(3) + &
-            vely**2 * gamma_up(5) + &
-            2.0d0 * vely * velz * gamma_up(6) + &
-            velz**2 * gamma_up(9)
-
-           W = 1.0d0 / sqrt(1.0d0 - W)
-
-           rhoh = dens + pressure * gamma / (gamma - 1.0d0)
-
-           state(i,j,k,URHO) = dens * W
-           state(i,j,k,UMX)  = rhoh * W**2 * velx !dens * velx
-           state(i,j,k,UMY)  = rhoh * W**2 * vely
-           state(i,j,k,UMZ)  = rhoh * W**2 * velz
-           state(i,j,k,UFA)  = dye
-
-           ! Establish the thermodynamic quantities
+           eos_state % rho = dens
+           eos_state % p   = pressure
+           eos_state % e = q(i,j,k,QREINT) / dens
 
            state(i,j,k,UFS:UFS-1+nspec) = ONE / nspec
+           state(i,j,k,UFA)  = dye
 
            eos_state % xn  = state(i,j,k,UFS:UFS-1+nspec)
-           eos_state % rho = dens ! state(i,j,k,URHO)
-           eos_state % p   = pressure
 
            call eos(eos_input_rp, eos_state)
 
+           q(i,j,k,QTEMP) = eos_state % T
+
+           call gr_cons_state(q(i,j,k,:), state(i,j,k,:), gamma_up)
+
+           ! Establish the thermodynamic quantities
            state(i,j,k,UTEMP) = eos_state % T
 
-           state(i,j,k,UEDEN) = rhoh * W**2 - pressure - dens * W !state(i,j,k,URHO) * eos_state % e
-           state(i,j,k,UEINT) = rhoh - pressure !state(i,j,k,URHO) * eos_state % e
+           state(i,j,k,UFS:UFS-1+nspec) = state(i,j,k,URHO) / nspec
 
-           state(i,j,k,UEDEN) = state(i,j,k,UEDEN) + &
-                HALF * rhoh * W**2 * (velx**2 + vely**2 + velz**2)
+           !do n = 1,nspec
+              !state(i,j,k,UFS+n-1) = state(i,j,k,URHO) * !state(i,j,k,UFS+n-1)
+           !end do
 
-           do n = 1,nspec
-              state(i,j,k,UFS+n-1) = state(i,j,k,URHO) * state(i,j,k,UFS+n-1)
-           end do
+           !write(*,*) "q: ", q
+           !write(*,*) "state: ", state(i,j,k,:)
+           !write(*,*) "QU, QV, QPRES, QW, QREINT, QTEMP", QU, QV, QPRES, QW, QREINT, QTEMP
+           !write(*,*) "vely, qv, umy", velx, q(i,j,k,QU), state(i,j,k,UMX)
 
         enddo
      enddo
   enddo
   !$OMP END PARALLEL DO
+
+  !stop
 
 end subroutine ca_initdata

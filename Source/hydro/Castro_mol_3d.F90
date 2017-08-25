@@ -85,11 +85,11 @@ subroutine ca_mol_single_stage(time, &
 
   type (eos_t) :: eos_state
 
-  It_lo = lo - 1![lo(1) - 1, lo(2) - 1, 1]
-  It_hi = hi + 1![hi(1) + 1, hi(2) + 1, 2]
+  It_lo = lo - 1
+  It_hi = hi + 1
 
-  st_lo = lo - 2![lo(1) - 2, lo(2) - 2, 1]
-  st_hi = hi + 2![hi(1) + 2, hi(2) + 2, 2]
+  st_lo = lo - 2
+  st_hi = hi + 2
 
   call bl_allocate(sxm, st_lo, st_hi)
   call bl_allocate(sxp, st_lo, st_hi)

@@ -54,17 +54,16 @@ contains
 
   subroutine gr_cons_state(q, U, gamma_up)
     ! calculates the conserved state from the primitive variables
-    use meth_params_module, only: QVAR, QRHO, QU, QV, QW, QREINT, &
+    use meth_params_module, only: NQ, QRHO, QU, QV, QW, QREINT, &
          NVAR, URHO, UMX, UMY, UMZ, UEDEN, UEINT, UTEMP, &
          npassive, upass_map, qpass_map, QTEMP, QPRES
     use eos_module, only: eos
     use eos_type_module, only: eos_input_re, eos_t, eos_input_rt
     use metric_module, only: calculate_scalar_W
 
-    real(rt)        , intent(in)  :: q(QVAR), gamma_up(9)
-    real(rt)        , intent(out) :: U(NVAR)
+    real(rt)        , intent(in)  :: q(NQ), gamma_up(9)
+    real(rt)        , intent(inout) :: U(NVAR)
 
-    integer  :: ipassive, n, nq
     real(rt) :: W, rhoh, p
     type (eos_t)     :: eos_state
 
@@ -109,13 +108,13 @@ contains
 
   subroutine gr_compute_flux(idir, bnd_fac, q, U, p, beta, alpha, F)
     ! returns the GR flux in direction idir
-    use meth_params_module, only: QVAR, QRHO, QU, QV, QW, QREINT, &
+    use meth_params_module, only: NQ, QRHO, QU, QV, QW, QREINT, &
         NVAR, URHO, UMX, UMY, UMZ, UEDEN, UEINT, UTEMP, &
          npassive, upass_map
     use prob_params_module, only : mom_flux_has_p
 
     integer, intent(in) :: idir, bnd_fac
-    real(rt)        , intent(in)  :: q(QVAR)
+    real(rt)        , intent(in)  :: q(NQ)
     real(rt)        , intent(in) :: U(NVAR)
     real(rt)        , intent(in) :: p, beta(3), alpha
     real(rt)        , intent(out) :: F(NVAR)

@@ -68,16 +68,8 @@ contains
     ! these will refer to the zone interfaces that we solve the
     ! Riemann problem across
     if (idir == 1) then
-       !imin = ilo
-       !imax = ihi+1
-       !jmin = jlo
-       !jmax = jhi
        Ihi(1) = Ihi(1) + 1
    elseif (idir == 2) then
-       !imin = ilo
-       !imax = ihi
-       !jmin = jlo
-       !jmax = jhi+1
        Ihi(2) = Ihi(2) + 1
    else
        Ihi(3) = Ihi(3) + 1
