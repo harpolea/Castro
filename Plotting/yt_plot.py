@@ -18,6 +18,13 @@ class Simulation(object):
     def __init__(self, location=None, prefix=None):
         """
         Create a class instance. Location is the path to the folder containing the simulation's plot folders.
+
+        Parameters
+        ----------
+        location : string
+            path to the folder containing the simulation's plot folders
+        prefix : string
+            prefix used to label plot folders
         """
         if location is None:
             self.root_dir = pathlib.Path('.')
@@ -77,9 +84,20 @@ class Simulation(object):
         # time series data
         self.ts = None
 
-    def plot_at_time(self, field, t, save=True):
+    def plot_at_time(self, field, t, save=True, normal_axis='z'):
         """
-        Plot given field at time t.
+        Plot given field at time t. Returns the plot object.
+
+        Parameters
+        ----------
+        field : string
+            name of field to be plotted
+        t : int
+            number of timestep we wish to plot
+        save : bool
+            do we save the plot or not?
+        normal_axis :
+            axis normal to plane of plot
         """
         if field not in self.fields:
             raise self.InvalidFieldError(field)
@@ -95,7 +113,7 @@ class Simulation(object):
         else:
             ds = self.ts[self.plot_folders.index(plotfilename)]
 
-        p = SlicePlot(ds, 'z', field, origin='native')
+        p = SlicePlot(ds, normal_axis, field, origin='native')
         p.set_width(1., 'unitary')
 
         if save:
@@ -137,9 +155,9 @@ class Simulation(object):
         if self.ts is None or force:
             self.ts = DatasetSeries(self.plot_folders, setup_function=setup_function, parallel=n_processors)
 
-    def plot_animation(self, field, animation_name=None, plot_modifier_functions=[], save=True):
+    def plot_animation(self, field, animation_name=None, plot_modifier_functions=[], save=True, normal_axis='z'):
         """
-        Create an animation for entire time series for given field and saves to file.
+        Create an animation for entire time series for given field and saves to file. Returns animation object
 
         Parameters
         ----------
@@ -149,11 +167,15 @@ class Simulation(object):
             Name of file to save animation to. Defaults to an mp4
             file with same prefix as dataset.
         plot_modifier_functions : list of callable, accept plot object
-            A list of functions to apply to plot.
+            A list of functions to apply to plot
+        save : bool
+            do we save the animation or not?
+        normal_axis :
+            axis normal to plane of plot
         """
         self.load_time_series()
 
-        plot = SlicePlot(self.ts[0], 'z', field, origin='native')
+        plot = SlicePlot(self.ts[0], normal_axis, field, origin='native')
         plot.set_width(1., 'unitary')
 
         # we want the colourbar to stay the same throughout - shall default to using the limits of the first dataset in the time series, but this can be overridden by using the plot modifier functions.
@@ -181,9 +203,9 @@ class Simulation(object):
 
         return anim
 
-    def parallel_plot_animation(self, field, animation_name=None, plot_modifier_functions=[], save_frames=False):
+    def parallel_plot_animation(self, field, animation_name=None, plot_modifier_functions=[], save_frames=False, normal_axis='z'):
         """
-        Create an animation for entire time series for given field and saves to file.
+        Create an animation for entire time series for given field and saves to file. Returns plot object
 
         Parameters
         ----------
@@ -196,10 +218,12 @@ class Simulation(object):
             A list of functions to apply to plot.
         save_frames :
             don't delete frames after making animation
+        normal_axis :
+            axis normal to plane of plot
         """
         self.load_time_series()
 
-        plot = SlicePlot(self.ts[0], 'z', field, origin='native')
+        plot = SlicePlot(self.ts[0], normal_axis, field, origin='native')
         plot.set_width(1., 'unitary')
 
         # we want the colourbar to stay the same throughout - shall default to using the limits of the first dataset in the time series, but this can be overridden by using the plot modifier functions.
@@ -246,7 +270,10 @@ class Simulation(object):
         ----------
         old_name : string
             existing field name
-        new_name
+        new_name : string
+            what the field should be labelled as when we plot it
+        ds : Dataset
+            dataset whose label we want to change
         """
         # this was far harder to do than it should be.
         # why is there no built in function for this????

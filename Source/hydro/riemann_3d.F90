@@ -22,7 +22,7 @@ contains
   subroutine cmpflx(qm, qp, qpd_lo, qpd_hi, &
                     flx, flx_lo, flx_hi, &
                     qaux, qa_lo, qa_hi, &
-                    idir, ilo, ihi, jlo, jhi, kc, kflux, k3d, domlo, domhi, &
+                    idir, lo, hi, domlo, domhi, &
                     gamma_up, glo, ghi)
 
     use actual_riemann_module
@@ -36,7 +36,7 @@ contains
     integer, intent(in) :: qa_lo(3), qa_hi(3)
     integer, intent(in) :: glo(3), ghi(3)
 
-    integer, intent(in) :: idir,ilo,ihi,jlo,jhi,kc,kflux,k3d
+    integer, intent(in) :: idir, lo(3), hi(3)
     integer, intent(in) :: domlo(3),domhi(3)
 
     ! note: qm, qp, q come in as planes (all of x,y
@@ -60,32 +60,34 @@ contains
     ! local variables
 
     integer i, j
-    integer imin, imax, jmin, jmax
+    integer Ilo(3), Ihi(3)
+
+    Ilo(:) = lo(:)
+    Ihi(:) = hi(:)
 
     ! these will refer to the zone interfaces that we solve the
     ! Riemann problem across
     if (idir == 1) then
-       imin = ilo
-       imax = ihi+1
-       jmin = jlo
-       jmax = jhi
+       !imin = ilo
+       !imax = ihi+1
+       !jmin = jlo
+       !jmax = jhi
+       Ihi(1) = Ihi(1) + 1
    elseif (idir == 2) then
-       imin = ilo
-       imax = ihi
-       jmin = jlo
-       jmax = jhi+1
+       !imin = ilo
+       !imax = ihi
+       !jmin = jlo
+       !jmax = jhi+1
+       Ihi(2) = Ihi(2) + 1
    else
-       imin = ilo
-       imax = ihi
-       jmin = jlo
-       jmax = jhi
-    endif
+       Ihi(3) = Ihi(3) + 1
+   endif
 
     ! Solve Riemann problem (godunov state passed back, but only (u,p) saved)
     call gr_HLL(qm, qp, qpd_lo, qpd_hi, &
              qaux, qa_lo, qa_hi, &
              flx, flx_lo, flx_hi, &
-             idir, imin, imax, jmin, jmax, kc, kflux, k3d, &
+             idir, Ilo, Ihi, &
              domlo, domhi, &
              gamma_up, glo, ghi)
 

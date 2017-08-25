@@ -27,7 +27,7 @@ contains
   subroutine gr_HLL(ql, qr, qpd_lo, qpd_hi, &
                   qaux, qa_lo, qa_hi, &
                   uflx, uflx_lo, uflx_hi, &
-                  idir, ilo, ihi, jlo, jhi, kc, kflux, k3d, &
+                  idir, lo, hi, & !ilo, ihi, jlo, jhi, &!kc, kflux, k3d, &
                   domlo, domhi, &
                   gamma_up, glo, ghi)
 
@@ -44,7 +44,7 @@ contains
     integer, intent(in) :: qpd_lo(3), qpd_hi(3)
     integer, intent(in) :: qa_lo(3), qa_hi(3)
     integer, intent(in) :: uflx_lo(3), uflx_hi(3)
-    integer, intent(in) :: idir, ilo, ihi, jlo, jhi
+    integer, intent(in) :: idir, lo(3), hi(3)
     integer, intent(in) :: domlo(3), domhi(3)
     integer, intent(in) :: glo(3), ghi(3)
 
@@ -57,7 +57,7 @@ contains
     real(rt), intent(in) :: gamma_up(glo(1):ghi(1), glo(2):ghi(2), glo(3):ghi(3), 9)
 
     real(rt), intent(inout) :: uflx(uflx_lo(1):uflx_hi(1),uflx_lo(2):uflx_hi(2),uflx_lo(3):uflx_hi(3),NVAR)
-    integer, intent(in) :: kc, kflux, k3d
+    !integer, intent(in) :: kc, kflux, k3d
 
     ! Note:
     !
@@ -73,7 +73,7 @@ contains
     !         kflux = kc, but in later calls, when uflx = {flux1,flux2,flux3},
     !         kflux = k3d
 
-    integer :: i, j
+    integer :: i, j,k
 
     real(rt) :: rgdnv, regdnv
     real(rt) :: rl, ul, v1l, v2l, pl, rel, cl
@@ -89,11 +89,12 @@ contains
 
     real(rt) :: U_hll_state(NVAR), U_state(NVAR), F_state(NVAR), Fr_state(NVAR)
     real(rt) :: S_l, S_r, S_c
-    real(rt) :: beta(ilo:ihi, jlo:jhi, 3), alpha(ilo:ihi, jlo:jhi)
+    real(rt) :: beta(lo(1):hi(1), lo(2):hi(2), lo(3):hi(3), 3)
+    real(rt) :: alpha(lo(1):hi(1), lo(2):hi(2), lo(3):hi(3))
     real(rt) :: sigmal, sigmar, l1, l2
 
-    call calculate_alpha(alpha, [ilo,jlo,0], [ihi,jhi,0])
-    call calculate_beta(beta, [ilo,jlo,0], [ihi,jhi,0])
+    call calculate_alpha(alpha, lo, hi)
+    call calculate_beta(beta, lo, hi)
 
     if (idir == 1) then
        iu = QU
@@ -133,122 +134,125 @@ contains
        special_bnd_hi_x = .false.
     end if
 
-    bnd_fac_z = 1
-    if (idir == 3) then
-       if ( k3d == domlo(3)   .and. special_bnd_lo .or. &
-            k3d == domhi(3)+1 .and. special_bnd_hi ) then
-          bnd_fac_z = 0
-       end if
-    end if
+    do k = lo(3), hi(3)
 
-    do j = jlo, jhi
+        bnd_fac_z = 1
+        if (idir == 3) then
+           if ( k == domlo(3)   .and. special_bnd_lo .or. &
+                k == domhi(3)+1 .and. special_bnd_hi ) then
+              bnd_fac_z = 0
+           end if
+        end if
 
-       bnd_fac_y = 1
-       if (idir == 2) then
-          if ( j == domlo(2)   .and. special_bnd_lo .or. &
-               j == domhi(2)+1 .and. special_bnd_hi ) then
-             bnd_fac_y = 0
-          end if
-       end if
+        do j = lo(2), hi(2)
 
-       !dir$ ivdep
-       do i = ilo, ihi
+           bnd_fac_y = 1
+           if (idir == 2) then
+              if ( j == domlo(2)   .and. special_bnd_lo .or. &
+                   j == domhi(2)+1 .and. special_bnd_hi ) then
+                 bnd_fac_y = 0
+              end if
+           end if
 
-          rl = max(ql(i,j,kc,QRHO), small_dens)
+           !dir$ ivdep
+           do i = lo(1), hi(1)
 
-          ! pick left velocities based on direction
-          ul  = ql(i,j,kc,iu)
-          v1l = ql(i,j,kc,iv1)
-          v2l = ql(i,j,kc,iv2)
+              rl = max(ql(i,j,k,QRHO), small_dens)
 
-          pl  = max(ql(i,j,kc,QPRES ), small_pres)
-          rel = ql(i,j,kc,QREINT)
+              ! pick left velocities based on direction
+              ul  = ql(i,j,k,iu)
+              v1l = ql(i,j,k,iv1)
+              v2l = ql(i,j,k,iv2)
 
-          rr = max(qr(i,j,kc,QRHO), small_dens)
+              pl  = max(ql(i,j,k,QPRES ), small_pres)
+              rel = ql(i,j,k,QREINT)
 
-          ! pick right velocities based on direction
-          ur  = qr(i,j,kc,iu)
-          v1r = qr(i,j,kc,iv1)
-          v2r = qr(i,j,kc,iv2)
+              rr = max(qr(i,j,k,QRHO), small_dens)
 
-          pr  = max(qr(i,j,kc,QPRES), small_pres)
-          rer = qr(i,j,kc,QREINT)
+              ! pick right velocities based on direction
+              ur  = qr(i,j,k,iu)
+              v1r = qr(i,j,k,iv1)
+              v2r = qr(i,j,k,iv2)
 
-          ! find sound speeds
-          csmall = max(qaux(i,j,k3d,QCSML), qaux(i-sx,j-sy,k3d-sz,QCSML) )
-          cavg = HALF*(qaux(i,j,k3d,QC) + qaux(i-sx,j-sy,k3d-sz,QC))
-          gamcl = qaux(i-sx,j-sy,k3d-sz,QGAMC)
-          gamcr = qaux(i,j,k3d,QGAMC)
+              pr  = max(qr(i,j,k,QPRES), small_pres)
+              rer = qr(i,j,k,QREINT)
 
-          cl = sqrt(gamcl * pl / (rl + gamcl * pl / (gamcl - 1.0d0)))
-          cr = sqrt(gamcr * pr / (rr + gamcr * pr / (gamcr - 1.0d0)))
+              ! find sound speeds
+              csmall = max(qaux(i,j,k,QCSML), qaux(i-sx,j-sy,k-sz,QCSML) )
+              cavg = HALF*(qaux(i,j,k,QC) + qaux(i-sx,j-sy,k-sz,QC))
+              gamcl = qaux(i-sx,j-sy,k-sz,QGAMC)
+              gamcr = qaux(i,j,k,QGAMC)
 
-          wsmall = small_dens*csmall
-          wl = max(wsmall, sqrt(abs(gamcl*pl*rl)))
-          wr = max(wsmall, sqrt(abs(gamcr*pr*rr)))
+              cl = sqrt(gamcl * pl / (rl + gamcl * pl / (gamcl - 1.0d0)))
+              cr = sqrt(gamcr * pr / (rr + gamcr * pr / (gamcr - 1.0d0)))
 
-          ! now we do the HLL construction
+              wsmall = small_dens*csmall
+              wl = max(wsmall, sqrt(abs(gamcl*pl*rl)))
+              wr = max(wsmall, sqrt(abs(gamcr*pr*rr)))
 
-          ! Enforce that the fluxes through a symmetry plane or wall are hard zero.
-          if ( special_bnd_lo_x .and. i== domlo(1) .or. &
-               special_bnd_hi_x .and. i== domhi(1)+1 ) then
-             bnd_fac_x = 0
-          else
-             bnd_fac_x = 1
-          end if
+              ! now we do the HLL construction
 
-          bnd_fac = bnd_fac_x*bnd_fac_y*bnd_fac_z
+              ! Enforce that the fluxes through a symmetry plane or wall are hard zero.
+              if ( special_bnd_lo_x .and. i== domlo(1) .or. &
+                   special_bnd_hi_x .and. i== domhi(1)+1 ) then
+                 bnd_fac_x = 0
+              else
+                 bnd_fac_x = 1
+              end if
 
-          sigmal = cl**2 / (gamcl**2 * (1.0d0 - cl**2))
-          sigmar = cr**2 / (gamcr**2 * (1.0d0 - cr**2))
-          l1 = (ur - sqrt(sigmar * (1.0d0 - ur**2 + sigmar))) / (1.0d0 + sigmar)
-          l2 = (ul - sqrt(sigmal * (1.0d0 - ul**2 + sigmal))) / (1.0d0 + sigmal)
-          S_l = min(l1, l2)
+              bnd_fac = bnd_fac_x*bnd_fac_y*bnd_fac_z
 
-          l1 = (ur + sqrt(sigmar * (1.0d0 - ur**2 + sigmar))) / (1.0d0 + sigmar)
-          l2 = (ul + sqrt(sigmal * (1.0d0 - ul**2 + sigmal))) / (1.0d0 + sigmal)
-          S_r = max(l1, l2)
+              sigmal = cl**2 / (gamcl**2 * (1.0d0 - cl**2))
+              sigmar = cr**2 / (gamcr**2 * (1.0d0 - cr**2))
+              l1 = (ur - sqrt(sigmar * (1.0d0 - ur**2 + sigmar))) / (1.0d0 + sigmar)
+              l2 = (ul - sqrt(sigmal * (1.0d0 - ul**2 + sigmal))) / (1.0d0 + sigmal)
+              S_l = min(l1, l2)
 
-          ! use the simplest estimates of the wave speeds
-          !S_l = min(ul - sqrt(gamcl*pl/rl), ur - sqrt(gamcr*pr/rr))
-          !S_r = max(ul + sqrt(gamcl*pl/rl), ur + sqrt(gamcr*pr/rr))
+              l1 = (ur + sqrt(sigmar * (1.0d0 - ur**2 + sigmar))) / (1.0d0 + sigmar)
+              l2 = (ul + sqrt(sigmal * (1.0d0 - ul**2 + sigmal))) / (1.0d0 + sigmal)
+              S_r = max(l1, l2)
 
-          !write(*,*) "Sl, Sr, pl, pr", S_l, S_r, pl, pr
+              ! use the simplest estimates of the wave speeds
+              !S_l = min(ul - sqrt(gamcl*pl/rl), ur - sqrt(gamcr*pr/rr))
+              !S_r = max(ul + sqrt(gamcl*pl/rl), ur + sqrt(gamcr*pr/rr))
 
-          ! HACK FOR NOW
-          if (pl > 1.0d0) then
-              pl = pr
-              ql(i,j,kc,:) = qr(i,j,kc,:)
-          end if
+              !write(*,*) "Sl, Sr, pl, pr", S_l, S_r, pl, pr
 
-          S_l = -1.0d0
-          S_r = 1.0d0
+              ! HACK FOR NOW
+              !if (pl > 1.0d0) then
+                  !pl = pr
+                  !ql(i,j,k,:) = qr(i,j,k,:)
+              !end if
 
-          if (S_r <= ZERO) then
-             ! R region
-             call gr_cons_state(qr(i,j,kc,:), U_state, gamma_up(i,j,kc,:))
-             call gr_compute_flux(idir, bnd_fac, qr(i,j,kc,:), U_state, pr, beta(i,j,:), alpha(i,j), F_state)
+              S_l = -1.0d0
+              S_r = 1.0d0
 
-         else if (S_r > ZERO .and. S_l <= ZERO) then
-             ! * region
-             call gr_cons_state(ql(i,j,kc,:), U_state, gamma_up(i,j,kc,:))
-             call gr_compute_flux(idir, bnd_fac, ql(i,j,kc,:), U_state, pl, beta(i,j,:), alpha(i,j), F_state)
+              if (S_r <= ZERO) then
+                 ! R region
+                 call gr_cons_state(qr(i,j,k,:), U_state, gamma_up(i,j,k,:))
+                 call gr_compute_flux(idir, bnd_fac, qr(i,j,k,:), U_state, pr, beta(i,j,k,:), alpha(i,j,k), F_state)
 
-             call gr_cons_state(qr(i,j,kc,:), U_hll_state, gamma_up(i,j,kc,:))
-             call gr_compute_flux(idir, bnd_fac, qr(i,j,kc,:), U_hll_state, pr, beta(i,j,:), alpha(i,j), Fr_state)
+             else if (S_r > ZERO .and. S_l <= ZERO) then
+                 ! * region
+                 call gr_cons_state(ql(i,j,k,:), U_state, gamma_up(i,j,k,:))
+                 call gr_compute_flux(idir, bnd_fac, ql(i,j,k,:), U_state, pl, beta(i,j,k,:), alpha(i,j,k), F_state)
 
-             ! correct the flux
-             F_state(:) = (S_r * F_state(:) - S_l * Fr_state(:) + S_r * S_l * (U_hll_state(:) - U_state(:)))/ (S_r - S_l)
+                 call gr_cons_state(qr(i,j,k,:), U_hll_state, gamma_up(i,j,k,:))
+                 call gr_compute_flux(idir, bnd_fac, qr(i,j,k,:), U_hll_state, pr, beta(i,j,k,:), alpha(i,j,k), Fr_state)
 
-          else
-             ! L region
-             call gr_cons_state(ql(i,j,kc,:), U_state, gamma_up(i,j,kc,:))
-             call gr_compute_flux(idir, bnd_fac, ql(i,j,kc,:), U_state, pl, beta(i,j,:), alpha(i,j), F_state)
+                 ! correct the flux
+                 F_state(:) = (S_r * F_state(:) - S_l * Fr_state(:) + S_r * S_l * (U_hll_state(:) - U_state(:)))/ (S_r - S_l)
 
-          endif
+              else
+                 ! L region
+                 call gr_cons_state(ql(i,j,k,:), U_state, gamma_up(i,j,k,:))
+                 call gr_compute_flux(idir, bnd_fac, ql(i,j,k,:), U_state, pl, beta(i,j,k,:), alpha(i,j,k), F_state)
 
-          uflx(i,j,kflux,:) = F_state(:)
-       enddo
+              endif
+
+              uflx(i,j,k,:) = F_state(:)
+           enddo
+        enddo
     enddo
 
     !stop
