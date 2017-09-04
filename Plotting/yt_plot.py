@@ -37,7 +37,7 @@ class Simulation(object):
                 self.root_dir.iterdir()
                 if (f.is_dir() and
                     '.old.' not in str(f) and
-                    re.fullmatch('\S+\d{5}', str(f)))])
+                    re.fullmatch(str(self.root_dir) + '/' + '\S+\d{5}', str(f)))])
 
             # exit if there are no valid plot folders in the root_dir
             if len(self.plot_folders) == 0:
@@ -59,20 +59,20 @@ class Simulation(object):
                         break
 
             # prefix to the plot folder names
-            self.prefix = str(self.plot_folders[0])[:-5]
+            self.prefix = str(self.root_dir) + '/' + str(self.plot_folders[0])[:-5]
         else:
             # a list of folders containing plot data
             self.plot_folders = sorted([str(f) for f in
                 self.root_dir.iterdir()
                 if (f.is_dir() and
                     '.old.' not in str(f) and
-                    re.fullmatch(prefix + '\d{5}', str(f)))])
+                    re.fullmatch(str(self.root_dir) + '/' + prefix + '\d{5}', str(f)))])
 
             # exit if there are no valid plot folders in the root_dir
             if len(self.plot_folders) == 0:
                 sys.exit('No plot folders in this location matching prefix {}'.format(prefix))
 
-            self.prefix = prefix
+            self.prefix = str(self.root_dir) + '/' + prefix
 
         # load list of fields
         ds = load(self.plot_folders[0])
@@ -236,20 +236,20 @@ class Simulation(object):
         fig = plot.plots[field].figure
 
         try:
-            os.mkdir('frames')
+            os.mkdir(str(self.root_dir) + '/frames')
         except FileExistsError:
             pass
 
         for i, ds in enumerate(self.ts.piter()):
             plot._switch_ds(ds)
-            plot.save('frames/' + self.plot_folders[i] + '.png')
+            plot.save(str(self.root_dir) + '/frames' + self.plot_folders[i][len(str(self.root_dir)):] + '.png')
 
         if animation_name is None:
             animation_name = self.prefix + '.mp4'
 
         # stitch frames together
         #ffmpeg -framerate 10 -pattern_type glob -i '../../Documents/Work/swerve/plotting/fv_?????.png' -c:v libx264 -r 10 " +  movie_filename
-        ff = FFmpeg(inputs={'frames/*.png': '-framerate 10 -pattern_type glob'},
+        ff = FFmpeg(inputs={ str(self.root_dir) + '/frames/*.png': '-framerate 10 -pattern_type glob'},
                     outputs={animation_name : '-y -c:v libx264 -r 10'})
 
         # run this inside a try catch block so still deletes frames afterwards
@@ -260,7 +260,7 @@ class Simulation(object):
             print(ff.cmd)
 
         if not save_frames:
-            shutil.rmtree('frames')
+            shutil.rmtree( str(self.root_dir) + '/frames')
 
     def set_display_name(self, old_name, new_name, ds):
         """

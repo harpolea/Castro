@@ -42,7 +42,7 @@ Castro::construct_mol_hydro_source(Real time, Real dt)
   BL_PROFILE_VAR("Castro::advance_hydro_ca_umdrv()", CA_UMDRV);
 
 #ifdef _OPENMP
-#pragma omp parallel
+#pragma omp parallel reduction(max:courno)
 #endif
     {
 
@@ -143,12 +143,8 @@ Castro::construct_mol_hydro_source(Real time, Real dt)
 #endif
       } // MFIter loop
 
-#ifdef _OPENMP
-#pragma omp critical (hydro_courno)
-#endif
-    {
-      courno = std::max(courno,cflLoc);
-    }
+    courno = std::max(courno,cflLoc);
+
   }  // end of omp parallel region
 
   BL_PROFILE_VAR_STOP(CA_UMDRV);

@@ -27,10 +27,6 @@ enum StateType { State_Type = 0,
 // Create storage for all source terms.
 
 enum sources { ext_src = 0,
-
-#ifdef GRAVITY
-               grav_src,
-#endif
 	       num_src };
 
 //
@@ -209,12 +205,6 @@ public:
     void construct_new_ext_source(amrex::Real time, amrex::Real dt);
 
     void fill_ext_source(amrex::Real time, amrex::Real dt, amrex::MultiFab& S_old, amrex::MultiFab& S_new, amrex::MultiFab& ext_src, int ng);
-
-#ifdef GRAVITY
-    void construct_old_gravity_source(amrex::Real time, amrex::Real dt);
-
-    void construct_new_gravity_source(amrex::Real time, amrex::Real dt);
-#endif
 
     //
     // Estimate time step.

@@ -258,43 +258,6 @@ extern "C"
      const int* lo, const int* hi,
      const amrex::Real* dx, const amrex::Real* dt_old, amrex::Real* dt);
 
-  void ca_ctu_update
-    (const int* is_finest_level,
-     const amrex::Real* time,
-     const int    lo[], const int    hi[],
-     const int domlo[], const int domhi[],
-     const BL_FORT_FAB_ARG_3D(state),
-     BL_FORT_FAB_ARG_3D(stateout),
-     BL_FORT_FAB_ARG_3D(q),
-     BL_FORT_FAB_ARG_3D(qaux),
-     BL_FORT_FAB_ARG_3D(src_q),
-     BL_FORT_FAB_ARG_3D(update),
-     const amrex::Real dx[], const amrex::Real* dt,
-     D_DECL(BL_FORT_FAB_ARG_3D(xflux),
-            BL_FORT_FAB_ARG_3D(yflux),
-            BL_FORT_FAB_ARG_3D(zflux)),
-#if (BL_SPACEDIM < 3)
-     BL_FORT_FAB_ARG_3D(pradial),
-#endif
-     D_DECL(const BL_FORT_FAB_ARG_3D(xarea),
-            const BL_FORT_FAB_ARG_3D(yarea),
-            const BL_FORT_FAB_ARG_3D(zarea)),
-#if (BL_SPACEDIM < 3)
-     const BL_FORT_FAB_ARG_3D(dloga),
-#endif
-     const BL_FORT_FAB_ARG_3D(volume),
-     amrex::Real* cflLoc,
-     const int&  verbose,
-     amrex::Real& mass_lost,
-     amrex::Real& xmom_lost,
-     amrex::Real& ymom_lost,
-     amrex::Real& zmom_lost,
-     amrex::Real& eden_lost,
-     amrex::Real& xang_lost,
-     amrex::Real& yang_lost,
-     amrex::Real& zang_lost);
-
-
   void ca_mol_single_stage
     (const amrex::Real* time,
      const int    lo[], const int    hi[],
