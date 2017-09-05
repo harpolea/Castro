@@ -3,10 +3,6 @@ import re
 import numpy as np
 
 def check_parameter_file(filename, dim=3):
-    """
-    Given the file filename, this will check that the inputs file (the file often called inputs.nd which is passed as an argument at runtime) is valid.
-    It first checks that the file has the correct format, then checks the arguments of the individual parameters, asserting that they are of the right type and have sensible values.
-    """
     try:
         f = open(filename)
     except:
@@ -20,9 +16,13 @@ def check_parameter_file(filename, dim=3):
         if l[0] == '#' or re.match('\s+', l): #comment
             continue
         else:
-            m = re.match('([\w\.]+)\s+\=\s+([\w\s\-\."]+)', l)
+            m = re.match('([\w\.]+)\s*\=\s*([\w\s\-\."]+)', l)
             if m is None:
-                print('Line {} is not of the expected format: {}'.format(i, l))
+                # check to see if they contain some input data
+                m1 = re.match('(\d+\.?\d*E?\-?\d*)', l)
+                m2 = re.match('(\d+\.?\d*E?\-?\d*)\s(\d+\.?\d*E?\-?\d*)', l)
+                if not m1 and not m2:
+                    print('Line {} is not of the expected format: {}'.format(i+1, l))
             else:
                 params[m.group(1)] = m.group(2).rstrip().split()
                 values = params[m.group(1)].copy()
@@ -70,8 +70,7 @@ def validate_params(params, dim):
 
     def check_real_array(param, min_length=dim):
         if param in params:
-            if min_length == 1:
-                assert np.isscalar(params[param])
+            if min_length == 1 and np.isscalar(params[param]):
                 ps = [params[param]] # make list so can loop over
             else:
                 ps = params[param]
@@ -133,7 +132,7 @@ def validate_params(params, dim):
             assert np.isscalar(params[param])
             assert type(params[param]) == str
 
-    check_real('stop_time', 0., 1.e10)
+    check_real('stop_time', 0., 1.e15)
     check_int('max_step', 0, 1e10)
     check_bool('castro.use_stopping_criterion')
     check_bool('castro.use_retry')
@@ -145,18 +144,18 @@ def validate_params(params, dim):
 
     check_real_array('castro.center')
 
-    check_int_array('amr.n_cell', 1, 10000)
+    check_int_array('amr.n_cell', 1, 1e10)
     check_int('amr.max_level', 0, 20)
 
     check_int_array('castro.lo_bc', 0, 5)
     check_int_array('castro.hi_bc', 0, 5)
 
     check_bool('castro.do_hydro')
-    check_bool('castro.ppm_type')
+    check_int('castro.ppm_type', 0, 3)
     check_bool('castro.allow_negative_energy')
     check_real('castro.cfl', 0., 1.)
     check_real('castro.init_shrink', 0., 1.)
-    check_real('castro.change_max', 1.)
+    check_real('castro.change_max', 0.)
     check_real('castro.dt_cutoff', 0.)
 
     check_real('castro.small_dens', 0.)
@@ -172,7 +171,7 @@ def validate_params(params, dim):
         refinement_levels = params['amr.max_level']
 
         check_int_array('amr.ref_ratio', 1, 10, min_length=refinement_levels)
-        check_int_array('amr.regrid_int', 1, 1e5, min_length=1)
+        check_int_array('amr.regrid_int', -1, 1e5, min_length=1)
         check_int('amr.block_factor', 1)
         check_int_array('amr.n_error_buf', 0, min_length=refinement_levels)
         check_bool('castro.use_post_step_regrid')
@@ -198,6 +197,8 @@ def validate_params(params, dim):
     check_string('amr.probin_file')
 
     # check that dx=dy=dz
-    dxs = (np.array(params['geometry.prob_hi']) - np.array(params['geometry.prob_lo'])) / \
-            np.array(params['amr.n_cell'])
-    assert dxs.min() == dxs.max()
+    if dim > 1:
+        dxs = (np.array(params['geometry.prob_hi'])[:dim] - np.array(params['geometry.prob_lo'])[:dim]) / \
+                np.array(params['amr.n_cell'])[:dim]
+        assert np.isclose(dxs.min(), dxs.max(), rtol=1.e-9)
+    

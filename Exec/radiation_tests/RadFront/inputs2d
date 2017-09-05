@@ -10,6 +10,8 @@ geometry.coord_sys = 0  # 0 => cart, 1 => RZ, 2 => Spherical
 geometry.prob_lo   =   0.0  0.0   0.0
 geometry.prob_hi   =   2.48e10  4.96e10    0.0
 
+geometry.is_periodic =  1 1
+
 amr.n_cell   = 256  512
 
 # REFINEMENT / REGRIDDING
@@ -27,7 +29,7 @@ amr.check_file      = chk     # root name of checkpoint file
 amr.check_int       = 1000      # number of timesteps between checkpoints
 
 # PLOTFILES
-amr.plot_files_output       = 1 
+amr.plot_files_output       = 1
 amr.plot_file       = plt_
 amr.plot_int        = 1000     # number of timesteps between plot files
 amr.derive_plot_vars = ALL
@@ -57,7 +59,7 @@ castro.do_react       = 0       # reactions?
 # hydro cutoff parameters
 # castro.small_dens     = 1.e-20
 castro.small_temp = 1.0e1
-castro.small_dens =1.0e-7 
+castro.small_dens =1.0e-7
 
 
 
@@ -67,7 +69,7 @@ castro.grav_source_type = 4
 # TIME STEP CONTROL
 castro.cfl            = 0.8     # cfl number for hyperbolic system
 castro.init_shrink    = 0.1     # scale back initial timestep
-castro.change_max     = 1.05 #1.0e-9 
+castro.change_max     = 1.05 #1.0e-9
 castro.dt_cutoff      = 1.e-20  # level 0 timestep below which we halt
 castro.fixed_dt       = 1.3e-4
 
@@ -93,9 +95,9 @@ radiation.limiter = 2     # 0 = no limiter
 
 # how many times during an iteration do we update the limiter, planck
 # and rosseland mean opacities?  Large values mean keep updating until
-# convergence.  
+# convergence.
 #radiation.update_limiter = 1000
-#radiation.update_planck = 1000 
+#radiation.update_planck = 1000
 #radiation.update_rosseland = 1000
 
 radiation.delta_temp            = 1.0e-6
@@ -127,8 +129,8 @@ radiation.hi_bcflag = 0 0 0
 # 104 = LO_MARSHAK             bcval is incident flux
 # 105 = LO_SANCHEZ_POMRANING   bcval is incident flux
 
-radiation.lo_bcval = 0.0   2.99e10   0.0 
-radiation.hi_bcval = 0.0   2.99      0.0   
+radiation.lo_bcval = 0.0   2.99e10   0.0
+radiation.hi_bcval = 0.0   2.99      0.0
 
 # Power-law opacities are represented as:
 #
@@ -140,12 +142,12 @@ radiation.hi_bcval = 0.0   2.99      0.0
 
 #radiation.do_real_eos = 0
 
-# Planck mean opacity 
+# Planck mean opacity
 radiation.const_kappa_p =  1.0e-15
 radiation.kappa_p_exp_m =  0.0
 radiation.kappa_p_exp_n =  0.0
 
-# Rosseland mean opacity 
+# Rosseland mean opacity
 radiation.const_kappa_r =  1.0e-15
 radiation.kappa_r_exp_m =  0.0
 radiation.kappa_r_exp_n =  0.0
@@ -182,5 +184,3 @@ radsolve.v = 1      # verbosity
 
 hmabec.verbose = 2  # verbosity for HypreMultiABec solvers
 habec.verbose  = 2  # verbosity for HypreABec solvers
-
-
