@@ -604,10 +604,6 @@ Castro::variableSetUp ()
 
   source_names[ext_src] = "user-defined external";
 
-#ifdef GRAVITY
-  source_names[grav_src] = "gravity";
-#endif
-
   // method of lines Butcher tableau
 #define SECONDORDER_TVD
 

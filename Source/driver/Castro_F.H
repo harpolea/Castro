@@ -289,27 +289,6 @@ extern "C"
 
   void flush_output();
 
-#ifdef GRAVITY
-  void ca_gsrc
-    (const int* lo, const int* hi,
-     const int* domlo, const int* domhi,
-     const BL_FORT_FAB_ARG_3D(s_old),
-     BL_FORT_FAB_ARG_3D(source),
-     const amrex::Real* dx, const amrex::Real& dt, const amrex::Real* time);
-
-  void ca_corrgsrc
-    (const int* lo, const int* hi,
-     const int* domlo, const int* domhi,
-     const BL_FORT_FAB_ARG_3D(S_old),
-     const BL_FORT_FAB_ARG_3D(S_new),
-     const BL_FORT_FAB_ARG_3D(volume),
-     BL_FORT_FAB_ARG_3D(xflux),
-     BL_FORT_FAB_ARG_3D(yflux),
-     BL_FORT_FAB_ARG_3D(zflux),
-     BL_FORT_FAB_ARG_3D(source),
-     const amrex::Real* dx, const amrex::Real& dt, const amrex::Real* time);
-#endif
-
   void ca_summass
     (const int* lo, const int* hi, const BL_FORT_FAB_ARG_3D(rho),
      const amrex::Real* dx, BL_FORT_FAB_ARG_3D(vol), amrex::Real* mass);

@@ -34,14 +34,6 @@ Castro::source_flag(int src)
 	else
 	    return false;
 
-#ifdef GRAVITY
-    case grav_src:
-	if (do_grav)
-	    return true;
-	else
-	    return false;
-#endif
-
     default:
 	return false;
 
@@ -140,11 +132,6 @@ Castro::construct_old_source(int src, Real time, Real dt, int amr_iteration, int
     	construct_old_ext_source(time, dt);
     	break;
 
-#ifdef GRAVITY
-        case grav_src:
-    	construct_old_gravity_source(time, dt);
-    	break;
-#endif
         default:
     	break;
 
@@ -161,12 +148,6 @@ Castro::construct_new_source(int src, Real time, Real dt, int amr_iteration, int
         case ext_src:
     	construct_new_ext_source(time, dt);
     	break;
-
-#ifdef GRAVITY
-        case grav_src:
-    	construct_new_gravity_source(time, dt);
-    	break;
-#endif
 
         default:
     	break;

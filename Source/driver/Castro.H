@@ -414,9 +414,6 @@ protected:
 #if (BL_SPACEDIM <= 2)
     amrex::FluxRegister pres_reg;
 #endif
-#ifdef GRAVITY
-    amrex::FluxRegister phi_reg;
-#endif
 
     // Scalings for the flux registers.
     amrex::Real flux_crse_scale;

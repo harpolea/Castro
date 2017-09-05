@@ -114,7 +114,18 @@ class Simulation(object):
             ds = self.ts[self.plot_folders.index(plotfilename)]
 
         p = SlicePlot(ds, normal_axis, field, origin='native')
-        p.set_width(1., 'unitary')
+
+        if str(ds.domain_width.units) == 'code_length':
+            axis_units = 'unitary'
+        else:
+            axis_units = ds.domain_width.units
+
+        axis_widths = tuple([(ds.domain_width.value[i], axis_units) for i in range(3) if ds.coordinates.axis_id[normal_axis] != i])
+
+        if normal_axis == 'y': # reverse order
+            axis_widths = axis_widths[::-1]
+
+        p.set_width(axis_widths)
 
         if save:
             p.save(plotfilename + '.png')
@@ -173,10 +184,25 @@ class Simulation(object):
         normal_axis :
             axis normal to plane of plot
         """
+
+        if field not in self.fields:
+            raise self.InvalidFieldError(field)
+
         self.load_time_series()
 
         plot = SlicePlot(self.ts[0], normal_axis, field, origin='native')
-        plot.set_width(1., 'unitary')
+
+        if str(self.ts[0].domain_width.units) == 'code_length':
+            axis_units = 'unitary'
+        else:
+            axis_units = self.ts[0].domain_width.units
+
+        axis_widths = tuple([(self.ts[0].domain_width.value[i], axis_units) for i in range(3) if self.ts[0].coordinates.axis_id[normal_axis] != i])
+
+        if normal_axis == 'y': # reverse order
+            axis_widths = axis_widths[::-1]
+
+        plot.set_width(axis_widths)
 
         # we want the colourbar to stay the same throughout - shall default to using the limits of the first dataset in the time series, but this can be overridden by using the plot modifier functions.
         colourbar_limits = self.ts[0].all_data().quantities.extrema(field)
@@ -221,10 +247,23 @@ class Simulation(object):
         normal_axis :
             axis normal to plane of plot
         """
+        if field not in self.fields:
+            raise self.InvalidFieldError(field)
+
         self.load_time_series()
 
         plot = SlicePlot(self.ts[0], normal_axis, field, origin='native')
-        plot.set_width(1., 'unitary')
+        if str(self.ts[0].domain_width.units) == 'code_length':
+            axis_units = 'unitary'
+        else:
+            axis_units = self.ts[0].domain_width.units
+
+        axis_widths = tuple([(self.ts[0].domain_width.value[i], axis_units) for i in range(3) if self.ts[0].coordinates.axis_id[normal_axis] != i])
+
+        if normal_axis == 'y': # reverse order
+            axis_widths = axis_widths[::-1]
+
+        plot.set_width(axis_widths)
 
         # we want the colourbar to stay the same throughout - shall default to using the limits of the first dataset in the time series, but this can be overridden by using the plot modifier functions.
         colourbar_limits = self.ts[0].all_data().quantities.extrema(field)
@@ -248,7 +287,6 @@ class Simulation(object):
             animation_name = self.prefix + '.mp4'
 
         # stitch frames together
-        #ffmpeg -framerate 10 -pattern_type glob -i '../../Documents/Work/swerve/plotting/fv_?????.png' -c:v libx264 -r 10 " +  movie_filename
         ff = FFmpeg(inputs={ str(self.root_dir) + '/frames/*.png': '-framerate 10 -pattern_type glob'},
                     outputs={animation_name : '-y -c:v libx264 -r 10'})
 

@@ -314,7 +314,7 @@ def write_meth_module(plist, meth_template):
             mo.write("  !$acc create(")
 
             for n, p in enumerate(params):
-                if p.f90_dtype == "string": 
+                if p.f90_dtype == "string":
                     print("warning: string parameter {} will not be available on the GPU".format(p.name),
                           file=sys.stderr)
                     continue
@@ -347,7 +347,7 @@ def write_meth_module(plist, meth_template):
                     mo.write(p.get_query_string("F90"))
 
                 mo.write('    call amrex_parmparse_destroy(pp)\n')
-                
+
                 mo.write("\n\n")
 
             # Now do the OpenACC device updates
@@ -374,7 +374,7 @@ def write_meth_module(plist, meth_template):
 
             for p in params_free:
                 mo.write("    deallocate({})\n".format(p.f90_name))
-                
+
             mo.write("\n\n")
 
 
@@ -395,7 +395,7 @@ def parse_params(infile, meth_template):
 
     try: f = open(infile)
     except:
-        sys.exit("error openning the input file")
+        sys.exit("error opening the input file")
 
 
     for line in f:
