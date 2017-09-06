@@ -143,6 +143,15 @@ def validate_params(params, dim):
     check_int('geometry.coord_sys', 0, 0)
 
     check_real_array('castro.center')
+    # check centre is within domain
+    if 'castro.center' in params:
+        if dim > 1:
+            assert (np.array(params['castro.center'])[:dim] >= np.array(params['geometry.prob_lo'])[:dim]).all()
+
+            assert (np.array(params['castro.center'])[:dim] <= np.array(params['geometry.prob_hi'])[:dim]).all()
+        else:
+            assert params['castro.center'] <= params['geometry.prob_hi']
+            assert params['castro.center'] >= params['geometry.prob_lo']
 
     check_int_array('amr.n_cell', 1, 1e10)
     check_int('amr.max_level', 0, 20)
@@ -151,12 +160,17 @@ def validate_params(params, dim):
     check_int_array('castro.hi_bc', 0, 5)
 
     check_bool('castro.do_hydro')
+    check_bool('castro.do_react')
     check_int('castro.ppm_type', 0, 3)
+    check_bool('castro.ppm_temp_fix')
     check_bool('castro.allow_negative_energy')
+    check_bool('castro.use_flattening')
+    check_bool('castro.do_sponge')
     check_real('castro.cfl', 0., 1.)
     check_real('castro.init_shrink', 0., 1.)
     check_real('castro.change_max', 0.)
     check_real('castro.dt_cutoff', 0.)
+    check_bool('castro.do_rotation')
 
     check_real('castro.small_dens', 0.)
     check_real('castro.small_temp', 0.)
@@ -164,18 +178,20 @@ def validate_params(params, dim):
     check_int('castro.sum_interval')
     check_bool('castro.v')
     check_bool('amr.v')
+    check_bool('gravity.v')
     check_string('amr.grid_log')
     check_string_array('amr.data_log', 1)
 
     if 'amr.max_level' in params and params['amr.max_level'] > 0:
+        # Need to check AMR variables are valid
         refinement_levels = params['amr.max_level']
-
         check_int_array('amr.ref_ratio', 1, 10, min_length=refinement_levels)
         check_int_array('amr.regrid_int', -1, 1e5, min_length=1)
         check_int('amr.block_factor', 1)
         check_int_array('amr.n_error_buf', 0, min_length=refinement_levels)
         check_bool('castro.use_post_step_regrid')
         check_int_array('amr.max_grid_size', 1, 10000, min_length=1)
+        check_real('amr.grid_eff')
 
     check_bool('castro.track_grid_losses')
     check_bool('amr.plotfile_on_restart')
@@ -190,6 +206,7 @@ def validate_params(params, dim):
     check_string('amr.plot_file')
     check_real('amr.plot_per', 0)
     check_int('amr.plot_int')
+    check_bool('amr.refine_grid_layout')
 
     check_string_array('amr.plot_vars', min_length=1)
     check_string_array('amr.derive_plot_vars', min_length=1)
@@ -201,4 +218,3 @@ def validate_params(params, dim):
         dxs = (np.array(params['geometry.prob_hi'])[:dim] - np.array(params['geometry.prob_lo'])[:dim]) / \
                 np.array(params['amr.n_cell'])[:dim]
         assert np.isclose(dxs.min(), dxs.max(), rtol=1.e-9)
-    
