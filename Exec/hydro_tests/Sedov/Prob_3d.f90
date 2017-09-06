@@ -109,12 +109,13 @@ subroutine ca_initdata(level,time,lo,hi,nscal, &
 
   use probdata_module
   use bl_constants_module, only: M_PI, FOUR3RD, ZERO, ONE
-  use meth_params_module , only: NVAR, URHO, UMX, UMY, UMZ, UEDEN, UEINT, UFS
+  use meth_params_module , only: NVAR, NQ, QRHO, QU, QV, QW, QREINT, QPRES, URHO, UMX, UMY, UMZ, UEDEN, UEINT, UFS, UTEMP
   use prob_params_module, only : center
   use amrex_fort_module, only : rt => amrex_real
   use network, only : nspec
   use eos_module, only : eos
   use eos_type_module, only : eos_t, eos_input_rp, eos_input_re
+  use riemann_util_module, only: gr_cons_state
 
   implicit none
 
@@ -125,6 +126,9 @@ subroutine ca_initdata(level,time,lo,hi,nscal, &
   real(rt) :: state(state_l1:state_h1, &
                     state_l2:state_h2, &
                     state_l3:state_h3,NVAR)
+  real(rt)         :: q(state_l1:state_h1, &
+                    state_l2:state_h2, &
+                    state_l3:state_h3,NQ)
 
   real(rt) :: xmin,ymin,zmin
   real(rt) :: xx, yy, zz
@@ -134,8 +138,13 @@ subroutine ca_initdata(level,time,lo,hi,nscal, &
 
   integer :: i,j,k, ii, jj, kk
   integer :: npert, nambient
-  real(rt) :: e_zone
+  real(rt) :: e_zone, gamma_up(9), gamma
   type(eos_t) :: eos_state
+
+  gamma_up(:) = 0.0d0
+  gamma_up(1) = 1.0d0
+  gamma_up(5) = 1.0d0
+  gamma_up(9) = 1.0d0
 
   ! set explosion pressure -- we will convert the point-explosion energy into
   ! a corresponding pressure distributed throughout the perturbed volume
@@ -196,17 +205,21 @@ subroutine ca_initdata(level,time,lo,hi,nscal, &
 
            eint = dens_ambient * eos_state % e
 
-           state(i,j,k,URHO) = dens_ambient
-           state(i,j,k,UMX) = 0.e0_rt
-           state(i,j,k,UMY) = 0.e0_rt
-           state(i,j,k,UMZ) = 0.e0_rt
+           q(i,j,k,QRHO) = dens_ambient
+           q(i,j,k,QU) = 0.e0_rt
+           q(i,j,k,QV) = 0.e0_rt
+           q(i,j,k,QW) = 0.e0_rt
 
-           state(i,j,k,UEDEN) = eint + &
-                0.5e0_rt*(state(i,j,k,UMX)**2/state(i,j,k,URHO) + &
-                          state(i,j,k,UMY)**2/state(i,j,k,URHO) + &
-                          state(i,j,k,UMZ)**2/state(i,j,k,URHO))
+           q(i,j,k,QREINT) = eint
+           q(i,j,k,QPRES) = eos_state % p
 
-           state(i,j,k,UEINT) = eint
+           !write(*,*) "eint = ", eint
+
+           call gr_cons_state(q(i,j,k,:), state(i,j,k,:), gamma_up)
+
+           !write(*,*) "state E = ", state(i,j,k, UEINT)
+
+           state(i,j,k,UTEMP) = eos_state % T
 
            state(i,j,k,UFS) = state(i,j,k,URHO)
 
