@@ -2,8 +2,10 @@ from yt.mods import *
 import pathlib
 import sys
 import re
-from matplotlib import animation
-from matplotlib import rc_context
+from matplotlib import animation, rc_context, cm
+from matplotlib.pyplot import figure
+from mpl_toolkits.mplot3d.art3d import Poly3DCollection
+from yt import apply_colormap
 from functools import partial
 import os
 import shutil
@@ -65,7 +67,7 @@ class Simulation(object):
             self.plot_folders = sorted([str(f) for f in
                 self.root_dir.iterdir()
                 if (f.is_dir() and
-                    '.old.' not in str(f) and
+                    #'.old.' not in str(f) and
                     re.fullmatch(str(self.root_dir) + '/' + prefix + '\d{5}', str(f)))])
 
             # exit if there are no valid plot folders in the root_dir
@@ -84,7 +86,7 @@ class Simulation(object):
         # time series data
         self.ts = None
 
-    def plot_at_time(self, field, t, save=True, normal_axis='z'):
+    def plot_at_time(self, field, t, save=True, normal_axis='z', velocity_vector=False, grids=False):
         """
         Plot given field at time t. Returns the plot object.
 
@@ -127,10 +129,76 @@ class Simulation(object):
 
         p.set_width(axis_widths)
 
+        if velocity_vector:
+            self.add_velocity_vector(p)
+        if grids:
+            self.add_grids(p)
+
         if save:
             p.save(plotfilename + '.png')
 
         return p
+
+    def plot3d_at_time(self, field, t, iso_value=None, colourmap_field=None, save=True, grids=False):
+        """
+        Plot given field at time t. Returns the plot object.
+
+        Parameters
+        ----------
+        field : string
+            name of field to be plotted
+        t : int
+            number of timestep we wish to plot
+        save : bool
+            do we save the plot or not?
+        iso_value : None or float
+            value of iso contour. If None, will calculate it as the weighted_average_quantity of the field.
+        colourmap_field : string
+            name of field for colourmap. If None, use field.
+        """
+        if field not in self.fields:
+            raise self.InvalidFieldError(field)
+
+        plotfilename = self.prefix + '{:05d}'.format(t)
+
+        if (plotfilename) not in self.plot_folders:
+            raise self.InvalidTimeError(t)
+
+        # check to see if
+        if self.ts is None:
+            ds = load(plotfilename)
+        else:
+            ds = self.ts[self.plot_folders.index(plotfilename)]
+
+        if iso_value is None:
+            iso_value = ds.all_data().quantities.weighted_average_quantity(field, 'cell_mass')
+        if colourmap_field is None:
+            colourmap_field = field
+
+        ds.periodicity = (True, True, True)
+        fig = figure()
+        ax = fig.gca(projection='3d')
+        domain = ds.all_data()
+        surface = ds.surface(domain, field, iso_value)
+        p3dc = Poly3DCollection(surface.triangles, linewidth=0.)
+        try:
+            colours = apply_colormap(surface[colourmap_field])
+            colours = colours[0,:,:] / 255.0
+            colours[:,3] = 0.3
+            p3dc.set_facecolors(colours)
+
+            m = cm.ScalarMappable()
+            m.set_array(colours)
+            cbar = fig.colorbar(m, ax=ax)
+        except ValueError:
+            pass
+
+        ax.add_collection(p3dc)
+
+        if save:
+            fig.savefig(plotfilename + '_3d.png')
+
+        return fig
 
     def set_velocity_fields(self, velocity_fields):
         """
@@ -148,6 +216,13 @@ class Simulation(object):
         """
         p.annotate_quiver(self.velocity_fields[0], self.velocity_fields[1], factor=32)
 
+        return p
+
+    def add_grids(self, p):
+        """
+        Add grids to plot.
+        """
+        p.annotate_grids()
         return p
 
     def load_time_series(self, force=False, setup_function=None, n_processors=True):

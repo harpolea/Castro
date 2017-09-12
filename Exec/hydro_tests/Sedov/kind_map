@@ -1,0 +1,17 @@
+{
+ 'real':     {'': 'float',
+              '8': 'double',
+              'dp': 'double',
+              'dp_t': 'double',
+              'idp': 'double',
+              'rt': 'double'},
+ 'complex' : {'': 'complex_float',
+ 	          '8' : 'complex_double',
+ 	          '16': 'complex_long_double',
+ 	          'dp': 'complex_double'},
+ 'integer' : {'4': 'int',
+	          '8': 'long_long',
+	          'dp': 'long_long' },
+ 'character' : {'': 'char',
+               '1024': 'char'}
+}

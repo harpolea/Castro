@@ -9,6 +9,7 @@ def check_parameter_file(filename, dim=3):
         sys.exit("error opening the input file")
 
     lines = f.readlines()
+    f.close()
     params = {}
 
     # first check formatting and create dictionary
