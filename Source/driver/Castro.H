@@ -61,6 +61,12 @@ public:
     virtual void restart (amrex::Amr&     papa,
                           istream& is,
 			  bool bReadSpecial = false) override;
+
+	void ca_initdata(const int& level, const double& time,
+		  	                const int* lo, const int* hi,
+		  	                const int& num_state,
+		  	                double* state, const int* slo, const int* shi,
+		  	                const double* dx, const double* xlo, const double* xhi);
     //
     //This is called only when we restart from an old checkpoint.
     //

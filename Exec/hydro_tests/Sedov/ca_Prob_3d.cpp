@@ -5,18 +5,29 @@ g++ -I/home/alice/anaconda3/include/python3.6m cpp_code.cpp -o cpp_code -L/home/
 
 or:
 
-g++ `python3.6-config --cflags` cpp_code.cpp -o cpp_code `python3.6-config --ldflags`
+g++ `python3.6-config --cflags` ca_Prob_3d.cpp -o cpp_code `python3.6-config --ldflags` -I/home/alice/Documents/amrex/Src/Base -I/home/alice/Documents/amrex/Src/AmrCore -I/home/alice/Documents/amrex/Src/Amr
 
 */
 
-#include <AMReX.H>
 #include "Python.h"
+#include <AMReX.H>
+#include <AMReX_Utility.H>
+//#include <AMReX_CONSTANTS.H>
+#include "Castro_F.H"
+#include "Castro_io.H"
+#include <AMReX_ParmParse.H>
+#include <Castro.H>
+#include "AMReX_buildInfo.H"
+//#include "AMReX_IntVect.H"
 
-int main() {
-    return 0;
-}
 
-int ca_initdata(const int& level, const double& time,
+using namespace amrex;
+
+//int main() {
+//    return 0;
+//}
+
+void Castro::ca_initdata(const int& level, const double& time,
                 const int* lo, const int* hi,
                 const int& num_state,
                 double* state, const int* slo, const int* shi,
@@ -25,7 +36,7 @@ int ca_initdata(const int& level, const double& time,
 
     PyObject *pName, *pModule, *pDict, *pFunc;
     PyObject *pArgs, *pValue;
-    PyObject *plo, *phi, *pslo, *pshi, *pdx, *pxlo, *pxhi, *pstate, *pq;
+    PyObject *plo, *phi, *pslo, *pshi, *pdx, *pxlo, *pxhi, *pstate;
 
     const char* pymodule = "Prob_3d";
     const char* pyfunc = "ca_initdata";
@@ -93,17 +104,13 @@ int ca_initdata(const int& level, const double& time,
             PyTuple_SetItem(pArgs, 5, pxlo);
             PyTuple_SetItem(pArgs, 6, pxhi);
 
-            pValue = PyObject_CallObject(pFunc, pArgs);
+            pstate = PyObject_CallObject(pFunc, pArgs);
             Py_DECREF(pArgs);
 
-            pq = PyObject_GetItem(pValue, 0);
-            pstate = PyObject_GetItem(pValue, 1);
+            //pstate = PyObject_GetItem(pValue, 0);
 
             // TODO: need NQ, NVAR here
             for (int i = 0; i < (shi[0]-slo[0])*(shi[1]-slo[1])*(shi[2]-slo[2]); i++) {
-
-                pValue = PyList_GetItem(pq, i);
-                q[i] = PyFloat_AsDouble(pValue);
 
                 pValue = PyList_GetItem(pstate, i);
                 state[i] = PyFloat_AsDouble(pValue);

@@ -189,7 +189,7 @@ module meth_params_module
 
 contains
 
-  subroutine ca_set_castro_method_params() !bind(C, name="ca_set_castro_method_params")
+  subroutine ca_set_castro_method_params() bind(C, name="ca_set_castro_method_params")
 
     use amrex_parmparse_module, only: amrex_parmparse_build, amrex_parmparse_destroy, amrex_parmparse
 
@@ -447,7 +447,7 @@ contains
   end subroutine ca_set_castro_method_params
 
 
-  subroutine ca_finalize_meth_params() !bind(C, name="ca_finalize_meth_params")
+  subroutine ca_finalize_meth_params() bind(C, name="ca_finalize_meth_params")
     implicit none
 
     deallocate(xl_ext_bc_type)

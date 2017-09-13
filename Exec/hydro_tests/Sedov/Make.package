@@ -1,1 +1,9 @@
 ca_f90EXE_sources += probdata.f90
+
+CEXE_sources += ca_Prob_3d.cpp
+
+CXXFLAGS += -I/home/alice/anaconda3/include/python3.6m -I/home/alice/anaconda3/include/python3.6m  -Wsign-compare  -DNDEBUG -g -fwrapv -O3 -Wall -Wstrict-prototypes
+
+LDFLAGS += -L/home/alice/anaconda3/lib
+
+LIBRARIES += -lpython3.6m -lpthread -ldl  -lutil -lrt -lm  -Xlinker -export-dynamic

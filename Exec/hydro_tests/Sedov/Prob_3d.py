@@ -190,7 +190,7 @@ def ca_initdata(lo, hi, slo, shi, delta, xlo, xhi):
 
                 state[i,j,k,UFS] = state[i,j,k,URHO]
 
-    return np.ascontiguousarray(q), np.ascontiguousarray(state)
+    return np.ascontiguousarray(state)
 
 def read_probin(filename):
     try:
