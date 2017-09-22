@@ -24,7 +24,7 @@ def amrex_probinit (probin):# bind(c)
     probdata.temp_ambient = -1.e2     # Set original temp. to negative, which is overwritten in the probin file
 
     # set local variable defaults
-    prob_params.center = np.zeros(3)
+    #prob_params.center = np.zeros(3)
     prob_params.center[0] = 0.5*(problo[0] + probhi[0])
     prob_params.center[1] = 0.5*(problo[1] + probhi[1])
     prob_params.center[2] = 0.5*(problo[2] + probhi[2])
@@ -99,6 +99,8 @@ def ca_initdata(lo, hi, slo, shi, delta, xlo, xhi):
     use riemann_util_module, only: gr_cons_state
 """
 
+    print('\nCALLING PYTHON\n')
+
     gamma_up = np.zeros(9)
     gamma_up[0] = 1.0
     gamma_up[4] = 1.0
@@ -124,49 +126,59 @@ def ca_initdata(lo, hi, slo, shi, delta, xlo, xhi):
     NQ = meth_params.nq
     NVAR = meth_params.nvar
 
-    state = np.zeros((shi[0]-slo[0]+1, shi[1]-slo[1]+1, shi[2]-slo[2]+1, NVAR))
-    q = np.zeros((shi[0]-slo[0]+1, shi[1]-slo[1]+1, shi[2]-slo[2]+1, NQ))
+    state = np.zeros((shi[0]+1, shi[1]+1, shi[2]+1, NVAR))
+    q = np.zeros((shi[0]+1, shi[1]+1, shi[2]+1, NQ))
 
-    QRHO = meth_params.qrho
-    QU = meth_params.qu
-    QV = meth_params.qv
-    QW = meth_params.qw
-    QREINT = meth_params.qreint
-    QPRES = meth_params.qpres
-    UTEMP = meth_params.utemp
-    UFS = meth_params.ufs
-    URHO = meth_params.urho
+    # minus 1 as stupid fortran array numbering from 1
+    QRHO = meth_params.qrho-1
+    QU = meth_params.qu-1
+    QV = meth_params.qv-1
+    QW = meth_params.qw-1
+    QREINT = meth_params.qreint-1
+    QPRES = meth_params.qpres-1
+    UTEMP = meth_params.utemp-1
+    UFS = meth_params.ufs-1
+    URHO = meth_params.urho-1
 
-    for k in range(lo[2], hi[2]):
+    q[:,:,:,QRHO] = probdata.dens_ambient
+
+    for k in range(lo[2], hi[2]+1):
         zmin = xlo[2] + delta[2]*(k-lo[2])
 
-        for j in range(lo[1], hi[1]):
+        for j in range(lo[1], hi[1]+1):
             ymin = xlo[1] + delta[1]*(j-lo[1])
 
-            for i in range(lo[0], hi[0]):
+            for i in range(lo[0], hi[0]+1):
                 xmin = xlo[0] + delta[0]*(i-lo[0])
 
                 npert = 0
                 nambient = 0
 
-                for kk in range(probdata.nsub):
-                    zz = zmin + (delta[2]/probdata.nsub)*(kk + 0.5e0)
+                zz = zmin + (delta[2]/probdata.nsub)*(np.array(range(probdata.nsub)) + 0.5)
+                yy = ymin + (delta[1]/probdata.nsub)*(np.array(range(probdata.nsub)) + 0.5)
+                xx = xmin + (delta[0]/probdata.nsub)*(np.array(range(probdata.nsub)) + 0.5)
+
+                XX, YY, ZZ = np.meshgrid(xx, yy, zz)
+
+                dist = (prob_params.center[0]-XX)**2 + (prob_params.center[1]-YY)**2 + (prob_params.center[2]-ZZ)**2
+
+                npert = sum(dist[dist <= probdata.r_init**2])
+                nambient = sum(dist[dist > probdata.r_init**2])
+
+                """for kk in range(probdata.nsub):
 
                     for jj in range(probdata.nsub):
-                        yy = ymin + (delta[1]/probdata.nsub)*(jj + 0.5e0)
 
-                        for ii in range(nsub):
-                            xx = xmin + (delta[0]/probdata.nsub)*(ii + 0.5e0)
+                        for ii in range(probdata.nsub):
 
-                            dist = (prob_params.center[0]-xx)**2 + (prob_params.center[1]-yy)**2 + (prob_params.center[2]-zz)**2
+                            dist = (prob_params.center[0]-xx[ii])**2 + (prob_params.center[1]-yy[jj])**2 + (prob_params.center[2]-zz[kk])**2
 
-                            if(dist <= r_init**2):
+                            if(dist <= probdata.r_init**2):
                                 npert = npert + 1
                             else:
-                                nambient = nambient + 1
+                                nambient = nambient + 1"""
 
-
-                p_zone = (npert*probdata.p_exp + nambient*probdata.p_ambient) / probdata.nsub**3
+                p_zone = (npert*p_exp + nambient*probdata.p_ambient) / probdata.nsub**3
 
                 eos_state.p = p_zone
                 eos_state.rho = probdata.dens_ambient
@@ -176,11 +188,6 @@ def ca_initdata(lo, hi, slo, shi, delta, xlo, xhi):
 
                 eint = probdata.dens_ambient * eos_state.e
 
-                q[i,j,k,QRHO] = probdata.dens_ambient
-                q[i,j,k,QU] = 0.e0
-                q[i,j,k,QV] = 0.e0
-                q[i,j,k,QW] = 0.e0
-
                 q[i,j,k,QREINT] = eint
                 q[i,j,k,QPRES] = eos_state.p
 
@@ -188,9 +195,16 @@ def ca_initdata(lo, hi, slo, shi, delta, xlo, xhi):
 
                 state[i,j,k,UTEMP] = eos_state.T
 
-                state[i,j,k,UFS] = state[i,j,k,URHO]
+    q[:,:,:,QU] = 0.0
+    q[:,:,:,QV] = 0.0
+    q[:,:,:,QW] = 0.0
 
-    return np.ascontiguousarray(state)
+    if UFS < len(state[lo[0],lo[1],lo[2],:]):
+        state[:,:,:,UFS] = state[:,:,:,URHO]
+
+    print(f'state = {np.ascontiguousarray(np.ndarray.flatten(state[:2,:2,:2,:]))}')
+
+    return list(np.ascontiguousarray(np.ndarray.flatten(state.T)))
 
 def read_probin(filename):
     try:

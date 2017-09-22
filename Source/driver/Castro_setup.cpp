@@ -404,6 +404,18 @@ Castro::variableSetUp ()
 
   num_state_type = desc_lst.size();
 
+  std::cout << "In Castro_setup, state variables are:\n";
+  for (int typ = 0; typ < desc_lst.size(); typ++)
+  {
+      const StateDescriptor& desc = desc_lst[typ];
+
+      for (int n = 0; n < desc.nComp(); n++)
+      {
+          std::cout << desc.name(n) << '\n';
+      }
+  }
+  std::cout <<'\n';
+
   //
   // DEFINE DERIVED QUANTITIES
   //

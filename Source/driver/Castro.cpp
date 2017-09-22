@@ -580,6 +580,17 @@ Castro::initData ()
               const int* lo      = box.loVect();
               const int* hi      = box.hiVect();
 
+              int NVAR;
+              ca_get_nvar(&NVAR);
+
+              // NOTE: UNCOMMENT FOR PYTHON
+              /*ca_initdata(level, cur_time, ARLIM_3D(lo), ARLIM_3D(hi), ns,
+              S_new[mfi].dataPtr(), ARLIM_3D((S_new[mfi]).loVect()), ARLIM_3D((S_new[mfi]).hiVect()), ZFILL(dx),
+              ZFILL(gridloc.lo()), ZFILL(gridloc.hi()));
+
+
+               std::cout << "Called python\n\n\n";*/
+
 #ifdef DIMENSION_AGNOSTIC
           BL_FORT_PROC_CALL(CA_INITDATA,ca_initdata)
           (level, cur_time, ARLIM_3D(lo), ARLIM_3D(hi), ns,
@@ -1650,6 +1661,7 @@ Castro::derive (const std::string& name,
                 Real           time,
                 int            ngrow)
 {
+    //std::cout << "breaking here???\n";
    return AmrLevel::derive(name,time,ngrow);
 }
 

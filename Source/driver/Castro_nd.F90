@@ -163,6 +163,24 @@ end subroutine ca_get_qvar
 ! ::: ----------------------------------------------------------------
 ! :::
 
+subroutine ca_get_nvar(nvar_in) bind(C, name="ca_get_nvar")
+
+  use meth_params_module, only: NVAR
+  use amrex_fort_module, only: rt => amrex_real
+
+  implicit none
+
+  integer, intent(inout) :: nvar_in
+
+  nvar_in = NVAR
+
+end subroutine ca_get_nvar
+
+
+! :::
+! ::: ----------------------------------------------------------------
+! :::
+
 subroutine ca_get_nqaux(nqaux_in) bind(C, name="ca_get_nqaux")
 
   use meth_params_module, only: NQAUX

@@ -19,6 +19,7 @@ g++ `python3.6-config --cflags` ca_Prob_3d.cpp -o cpp_code `python3.6-config --l
 #include <Castro.H>
 #include "AMReX_buildInfo.H"
 //#include "AMReX_IntVect.H"
+#include <typeinfo>
 
 
 using namespace amrex;
@@ -27,12 +28,14 @@ using namespace amrex;
 //    return 0;
 //}
 
-void Castro::ca_initdata(const int& level, const double& time,
-                const int* lo, const int* hi,
-                const int& num_state,
-                double* state, const int* slo, const int* shi,
-                const double* dx, const double* xlo, const double* xhi)
+void Castro::ca_initdata(int& level, amrex::Real& time,
+                        const int* lo, const int* hi,
+                        int& num_state,
+                        double* state, const int* slo, const int* shi,
+                        const amrex::Real* dx, const amrex::Real* xlo, const amrex::Real* xhi)
 {
+
+    std::cout << "Calling ca_initdata\n";
 
     PyObject *pName, *pModule, *pDict, *pFunc;
     PyObject *pArgs, *pValue;
@@ -107,15 +110,26 @@ void Castro::ca_initdata(const int& level, const double& time,
             pstate = PyObject_CallObject(pFunc, pArgs);
             Py_DECREF(pArgs);
 
+            std::cout << "Called python object\n";
+
             //pstate = PyObject_GetItem(pValue, 0);
 
-            // TODO: need NQ, NVAR here
-            for (int i = 0; i < (shi[0]-slo[0])*(shi[1]-slo[1])*(shi[2]-slo[2]); i++) {
+            int NVAR;
+            ca_get_nvar(&NVAR);
+
+            std::cout << "size of state = " << sizeof(state)/sizeof(*state) << '\n';
+
+            for (int i = 0; i < (shi[0]+1)*(shi[1]+1)*(shi[2]+1)*NVAR; i++) {
 
                 pValue = PyList_GetItem(pstate, i);
-                state[i] = PyFloat_AsDouble(pValue);
+
+                if (pValue != NULL)
+                    state[i] = PyFloat_AsDouble(pValue);
+                //std::cout << "Made double at " << i << " = " << PyFloat_AsDouble(pValue) <<'\n';
             }
-            Py_DECREF(pValue);
+            //Py_DECREF(pValue);
+
+            std::cout << "Made state\n";
 
         }
         else {
@@ -131,6 +145,8 @@ void Castro::ca_initdata(const int& level, const double& time,
         fprintf(stderr, "Failed to load \"%s\"\n", pymodule);
 
     }
-
+    //Py_DECREF(pValue);
     Py_Finalize();
+
+    std::cout <<  "exiting\n";
 }

@@ -28,6 +28,8 @@ extern "C"
 
   void ca_get_qvar(int* qvar);
 
+  void ca_get_nvar(int* nvar);
+
   void ca_get_nqaux(int* nqaux);
 
   void ca_set_special_tagging_flag(const amrex::Real& max_den, const int* flag);

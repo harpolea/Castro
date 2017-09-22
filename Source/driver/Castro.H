@@ -62,11 +62,12 @@ public:
                           istream& is,
 			  bool bReadSpecial = false) override;
 
-	void ca_initdata(const int& level, const double& time,
-		  	                const int* lo, const int* hi,
-		  	                const int& num_state,
-		  	                double* state, const int* slo, const int* shi,
-		  	                const double* dx, const double* xlo, const double* xhi);
+			  // NOTE: UNCOMMENT FOR PYTHON
+	//void ca_initdata(int& level, amrex::Real& time,
+		//  	                const int* lo, const int* hi,
+		  //	                int& num_state,
+		  	//                double* state, const int* slo, const int* shi,
+		  	  //              const amrex::Real* dx, const amrex::Real* xlo, const amrex::Real* xhi);
     //
     //This is called only when we restart from an old checkpoint.
     //

@@ -50,31 +50,28 @@ contains
 
     ! Local variables
     integer i, j
+    integer I_lo(3), I_hi(3)
+
+     real(rt)         :: cl, cr
+     type (eos_t) :: eos_state
 
     ! these will refer to the zone interfaces that we solve the
     ! Riemann problem across
-    integer :: imin, imax, jmin, jmax
 
-    real(rt)         :: cl, cr
-    type (eos_t) :: eos_state
+    I_lo(:) = [ilo, jlo, 0]
+    I_hi(:) = [ihi, jhi, 0]
 
     if (idir == 1) then
-       imin = ilo
-       imax = ihi+1
-       jmin = jlo
-       jmax = jhi
-    else
-       imin = ilo
-       imax = ihi
-       jmin = jlo
-       jmax = jhi+1
-    endif
+       I_hi(1) = I_hi(1) + 1
+   elseif (idir == 2) then
+       I_hi(2) = I_hi(2) + 1
+   endif
 
     ! Solve Riemann problem (godunov state passed back, but only (u,p) saved)
     call gr_HLL(qm, qp, qpd_lo, qpd_hi, &
              qaux, qa_lo, qa_hi, &
              flx, flx_lo, flx_hi, &
-             idir, imin, imax, jmin, jmax, 0, 0, 0, &
+             idir, I_lo, I_hi, &
              [domlo(1), domlo(2), 0], [domhi(1), domhi(2), 0], &
              gamma_up, [glo(1), glo(2), 0], [ghi(1), ghi(2), 0])
 
