@@ -499,13 +499,13 @@ contains
 
               !write(*,*) "pressure = ", pmin, pmax
 
-              if (p /= p .or. p <= 0.0d0 .or. p > 1.0d0) then
+              if (p /= p .or. p <= 0.0d0) then! .or. p > 1.0d0) then
 
                   p = abs((gamma - 1.0d0) * ((eden + uin(i,j,k,URHO)) - ssq / (eden + uin(i,j,k,URHO))**2 - uin(i,j,k,URHO)))
 
-                  if (p > 1.0d0) then
-                      p = 1.0d0
-                  end if
+                  !if (p > 1.0d0) then
+                      !p = 1.0d0
+                  !end if
               end if
 
               sq = sqrt((eden + p + uin(i,j,k,URHO))**2 - ssq)

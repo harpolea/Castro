@@ -108,12 +108,13 @@ subroutine ca_initdata(level,time,lo,hi,nscal, &
 
   use probdata_module
   use bl_constants_module, only: M_PI, FOUR3RD, ZERO, ONE
-  use meth_params_module , only: NVAR, URHO, UMX, UMZ, UEDEN, UEINT, UFS, UTEMP
+  use meth_params_module , only: NVAR, NQ, QRHO, QU, QV, QW, QREINT, QPRES, URHO, UMX, UMZ, UEDEN, UEINT, UFS, UTEMP
   use prob_params_module, only : center, coord_type
   use amrex_fort_module, only : rt => amrex_real
   use network, only : nspec
   use eos_module, only : eos
   use eos_type_module, only : eos_t, eos_input_rp, eos_input_re, eos_input_rt
+  use riemann_util_module, only: gr_cons_state
 
   implicit none
 
@@ -122,6 +123,7 @@ subroutine ca_initdata(level,time,lo,hi,nscal, &
   integer :: state_l1,state_l2,state_h1,state_h2
   real(rt)         :: xlo(2), xhi(2), time, delta(2)
   real(rt)         :: state(state_l1:state_h1,state_l2:state_h2,NVAR)
+  real(rt)         :: q(state_l1:state_h1,state_l2:state_h2,NQ)
 
   real(rt)         :: xmin,ymin
   real(rt)         :: xx, yy
@@ -131,8 +133,13 @@ subroutine ca_initdata(level,time,lo,hi,nscal, &
 
   integer :: i,j, ii, jj
   real(rt)         :: vol_pert, vol_ambient
-  real(rt) :: e_zone
+  real(rt) :: e_zone, dens_zone, gamma_up(9)
   type(eos_t) :: eos_state
+
+  gamma_up(:) = 0.0d0
+  gamma_up(1) = 1.0d0
+  gamma_up(5) = 1.0d0
+  gamma_up(9) = 1.0d0
 
   ! Cylindrical problem in Cartesian coordinates
   if (coord_type == 0) then
@@ -142,16 +149,16 @@ subroutine ca_initdata(level,time,lo,hi,nscal, &
      ! perturbed volume
      vctr = M_PI*r_init**2
 
-     e_zone = exp_energy/vctr/dens_ambient
+     e_zone = exp_energy!/vctr/dens_ambient
 
      eos_state % e = e_zone
-     eos_state % rho = dens_ambient
+     eos_state % rho = 1.0d0!dens_ambient
      eos_state % xn(:) = xn_zone(:)
      eos_state % T = 1000.00 ! initial guess
 
      call eos(eos_input_re, eos_state)
 
-     p_exp = eos_state % p
+     p_exp = 1000! eos_state % p
 
      do j = lo(2), hi(2)
         ymin = xlo(2) + delta(2)*dble(j-lo(2))
@@ -168,7 +175,7 @@ subroutine ca_initdata(level,time,lo,hi,nscal, &
               do ii = 0, nsub-1
                  xx = xmin + (delta(1)/dble(nsub))*(ii + 0.5e0_rt)
 
-                 dist = (center(1)-xx)**2 + (center(2)-yy)**2
+                 dist = xx**2! (center(1)-xx)**2 + (center(2)-yy)**2
 
                  if (dist <= r_init**2) then
                     vol_pert    = vol_pert    + 1.e0_rt
@@ -180,23 +187,25 @@ subroutine ca_initdata(level,time,lo,hi,nscal, &
            enddo
 
            p_zone = (vol_pert*p_exp + vol_ambient*p_ambient)/ (vol_pert + vol_ambient)
+           dens_zone = (vol_pert*1.0d0 + vol_ambient*dens_ambient)/ (vol_pert + vol_ambient)
+           !e_zone = (vol_pert*exp_energy + vol_ambient*0.12)/ (vol_pert + vol_ambient)
 
            eos_state % p = p_zone
-           eos_state % rho = dens_ambient
+           eos_state % rho = dens_zone
            eos_state % xn(:) = xn_zone(:)
            eos_state % T = 1000.0   ! initial guess
 
            call eos(eos_input_rp, eos_state)
 
-           eint = dens_ambient * eos_state % e
+           eint = dens_zone * eos_state % e
 
-           state(i,j,URHO) = dens_ambient
-           state(i,j,UMX:UMZ) = 0.e0_rt
+           q(i,j,URHO) = dens_zone
+           q(i,j,UMX:UMZ) = 0.e0_rt
 
-           state(i,j,UEDEN) = eint +  &
-                0.5e0_rt*(sum(state(i,j,UMX:UMZ)**2)/state(i,j,URHO))
+           q(i,j,QREINT) = eint
+           q(i,j,QPRES) = p_zone
 
-           state(i,j,UEINT) = eint
+           call gr_cons_state(q(i,j,:), state(i,j,:), gamma_up)
 
            state(i,j,UFS) = state(i,j,URHO)
 

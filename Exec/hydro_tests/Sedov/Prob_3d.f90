@@ -138,7 +138,7 @@ subroutine ca_initdata(level,time,lo,hi,nscal, &
 
   integer :: i,j,k, ii, jj, kk
   integer :: npert, nambient
-  real(rt) :: e_zone, gamma_up(9), gamma
+  real(rt) :: e_zone, gamma_up(9)
   type(eos_t) :: eos_state
 
   gamma_up(:) = 0.0d0

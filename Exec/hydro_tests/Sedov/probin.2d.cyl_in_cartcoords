@@ -1,8 +1,8 @@
 &fortin
 
-  r_init = 0.01
-  p_ambient = 1.d-6
-  exp_energy = 1.0
+  r_init = 0.5
+  p_ambient = 1.d-2
+  exp_energy = 1500
   dens_ambient = 1.0
   nsub = 10
 
