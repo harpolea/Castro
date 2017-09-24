@@ -867,7 +867,7 @@ Castro::writeSmallPlotFile (const std::string& dir,
 	 it != dlist.end();
 	 ++it)
     {
-        if (parent->isDeriveSmallPlotVar(it->name()))
+        if (parent->isStateSmallPlotVar(it->name()))
         {
 #ifdef PARTICLES
             if (it->name() == "particle_count" ||

@@ -23,11 +23,12 @@ subroutine ca_mol_single_stage(time, &
   use meth_params_module, only : NQ, QVAR, NVAR, UMX, &
                                  NQAUX, QFS, QFX, QRHO,&
                                  first_order_hydro, difmag, URHO
-  use advection_util_module, only : compute_cfl, divu, normalize_species_fluxes
+  use advection_util_module, only : compute_cfl
+  use advection_util_2d_module, only: normalize_species_fluxes
+  use reconstruct_module, only : compute_reconstruction_tvd
   use bl_constants_module, only : ZERO, HALF, ONE
   use prob_params_module, only : coord_type
   use riemann_module, only: cmpflx
-  use reconstruct_module, only : compute_reconstruction_tvd
   use amrex_fort_module, only : rt => amrex_real
   use network, only : nspec, naux
 
