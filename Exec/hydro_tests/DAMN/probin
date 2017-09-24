@@ -1,9 +1,8 @@
 &fortin
 
-   h_in = 2.0
+   h_in = 11.0
    h_out = 1.0
-   damn_rad = 0.25
-
+   damn_rad = 5.0
    radius = 100.0
 
 /
