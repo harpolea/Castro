@@ -116,7 +116,7 @@ subroutine ca_initdata(level,time,lo,hi,nscal, &
         do i = lo(1), hi(1)
            xx = xlo(1) + delta(1)*dble(i-lo(1)+HALF)
 
-           r = sqrt((xx - center(1))**2 + (yy - center(2))**2)
+           r = xx!sqrt((xx - center(1))**2 + (yy - center(2))**2)
 
            if (r < damn_rad) then
                state(i,j,k,URHO) = h_in

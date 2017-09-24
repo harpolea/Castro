@@ -18,7 +18,7 @@ DIM        ?= 2
 COMP	   ?= gnu
 
 USE_MPI    ?= FALSE
-USE_OMP    ?= FALSE
+USE_OMP    ?= TRUE
 
 DIMENSION_AGNOSTIC = TRUE
 

@@ -17,16 +17,16 @@ USE_ACC = TRUE
 # programs to be compiled
 ALL: testburn.ex table
 
-EOS_dir := helmholtz
+EOS_DIR := helmholtz
 
-Network_dir := aprox13
+NETWORK_DIR := aprox13
 
 INTEGRATOR_DIR := BS
 
 f90EXE_sources += testburn.f90
 
 BLOCS = .
-EXTERN_CORE = .
+EXTERN_SEARCH = .
 
 CASTRO_HOME := ../../..
 

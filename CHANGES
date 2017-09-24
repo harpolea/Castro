@@ -1,17 +1,46 @@
 # changes since the last release:
 
+  -- A minor error in the gravity source terms was fixed (#109).
+     This error should not normally have been observable.
+
+  -- fixed a bug in the artifical viscosity in 1-d in
+     non-Cartesian geometries (issue #175)
+
+  -- the README.md now describes the process to become a
+     "core developer" of Castro, and what this means.
+
+  -- Network_dir has been renamed NETWORK_DIR and EOS_dir has been
+     renamed EOS_DIR.  All of the problem GNUmakefiles have been
+     updated.  The old names will continue to work in the near future,
+     but users are encouraged to change any of their problems
+     to use the new all-caps names.
+
+  -- the density flux limiting functionality now has a small 
+     tolerance (#185). It has also been documented (#193).
+
+  -- the timestep retry is now conservative -- this was accomplished
+     by saving the density fluxes to use in the conservative gravity
+     update (#178). Also, a bug in the timestep retry for Poisson
+     gravity was fixed (#188).
+
+# 17.09
+
+  -- the Source/ directory structure has been reorganized,
+     putting the source files into directories by physics and
+     eliminating the Src_1d, Src_2d, ... subdirectories
+
   -- the Riemann solvers have been merged into a single
      dimensional-agnostic version in Src_nd.  In 2-d there was an
      issue with how the Godunov state for the CG solver was stored on
      interfaces, which would affect the internal enery evolution.
 
   -- the PLM and PPM reconstruction routines were merged into
-     a single dimensional-agnostic version in Src_nd.
+     a single dimensional-agnostic version in hydro/
 
   -- the characteristic tracing routines were merged into
-     dimensional-agnostic versions in Src_nd.  This change fixed
-     and outstanding issue -- the PLM reconstruction in 1-d now
-     uses a reference state. (issue #11)
+     dimensional-agnostic versions in hydro/ and radiation/.  This
+     change fixed and outstanding issue -- the PLM reconstruction in
+     1-d now uses a reference state. (issue #11)
 
 # 17.08
 
@@ -55,8 +84,8 @@
 
   -- we now require the AMReX library instead of the BoxLib library
 
-  -- the Microphysics repository that we rely on for the EOS and 
-     reaction networks is now part of the starkiller-astro github. 
+  -- the Microphysics repository that we rely on for the EOS and
+     reaction networks is now part of the starkiller-astro github.
      You can change your clone to refer to this via:
 
      git remote set-url origin ssh://git@github.com/starkiller-astro/Microphysics
@@ -161,7 +190,7 @@
 
 * 16.11
 
-  -- we now distinguish between gravity (which can include a 
+  -- we now distinguish between gravity (which can include a
      constant gravitational acceleration) and self-gravity,
      with the GRAVITY and SELF_GRAVITY preprocessor directives
 
@@ -243,7 +272,7 @@
   -- enthalpy, species, and temperature diffusion are now properly
      time-centered (issue #22), and a bug in the hi boundary
      inflow boundary conditions for diffusion was fixed (issue #41)
-  
+
   -- a flux limiter has been added that limits the size of the hydro
      fluxes if they would cause rho or (rho e) to go negative. This
      can be used with castro.limit_hydro_fluxes_on_small_dens = 1.
@@ -322,7 +351,7 @@
      slightly better coupling of the Coriolis force in the momentum
      equation by doing an implicit velocity update
 
-     We also make ppm_trace_sources = 1 the default -- this does 
+     We also make ppm_trace_sources = 1 the default -- this does
      parabolic reconstruction of the momentum sources and traces
      under them when constructing the interface states
 
