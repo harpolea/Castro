@@ -142,6 +142,11 @@ def ca_initdata(lo, hi, slo, shi, delta, xlo, xhi):
 
     q[:,:,:,QRHO] = probdata.dens_ambient
 
+    centre = np.zeros(3)
+    centre[0] = 0.5#*(problo[0] + probhi[0])
+    centre[1] = 0.5#*(problo[1] + probhi[1])
+    centre[2] = 0.5#*(problo[2] + probhi[2])
+
     for k in range(lo[2], hi[2]+1):
         zmin = xlo[2] + delta[2]*(k-lo[2])
 
@@ -151,32 +156,17 @@ def ca_initdata(lo, hi, slo, shi, delta, xlo, xhi):
             for i in range(lo[0], hi[0]+1):
                 xmin = xlo[0] + delta[0]*(i-lo[0])
 
-                npert = 0
-                nambient = 0
-
                 zz = zmin + (delta[2]/probdata.nsub)*(np.array(range(probdata.nsub)) + 0.5)
                 yy = ymin + (delta[1]/probdata.nsub)*(np.array(range(probdata.nsub)) + 0.5)
                 xx = xmin + (delta[0]/probdata.nsub)*(np.array(range(probdata.nsub)) + 0.5)
 
                 XX, YY, ZZ = np.meshgrid(xx, yy, zz)
 
-                dist = (prob_params.center[0]-XX)**2 + (prob_params.center[1]-YY)**2 + (prob_params.center[2]-ZZ)**2
+                #dist = (prob_params.center[0]-XX)**2 + (prob_params.center[1]-YY)**2 + (prob_params.center[2]-ZZ)**2
+                dist = (centre[0]-XX)**2 + (centre[1]-YY)**2 + (centre[2]-ZZ)**2
 
-                npert = sum(dist[dist <= probdata.r_init**2])
-                nambient = sum(dist[dist > probdata.r_init**2])
-
-                """for kk in range(probdata.nsub):
-
-                    for jj in range(probdata.nsub):
-
-                        for ii in range(probdata.nsub):
-
-                            dist = (prob_params.center[0]-xx[ii])**2 + (prob_params.center[1]-yy[jj])**2 + (prob_params.center[2]-zz[kk])**2
-
-                            if(dist <= probdata.r_init**2):
-                                npert = npert + 1
-                            else:
-                                nambient = nambient + 1"""
+                npert = len(dist[dist <= probdata.r_init**2].flatten())
+                nambient = len(dist.flatten()) - npert
 
                 p_zone = (npert*p_exp + nambient*probdata.p_ambient) / probdata.nsub**3
 
@@ -202,7 +192,7 @@ def ca_initdata(lo, hi, slo, shi, delta, xlo, xhi):
     if UFS < len(state[lo[0],lo[1],lo[2],:]):
         state[:,:,:,UFS] = state[:,:,:,URHO]
 
-    print(f'state = {np.ascontiguousarray(np.ndarray.flatten(state[:2,:2,:2,:]))}')
+    #print(f'state = {np.ascontiguousarray(np.ndarray.flatten(state[:,lo[1],lo[2],URHO]))}')
 
     return list(np.ascontiguousarray(np.ndarray.flatten(state.T)))
 

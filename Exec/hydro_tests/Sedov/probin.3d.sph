@@ -1,6 +1,6 @@
 &fortin
 
-  r_init = 0.01
+  r_init = 0.1
   p_ambient = 1.d-5
   exp_energy = 1.0d-1
   dens_ambient = 1.0d-1

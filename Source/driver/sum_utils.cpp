@@ -48,7 +48,6 @@ Castro::volWgtSum (const std::string& name,
 
     Real        sum     = 0.0;
     const Real* dx      = geom.CellSize();
-    std::cout << "MEME\n";
     auto mf = derive(name,time,0);
 
     BL_ASSERT(mf);

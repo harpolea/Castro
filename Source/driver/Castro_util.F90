@@ -453,8 +453,8 @@ contains
     real(rt) :: spec_sum
 
     write(*,*) "Checking initial species"
-    write(*,*) "state: "
-    write(*,*) state(10,10,lo(3),:)
+    !write(*,*) "state: "
+    !write(*,*) state(:,lo(2),lo(3),URHO)
 
     do k = lo(3), hi(3)
        do j = lo(2), hi(2)

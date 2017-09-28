@@ -1,7 +1,9 @@
 import re
 import numpy as np
 import subprocess
+import shutil
 import sys
+from pathlib import Path
 from yt_plot import Simulation
 from validate_inputs import check_parameter_file
 
@@ -73,6 +75,10 @@ def run_prototype(root_dir, executable, inputs_file):
         dim = 3
 
     plot_name = make_prototype(root_dir + '/' + inputs_file, dim)
+    
+    # check to see if output file from Castro exists - if so, delete
+    if Path(root_dir + '/' + plot_name + '00000').is_dir():
+        shutil.rmtree(root_dir + '/' + plot_name + '00000')
 
     bash_command = './' + executable + ' ' + inputs_file + '.proto'
     process = subprocess.Popen(bash_command.split(), stdout=subprocess.PIPE, cwd=root_dir)
@@ -87,4 +93,4 @@ def run_prototype(root_dir, executable, inputs_file):
     # plotting
     sim = Simulation(root_dir, plot_name)
     plot = sim.plot_at_time('prim_density', 0)
-    plot_3d = sim.plot3d_at_time('prim_density', 0, None, 'Temp')
+    #plot_3d = sim.plot3d_at_time('prim_density', 0, None, 'Temp')
