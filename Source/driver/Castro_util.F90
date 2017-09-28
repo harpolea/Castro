@@ -452,6 +452,10 @@ contains
     integer  :: i, j, k
     real(rt) :: spec_sum
 
+    write(*,*) "Checking initial species"
+    write(*,*) "state: "
+    write(*,*) state(10,10,lo(3),:)
+
     do k = lo(3), hi(3)
        do j = lo(2), hi(2)
           do i = lo(1), hi(1)

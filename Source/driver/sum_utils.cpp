@@ -11,24 +11,25 @@ Castro::sumDerive (const std::string& name,
 		   bool               local)
 {
     Real sum     = 0.0;
+
     auto mf = derive(name, time, 0);
 
     BL_ASSERT(mf);
 
     if (level < parent->finestLevel())
     {
-	const MultiFab& mask = getLevel(level+1).build_fine_mask();
-	MultiFab::Multiply(*mf, mask, 0, 0, 1, 0);
+    	const MultiFab& mask = getLevel(level+1).build_fine_mask();
+    	MultiFab::Multiply(*mf, mask, 0, 0, 1, 0);
     }
 
 #ifdef _OPENMP
 #pragma omp parallel reduction(+:sum)
 #endif
     {
-	for (MFIter mfi(*mf,true); mfi.isValid(); ++mfi)
-	{
-	    sum += (*mf)[mfi].sum(mfi.tilebox(),0);
-	}
+    	for (MFIter mfi(*mf,true); mfi.isValid(); ++mfi)
+    	{
+    	    sum += (*mf)[mfi].sum(mfi.tilebox(),0);
+    	}
     }
 
     if (!local)
@@ -47,14 +48,15 @@ Castro::volWgtSum (const std::string& name,
 
     Real        sum     = 0.0;
     const Real* dx      = geom.CellSize();
+    std::cout << "MEME\n";
     auto mf = derive(name,time,0);
 
     BL_ASSERT(mf);
 
     if (level < parent->finestLevel() && finemask)
     {
-	const MultiFab& mask = getLevel(level+1).build_fine_mask();
-	MultiFab::Multiply(*mf, mask, 0, 0, 1, 0);
+    	const MultiFab& mask = getLevel(level+1).build_fine_mask();
+    	MultiFab::Multiply(*mf, mask, 0, 0, 1, 0);
     }
 
 #ifdef _OPENMP
@@ -64,7 +66,7 @@ Castro::volWgtSum (const std::string& name,
     {
         FArrayBox& fab = (*mf)[mfi];
 
-	Real s = 0.0;
+	    Real s = 0.0;
         const Box& box  = mfi.tilebox();
         const int* lo   = box.loVect();
         const int* hi   = box.hiVect();
@@ -74,14 +76,14 @@ Castro::volWgtSum (const std::string& name,
         // whatever quantity is passed in, not strictly the "mass".
         //
 
-	ca_summass(ARLIM_3D(lo),ARLIM_3D(hi),BL_TO_FORTRAN_3D(fab),
+	    ca_summass(ARLIM_3D(lo),ARLIM_3D(hi),BL_TO_FORTRAN_3D(fab),
 		   ZFILL(dx),BL_TO_FORTRAN_3D(volume[mfi]),&s);
 
         sum += s;
     }
 
     if (!local)
-	ParallelDescriptor::ReduceRealSum(sum);
+	   ParallelDescriptor::ReduceRealSum(sum);
 
     return sum;
 }
@@ -101,8 +103,8 @@ Castro::volWgtSquaredSum (const std::string& name,
 
     if (level < parent->finestLevel())
     {
-	const MultiFab& mask = getLevel(level+1).build_fine_mask();
-	MultiFab::Multiply(*mf, mask, 0, 0, 1, 0);
+    	const MultiFab& mask = getLevel(level+1).build_fine_mask();
+    	MultiFab::Multiply(*mf, mask, 0, 0, 1, 0);
     }
 
 #ifdef _OPENMP
@@ -122,14 +124,14 @@ Castro::volWgtSquaredSum (const std::string& name,
         // whatever quantity is passed in, not strictly the "mass".
         //
 
-	ca_sumsquared(ARLIM_3D(lo),ARLIM_3D(hi),BL_TO_FORTRAN_3D(fab),
+	    ca_sumsquared(ARLIM_3D(lo),ARLIM_3D(hi),BL_TO_FORTRAN_3D(fab),
 		      ZFILL(dx),BL_TO_FORTRAN_3D(volume[mfi]),&s);
 
         sum += s;
     }
 
     if (!local)
-	ParallelDescriptor::ReduceRealSum(sum);
+	   ParallelDescriptor::ReduceRealSum(sum);
 
     return sum;
 }
@@ -150,8 +152,8 @@ Castro::locWgtSum (const std::string& name,
 
     if (level < parent->finestLevel())
     {
-	const MultiFab& mask = getLevel(level+1).build_fine_mask();
-	MultiFab::Multiply(*mf, mask, 0, 0, 1, 0);
+    	const MultiFab& mask = getLevel(level+1).build_fine_mask();
+    	MultiFab::Multiply(*mf, mask, 0, 0, 1, 0);
     }
 
 #ifdef _OPENMP
@@ -171,14 +173,14 @@ Castro::locWgtSum (const std::string& name,
         // whatever quantity is passed in, not strictly the "mass".
         //
 
-	ca_sumlocmass(ARLIM_3D(lo),ARLIM_3D(hi),BL_TO_FORTRAN_3D(fab),
+	    ca_sumlocmass(ARLIM_3D(lo),ARLIM_3D(hi),BL_TO_FORTRAN_3D(fab),
 		      ZFILL(dx),BL_TO_FORTRAN_3D(volume[mfi]),&s,idir);
 
         sum += s;
     }
 
     if (!local)
-	ParallelDescriptor::ReduceRealSum(sum);
+	   ParallelDescriptor::ReduceRealSum(sum);
 
     return sum;
 }
@@ -200,8 +202,8 @@ Castro::locWgtSum2D (const std::string& name,
 
     if (level < parent->finestLevel())
     {
-	const MultiFab& mask = getLevel(level+1).build_fine_mask();
-	MultiFab::Multiply(*mf, mask, 0, 0, 1, 0);
+    	const MultiFab& mask = getLevel(level+1).build_fine_mask();
+    	MultiFab::Multiply(*mf, mask, 0, 0, 1, 0);
     }
 
 #ifdef _OPENMP
@@ -221,14 +223,14 @@ Castro::locWgtSum2D (const std::string& name,
         // whatever quantity is passed in, not strictly the "mass".
         //
 
-	ca_sumlocmass2d(ARLIM_3D(lo),ARLIM_3D(hi),BL_TO_FORTRAN_3D(fab),
+	    ca_sumlocmass2d(ARLIM_3D(lo),ARLIM_3D(hi),BL_TO_FORTRAN_3D(fab),
 			ZFILL(dx),BL_TO_FORTRAN_3D(volume[mfi]),&s,idir1,idir2);
 
         sum += s;
     }
 
     if (!local)
-	ParallelDescriptor::ReduceRealSum(sum);
+	   ParallelDescriptor::ReduceRealSum(sum);
 
     return sum;
 }
@@ -258,14 +260,14 @@ Castro::volWgtSumMF (const MultiFab& mf, int comp, bool local)
         // whatever quantity is passed in, not strictly the "mass".
         //
 
-	ca_summass(ARLIM_3D(lo),ARLIM_3D(hi),BL_TO_FORTRAN_N_3D(fab,comp),
+	    ca_summass(ARLIM_3D(lo),ARLIM_3D(hi),BL_TO_FORTRAN_N_3D(fab,comp),
 		   ZFILL(dx),BL_TO_FORTRAN_3D(volume[mfi]),&s);
 
         sum += s;
     }
 
     if (!local)
-	ParallelDescriptor::ReduceRealSum(sum);
+	   ParallelDescriptor::ReduceRealSum(sum);
 
     return sum;
 }
@@ -293,8 +295,8 @@ Castro::volWgtSumOneSide (const std::string& name,
 
     if (level < parent->finestLevel())
     {
-	const MultiFab& mask = getLevel(level+1).build_fine_mask();
-	MultiFab::Multiply(*mf, mask, 0, 0, 1, 0);
+    	const MultiFab& mask = getLevel(level+1).build_fine_mask();
+    	MultiFab::Multiply(*mf, mask, 0, 0, 1, 0);
     }
 
 #ifdef _OPENMP
@@ -331,23 +333,21 @@ Castro::volWgtSumOneSide (const std::string& name,
           if ( *(hi + bdir) <= *(hiLeftPtr + bdir) ) {
             loFinal   = lo;
             hiFinal   = hi;
-	  }
-	  else {
-            loFinal   = lo;
-            hiFinal   = hiLeftPtr;
-	  }
-	}
-        else if ( side == 1 && *(hi + bdir) >= *(loRightPtr + bdir) ) {
-          doSum = true;
-          if ( *(lo + bdir) >= *(loRightPtr + bdir) ) {
-            loFinal   = lo;
-            hiFinal   = hi;
-          }
-          else {
-            loFinal   = loRightPtr;
-            hiFinal   = hi;
-          }
-	}
+    	  } else {
+                loFinal   = lo;
+                hiFinal   = hiLeftPtr;
+    	  }
+    	} else if ( side == 1 && *(hi + bdir) >= *(loRightPtr + bdir) ) {
+              doSum = true;
+              if ( *(lo + bdir) >= *(loRightPtr + bdir) ) {
+                loFinal   = lo;
+                hiFinal   = hi;
+              }
+              else {
+                loFinal   = loRightPtr;
+                hiFinal   = hi;
+              }
+    	}
 
         if ( doSum ) {
 
@@ -361,7 +361,7 @@ Castro::volWgtSumOneSide (const std::string& name,
     }
 
     if (!local)
-	ParallelDescriptor::ReduceRealSum(sum);
+	   ParallelDescriptor::ReduceRealSum(sum);
 
     return sum;
 }
@@ -390,8 +390,8 @@ Castro::locWgtSumOneSide (const std::string& name,
 
     if (level < parent->finestLevel())
     {
-	const MultiFab& mask = getLevel(level+1).build_fine_mask();
-	MultiFab::Multiply(*mf, mask, 0, 0, 1, 0);
+    	const MultiFab& mask = getLevel(level+1).build_fine_mask();
+    	MultiFab::Multiply(*mf, mask, 0, 0, 1, 0);
     }
 
 #ifdef _OPENMP
@@ -427,13 +427,11 @@ Castro::locWgtSumOneSide (const std::string& name,
           if ( *(hi + bdir) <= *(hiLeftPtr + bdir) ) {
             loFinal   = box.loVect();
             hiFinal   = box.hiVect();
-	  }
-	  else {
+	      }  else {
             loFinal   = box.loVect();
             hiFinal   = hiLeftPtr;
-	  }
-	}
-        else if ( side == 1 && *(hi + bdir) >= *(loRightPtr + bdir) ) {
+	      }
+	   } else if ( side == 1 && *(hi + bdir) >= *(loRightPtr + bdir) ) {
           doSum = true;
           if ( *(lo + bdir) >= *(loRightPtr + bdir) ) {
             loFinal   = box.loVect();
@@ -443,7 +441,7 @@ Castro::locWgtSumOneSide (const std::string& name,
             loFinal   = loRightPtr;
             hiFinal   = box.hiVect();
           }
-	}
+	  }
 
         if ( doSum ) {
 
@@ -457,7 +455,7 @@ Castro::locWgtSumOneSide (const std::string& name,
     }
 
     if (!local)
-	ParallelDescriptor::ReduceRealSum(sum);
+	   ParallelDescriptor::ReduceRealSum(sum);
 
     return sum;
 
@@ -480,9 +478,9 @@ Castro::volProductSum (const std::string& name1,
 
     if (level < parent->finestLevel())
     {
-	const MultiFab& mask = getLevel(level+1).build_fine_mask();
-	MultiFab::Multiply(*mf1, mask, 0, 0, 1, 0);
-	MultiFab::Multiply(*mf2, mask, 0, 0, 1, 0);
+    	const MultiFab& mask = getLevel(level+1).build_fine_mask();
+    	MultiFab::Multiply(*mf1, mask, 0, 0, 1, 0);
+    	MultiFab::Multiply(*mf2, mask, 0, 0, 1, 0);
     }
 
 #ifdef _OPENMP
@@ -498,14 +496,14 @@ Castro::volProductSum (const std::string& name1,
         const int* lo   = box.loVect();
         const int* hi   = box.hiVect();
 
-	ca_sumproduct(ARLIM_3D(lo),ARLIM_3D(hi),BL_TO_FORTRAN_3D(fab1),
+	    ca_sumproduct(ARLIM_3D(lo),ARLIM_3D(hi),BL_TO_FORTRAN_3D(fab1),
 		      BL_TO_FORTRAN_3D(fab2),ZFILL(dx),BL_TO_FORTRAN_3D(volume[mfi]),&s);
 
         sum += s;
     }
 
     if (!local)
-	ParallelDescriptor::ReduceRealSum(sum);
+	   ParallelDescriptor::ReduceRealSum(sum);
 
     return sum;
 }
@@ -526,8 +524,8 @@ Castro::locSquaredSum (const std::string& name,
 
     if (level < parent->finestLevel())
     {
-	const MultiFab& mask = getLevel(level+1).build_fine_mask();
-	MultiFab::Multiply(*mf, mask, 0, 0, 1, 0);
+    	const MultiFab& mask = getLevel(level+1).build_fine_mask();
+    	MultiFab::Multiply(*mf, mask, 0, 0, 1, 0);
     }
 
 #ifdef _OPENMP
@@ -542,14 +540,14 @@ Castro::locSquaredSum (const std::string& name,
         const int* lo   = box.loVect();
         const int* hi   = box.hiVect();
 
-	ca_sumlocsquaredmass(ARLIM_3D(lo),ARLIM_3D(hi),BL_TO_FORTRAN_3D(fab),
+	    ca_sumlocsquaredmass(ARLIM_3D(lo),ARLIM_3D(hi),BL_TO_FORTRAN_3D(fab),
 			     ZFILL(dx),BL_TO_FORTRAN_3D(volume[mfi]),&s,idir);
 
         sum += s;
     }
 
     if (!local)
-	ParallelDescriptor::ReduceRealSum(sum);
+	   ParallelDescriptor::ReduceRealSum(sum);
 
     return sum;
 }

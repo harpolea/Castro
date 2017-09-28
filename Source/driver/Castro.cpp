@@ -584,13 +584,14 @@ Castro::initData ()
               ca_get_nvar(&NVAR);
 
               // NOTE: UNCOMMENT FOR PYTHON
-              /*ca_initdata(level, cur_time, ARLIM_3D(lo), ARLIM_3D(hi), ns,
+              ca_initdata(level, cur_time, ARLIM_3D(lo), ARLIM_3D(hi), ns,
               S_new[mfi].dataPtr(), ARLIM_3D((S_new[mfi]).loVect()), ARLIM_3D((S_new[mfi]).hiVect()), ZFILL(dx),
               ZFILL(gridloc.lo()), ZFILL(gridloc.hi()));
 
 
-               std::cout << "Called python\n\n\n";*/
+               std::cout << "Called python\n\n\n";
 
+/*
 #ifdef DIMENSION_AGNOSTIC
           BL_FORT_PROC_CALL(CA_INITDATA,ca_initdata)
           (level, cur_time, ARLIM_3D(lo), ARLIM_3D(hi), ns,
@@ -602,7 +603,7 @@ Castro::initData ()
       	   BL_TO_FORTRAN(S_new[mfi]), dx,
       	   gridloc.lo(), gridloc.hi());
 #endif
-
+*/
               // Verify that the sum of (rho X)_i = rho at every cell
     	  const int idx = mfi.tileIndex();
 
@@ -989,6 +990,9 @@ Castro::post_timestep (int iteration)
 
     	}
 
+        // Not breaking here
+        //std::cout << "Here??????\n";
+
             if (sum_int_test || sum_per_test)
     	       sum_integrated_quantities();
     }
@@ -1043,6 +1047,7 @@ Castro::post_regrid (int lbase,
 void
 Castro::post_init (Real stop_time)
 {
+
     BL_PROFILE("Castro::post_init()");
 
     if (level > 0)
@@ -1596,6 +1601,7 @@ Castro::apply_tagging_func(TagBoxArray& tags, int clearval, int tagval, Real tim
 
     for (int j = 0; j < err_list.size(); j++)
     {
+        //std::cout << "do I break here?\n\n";
         auto mf = derive(err_list[j].name(), time, err_list[j].nGrow());
 
         BL_ASSERT(mf);
@@ -1661,7 +1667,6 @@ Castro::derive (const std::string& name,
                 Real           time,
                 int            ngrow)
 {
-    //std::cout << "breaking here???\n";
    return AmrLevel::derive(name,time,ngrow);
 }
 

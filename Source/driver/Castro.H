@@ -63,11 +63,11 @@ public:
 			  bool bReadSpecial = false) override;
 
 			  // NOTE: UNCOMMENT FOR PYTHON
-	//void ca_initdata(int& level, amrex::Real& time,
-		//  	                const int* lo, const int* hi,
-		  //	                int& num_state,
-		  	//                double* state, const int* slo, const int* shi,
-		  	  //              const amrex::Real* dx, const amrex::Real* xlo, const amrex::Real* xhi);
+	void ca_initdata(int& level, amrex::Real& time,
+		  	                const int* lo, const int* hi,
+		  	                int& num_state,
+		  	                double* state, const int* slo, const int* shi,
+		  	                const amrex::Real* dx, const amrex::Real* xlo, const amrex::Real* xhi);
     //
     //This is called only when we restart from an old checkpoint.
     //
@@ -102,6 +102,7 @@ public:
     // Define data descriptors.
     //
     static void variableSetUp ();
+	static void variableReSetUp ();
     //
     // Define tagging functions.
     //

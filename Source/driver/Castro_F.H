@@ -377,7 +377,7 @@ extern "C"
 #ifdef __cplusplus
 }
 #endif
-
+/*
 #ifdef DIMENSION_AGNOSTIC
 
 BL_FORT_PROC_DECL(CA_INITDATA,ca_initdata)
@@ -397,7 +397,7 @@ BL_FORT_PROC_DECL(CA_INITDATA,ca_initdata)
      const amrex::Real* dx, const amrex::Real* xlo, const amrex::Real* xhi);
 
 #endif
-
+*/
 #ifdef MAESTRO_INIT
 BL_FORT_PROC_DECL(CA_INITDATA_MAESTRO,ca_initdata_maestro)
   (const int* lo, const int* hi, const int& MAESTRO_init_type,

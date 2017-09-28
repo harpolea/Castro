@@ -278,10 +278,10 @@ Castro::restart (Amr&     papa,
            if (! orig_domain.contains(bx)) {
 
                // NOTE: UNCOMMENT FOR PYTHON
-               /*ca_initdata(level, cur_time, ARLIM_3D(lo), ARLIM_3D(hi), ns,
+               ca_initdata(level, cur_time, ARLIM_3D(lo), ARLIM_3D(hi), ns,
                     S_new[mfi].dataPtr(), ARLIM_3D((S_new[mfi]).loVect()), ARLIM_3D((S_new[mfi]).hiVect()), ZFILL(dx),
-                    ZFILL(geom.ProbLo()), ZFILL(geom.ProbHi()));*/
-
+                    ZFILL(geom.ProbLo()), ZFILL(geom.ProbHi()));
+/*
 #ifdef DIMENSION_AGNOSTIC
               BL_FORT_PROC_CALL(CA_INITDATA,ca_initdata)
                 (level, cur_time, ARLIM_3D(lo), ARLIM_3D(hi), ns,
@@ -293,7 +293,7 @@ Castro::restart (Amr&     papa,
 		 BL_TO_FORTRAN(S_new[mfi]), dx,
 		 geom.ProbLo(), geom.ProbHi());
 #endif
-
+*/
            }
        }
     }
