@@ -5,7 +5,7 @@ from probdata import probdata_module as probdata
 from prob_params import prob_params_module as prob_params
 from meth_params import meth_params_module as meth_params
 
-def amrex_probinit (probin):# bind(c)
+def amrex_probinit (problo, probhi, probin):# bind(c)
 
     """use bl_constants_module
     use probdata_module
@@ -13,6 +13,8 @@ def amrex_probinit (probin):# bind(c)
     use eos_type_module, only: eos_t, eos_input, eos_input_rp
     use eos_module, only: eos
 """
+
+    print("IN AMREX_PROBINIT")
 
     # set namelist defaults
 
@@ -23,14 +25,22 @@ def amrex_probinit (probin):# bind(c)
     probdata.nsub = 4
     probdata.temp_ambient = -1.e2     # Set original temp. to negative, which is overwritten in the probin file
 
+    print("hi there")
+
+    print(f'problo = {problo}, probhi = {probhi}')
+
     # set local variable defaults
     #prob_params.center = np.zeros(3)
     prob_params.center[0] = 0.5*(problo[0] + probhi[0])
     prob_params.center[1] = 0.5*(problo[1] + probhi[1])
     prob_params.center[2] = 0.5*(problo[2] + probhi[2])
 
+    print('set center')
+
     # Read namelists
-    params = read_probin(probin)
+    params = py_read_probin(probin)
+
+    print("boo")
 
     extract_dict(params, 'p_ambient', probdata.p_ambient)
     extract_dict(params, 'dens_ambient', probdata.dens_ambient)
@@ -54,7 +64,6 @@ def amrex_probinit (probin):# bind(c)
 
         probdata.p_ambient = eos_state.p
 
-
     # Calculate ambient state data
 
     eos_state.rho = probdata.dens_ambient
@@ -65,6 +74,8 @@ def amrex_probinit (probin):# bind(c)
     eos_module.eos(eos_type_module.eos_input_rp, eos_state)
 
     probdata.e_ambient = eos_state.e
+
+    print("FINISHING AMREX_PROBINIT")
 
 
 # ::: -----------------------------------------------------------
@@ -196,7 +207,10 @@ def ca_initdata(lo, hi, slo, shi, delta, xlo, xhi):
 
     return list(np.ascontiguousarray(np.ndarray.flatten(state.T)))
 
-def read_probin(filename):
+def py_read_probin(filename):
+
+    print('in py_read_probin')
+
     try:
         f = open(filename)
     except:

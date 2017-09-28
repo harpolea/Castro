@@ -18,6 +18,7 @@ g++ `python3.6-config --cflags` ca_Prob_3d.cpp -o cpp_code `python3.6-config --l
 #include <Castro.H>
 #include "AMReX_buildInfo.H"
 #include <typeinfo>
+#include <AMReX_PROB_AMR_F.H>
 
 
 using namespace amrex;
@@ -25,6 +26,117 @@ using namespace amrex;
 //int main() {
 //    return 0;
 //}
+
+void amrex_probinit (const int* init,
+         const int* name,
+         const int* namelen,
+         const amrex_real* problo,
+         const amrex_real* probhi) {
+
+    Py_Initialize();
+
+    Py_BEGIN_ALLOW_THREADS
+
+    PyObject *pValue;
+
+    const char* pymodule = "Prob_3d";
+    const char* pyfunc = "amrex_probinit";
+
+    // Make sure own the GIL
+    PyGILState_STATE gil_state = PyGILState_Ensure();
+    // add current directory to python path
+    PyRun_SimpleString("import sys");
+    PyRun_SimpleString("sys.path.append(\".\")");
+
+    int dim = 3;
+
+    PyObject *pproblo = PyTuple_New(dim);
+    PyObject *pprobhi = PyTuple_New(dim);
+
+    for (int i = 0; i < dim; i++) {
+        PyTuple_SetItem(pproblo, i, PyFloat_FromDouble(problo[i]));
+        PyTuple_SetItem(pprobhi, i, PyFloat_FromDouble(probhi[i]));
+    }
+
+    char probin[*namelen];
+
+    for (int i = 0; i < *namelen; i++) {
+        probin[i] = char(name[i]);
+    }
+
+    PyObject *pprobin = PyUnicode_FromString(probin);
+
+    //while (pValue != NULL) Py_DECREF(pValue);
+
+    // build the module object
+    PyObject *pModule = PyImport_ImportModule(pymodule);
+
+    // call this again to set up desc_lst as PyImport_ImportModule
+    // manages to destroy all the global variables?
+
+    //amrex::ParmParse pp("amr");
+    //pp.query("probin_file", probin_file);
+    //variableReSetUp();
+
+    /*std::cout << "After import module in Castro::ca_initdata, state variables are:\n";
+    std::cout <<  "size = " << get_desc_lst().size() << '\n';
+    for (int typ = 0; typ < get_desc_lst().size(); typ++)
+    {
+     const amrex::StateDescriptor& desc = get_desc_lst()[typ];
+
+     for (int n = 0; n < desc.nComp(); n++)
+     {
+         std::cout << desc.name(n) << '\n';
+     }
+    }*/
+
+    if (pModule != NULL) {
+        PyObject *pDict = PyModule_GetDict(pModule);
+        PyObject *pFunc = PyDict_GetItemString(pDict, pyfunc);
+        /* pFunc is a new reference */
+
+        if (pFunc && PyCallable_Check(pFunc)) {
+
+            PyObject *pArgs = PyTuple_New(3);
+
+            PyTuple_SetItem(pArgs, 0, pproblo);
+            PyTuple_SetItem(pArgs, 1, pprobhi);
+            PyTuple_SetItem(pArgs, 2, pprobin);
+
+            PyObject *pstate = PyObject_CallObject(pFunc, pArgs);
+            Py_DECREF(pArgs);
+
+         //std::cout << "Called python object\n";
+
+        } else {
+            if (PyErr_Occurred())
+                PyErr_Print();
+            fprintf(stderr, "Cannot find function \"%s\"\n", pyfunc);
+
+            Py_DECREF(pproblo);
+            Py_DECREF(pprobhi);
+            Py_DECREF(pprobin);
+        }
+
+     //Py_XDECREF(pFunc); //borrowed ref
+     //Py_XDECREF(pDict); borrowed ref
+    } else {
+        PyErr_Print();
+        fprintf(stderr, "Failed to load \"%s\"\n", pymodule);
+
+    }
+
+    Py_DECREF(pModule);
+
+    //Py_DECREF(pValue);
+    // restore previous GIL state and return
+    PyGILState_Release(gil_state);
+
+    Py_END_ALLOW_THREADS
+
+    Py_Finalize();
+
+}
 
 void Castro::ca_initdata(int& level, amrex::Real& time,
                         const int* lo, const int* hi,
