@@ -33,17 +33,18 @@ void amrex_probinit (const int* init,
          const amrex_real* problo,
          const amrex_real* probhi) {
 
-    Py_Initialize();
+    //Py_Initialize();
 
-    Py_BEGIN_ALLOW_THREADS
+    Py_BEGIN_ALLOW_THREADS;
 
-    PyObject *pValue;
+    // Make sure own the GIL
+    PyGILState_STATE gil_state = PyGILState_Ensure();
+
+    //Py_BEGIN_ALLOW_THREADS
 
     const char* pymodule = "Prob_3d";
     const char* pyfunc = "amrex_probinit";
 
-    // Make sure own the GIL
-    PyGILState_STATE gil_state = PyGILState_Ensure();
     // add current directory to python path
     PyRun_SimpleString("import sys");
     PyRun_SimpleString("sys.path.append(\".\")");
@@ -65,8 +66,6 @@ void amrex_probinit (const int* init,
     }
 
     PyObject *pprobin = PyUnicode_FromString(probin);
-
-    //while (pValue != NULL) Py_DECREF(pValue);
 
     // build the module object
     PyObject *pModule = PyImport_ImportModule(pymodule);
@@ -128,13 +127,14 @@ void amrex_probinit (const int* init,
 
     Py_DECREF(pModule);
 
-    //Py_DECREF(pValue);
     // restore previous GIL state and return
     PyGILState_Release(gil_state);
 
-    Py_END_ALLOW_THREADS
+    std::cout << "released GIL\n";
 
-    Py_Finalize();
+    Py_END_ALLOW_THREADS;
+
+    //Py_Finalize();
 
 }
 
@@ -145,10 +145,10 @@ void Castro::ca_initdata(int& level, amrex::Real& time,
                         const amrex::Real* dx, const amrex::Real* xlo, const amrex::Real* xhi)
 {
 
-    //std::cout << "Calling ca_initdata\n";
+    std::cout << "Calling ca_initdata\n";
 
     // initialise python interpreter
-    Py_Initialize();
+    //Py_Initialize();
 
     PyObject *pValue;
 
@@ -287,7 +287,7 @@ void Castro::ca_initdata(int& level, amrex::Real& time,
     // restore previous GIL state and return
     PyGILState_Release(gil_state);
 
-    Py_Finalize();
+    //Py_Finalize();
 
     //std::cout <<  "exiting\n";
 }

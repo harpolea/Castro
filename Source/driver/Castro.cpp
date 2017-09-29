@@ -434,6 +434,13 @@ Castro::initMFs()
 
     	for (int n = 0; n < num_src; ++n) {
     	    old_sources[n].reset(new MultiFab(grids, dmap, NUM_STATE, NUM_GROW));
+
+            std::cout << "State_Type = " << State_Type << '\n';
+            std::cout << "state.size() = " << state.size() << '\n';
+
+            get_new_data(State_Type).nGrow();
+
+
     	    new_sources[n].reset(new MultiFab(grids, dmap, NUM_STATE, get_new_data(State_Type).nGrow()));
     	}
 
