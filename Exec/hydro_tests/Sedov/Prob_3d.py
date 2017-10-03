@@ -3,7 +3,7 @@ from eos import eos_type_module, eos_module
 from riemann_util import riemann_util_module as riemann
 from probdata import probdata_module as probdata
 from prob_params import prob_params_module as prob_params
-from meth_params import meth_params_module as meth_params
+#from meth_params import meth_params_module as meth_params
 import re
 
 def amrex_probinit (problo, probhi, probin):# bind(c)
@@ -15,7 +15,7 @@ def amrex_probinit (problo, probhi, probin):# bind(c)
     use eos_module, only: eos
 """
 
-    print("IN AMREX_PROBINIT")
+    print("\nCalling Prob_3d.py:amrex_probinit")
 
     # set namelist defaults
 
@@ -51,6 +51,14 @@ def amrex_probinit (problo, probhi, probin):# bind(c)
 
     eos_state = eos_type_module.Eos_T()
 
+    #meth_params.ca_set_castro_method_params()
+
+    #print(meth_params)
+
+    #print(f'small dens = {meth_params.small_des}')
+
+    eos_module.eos_init(1.e-20, 1.e-20)
+
     # override the pressure with the temperature
     if (probdata.temp_ambient > 0.0):
         eos_state.rho = probdata.dens_ambient
@@ -67,14 +75,11 @@ def amrex_probinit (problo, probhi, probin):# bind(c)
     eos_state.p   = probdata.p_ambient
     eos_state.T   = 1.e5 # Initial guess for iterations
     eos_state.xn  = probdata.xn_zone
-
     eos_module.eos(eos_type_module.eos_input_rp, eos_state)
 
     probdata.e_ambient = eos_state.e
 
-    print(probdata)
-
-    print("FINISHING AMREX_PROBINIT")
+    print("Leaving Prob_3d.py:amrex_probinit\n")
 
 
 # ::: -----------------------------------------------------------
@@ -109,7 +114,7 @@ def ca_initdata(lo, hi, slo, shi, delta, xlo, xhi):
     use riemann_util_module, only: gr_cons_state
 """
 
-    print('\nCALLING PYTHON\n')
+    print('Calling Prob_3d.py:ca_initdata')
 
     gamma_up = np.zeros(9)
     gamma_up[0] = 1.0
@@ -124,20 +129,12 @@ def ca_initdata(lo, hi, slo, shi, delta, xlo, xhi):
 
     params = py_read_probin(probin)
 
-    print(params)
-
-    #tlock.lock.release()
-
-    #extract_dict(params, 'p_ambient', probdata.p_ambient)
-    #extract_dict(params, 'dens_ambient', probdata.dens_ambient)
-    #extract_dict(params, 'temp_ambient', probdata.temp_ambient)
-    #extract_dict(params, 'exp_energy', probdata.exp_energy)
-    #extract_dict(params, 'r_init', probdata.r_init)
-    #extract_dict(params, 'nsub', probdata.nsub)
-
     p_ambient = params['p_ambient']
     dens_ambient = params['dens_ambient']
-    temp_ambient = 0.#params['temp_ambient']
+    if 'temp_ambient' in params:
+        temp_ambient = params['temp_ambient']
+    else:
+        temp_ambient = 0.
     exp_energy = params['exp_energy']
     r_init = params['r_init']
     nsub = params['nsub']
@@ -197,7 +194,6 @@ def ca_initdata(lo, hi, slo, shi, delta, xlo, xhi):
 
                 XX, YY, ZZ = np.meshgrid(xx, yy, zz)
 
-                #dist = (prob_params.center[0]-XX)**2 + (prob_params.center[1]-YY)**2 + (prob_params.center[2]-ZZ)**2
                 dist = (centre[0]-XX)**2 + (centre[1]-YY)**2 + (centre[2]-ZZ)**2
 
                 npert = len(dist[dist <= r_init**2].flatten())
@@ -227,7 +223,7 @@ def ca_initdata(lo, hi, slo, shi, delta, xlo, xhi):
     if UFS < len(state[lo[0],lo[1],lo[2],:]):
         state[:,:,:,UFS] = state[:,:,:,URHO]
 
-    print("LEAVING PYTHON")
+    print("Leaving Prob_3d.py:ca_initdata\n")
 
     #print(f'state = {np.ascontiguousarray(np.ndarray.flatten(state[:,lo[1],lo[2],URHO]))}')
 

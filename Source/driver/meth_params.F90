@@ -155,7 +155,6 @@ module meth_params_module
   integer         , save :: grown_factor
   integer         , save :: track_grid_losses
   real(rt), save :: const_grav
-  integer         , save :: get_g_from_phi
 
   !$acc declare &
   !$acc create(difmag, small_dens, small_temp) &
@@ -180,8 +179,7 @@ module meth_params_module
   !$acc create(rot_period_dot, rotation_include_centrifugal, rotation_include_coriolis) &
   !$acc create(rotation_include_domegadt, state_in_rotating_frame, rot_source_type) &
   !$acc create(implicit_rotation_update, rot_axis, point_mass) &
-  !$acc create(point_mass_fix_solution, do_acc, grown_factor) &
-  !$acc create(track_grid_losses, const_grav, get_g_from_phi)
+  !$acc create(point_mass_fix_solution, do_acc, grown_factor)
 
   ! End the declarations of the ParmParse parameters
 
@@ -200,11 +198,7 @@ contains
 
 
     const_grav = 0.0d0;
-    get_g_from_phi = 0;
 
-    call amrex_parmparse_build(pp, "gravity")
-    call pp%query("const_grav", const_grav)
-    call pp%query("get_g_from_phi", get_g_from_phi)
     call amrex_parmparse_destroy(pp)
 
 
@@ -382,8 +376,7 @@ contains
     !$acc device(rot_period_dot, rotation_include_centrifugal, rotation_include_coriolis) &
     !$acc device(rotation_include_domegadt, state_in_rotating_frame, rot_source_type) &
     !$acc device(implicit_rotation_update, rot_axis, point_mass) &
-    !$acc device(point_mass_fix_solution, do_acc, grown_factor) &
-    !$acc device(track_grid_losses, const_grav, get_g_from_phi)
+    !$acc device(point_mass_fix_solution, do_acc, grown_factor)
 
 
     ! now set the external BC flags

@@ -67,7 +67,7 @@ def make_prototype(inputs_filename, dim):
 
     return plot_name
 
-def run_prototype(root_dir, executable, inputs_file):
+def run_prototype(root_dir, executable, inputs_file, plot_field='prim_density'):
     m = re.match('Castro(\d)d.', executable)
     if m:
         dim = int(m.group(1))
@@ -75,7 +75,7 @@ def run_prototype(root_dir, executable, inputs_file):
         dim = 3
 
     plot_name = make_prototype(root_dir + '/' + inputs_file, dim)
-    
+
     # check to see if output file from Castro exists - if so, delete
     if Path(root_dir + '/' + plot_name + '00000').is_dir():
         shutil.rmtree(root_dir + '/' + plot_name + '00000')
@@ -92,5 +92,7 @@ def run_prototype(root_dir, executable, inputs_file):
 
     # plotting
     sim = Simulation(root_dir, plot_name)
-    plot = sim.plot_at_time('prim_density', 0)
+    plot = sim.plot_at_time(plot_field, 0)
     #plot_3d = sim.plot3d_at_time('prim_density', 0, None, 'Temp')
+
+    return sim, plot

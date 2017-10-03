@@ -115,7 +115,9 @@ class Simulation(object):
         else:
             ds = self.ts[self.plot_folders.index(plotfilename)]
 
-        p = SlicePlot(ds, normal_axis, field, origin='native')
+        centre = 0.5 * (ds.domain_left_edge + ds.domain_right_edge) * np.sign(ds.domain_width)
+
+        p = SlicePlot(ds, normal_axis, field, origin='native', center=centre)
 
         if str(ds.domain_width.units) == 'code_length':
             axis_units = 'unitary'
@@ -135,7 +137,7 @@ class Simulation(object):
             self.add_grids(p)
 
         if save:
-            p.save(plotfilename + '.png')
+            p.save(plotfilename +  '_' + field + '.png')
 
         return p
 

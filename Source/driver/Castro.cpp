@@ -434,13 +434,6 @@ Castro::initMFs()
 
     	for (int n = 0; n < num_src; ++n) {
     	    old_sources[n].reset(new MultiFab(grids, dmap, NUM_STATE, NUM_GROW));
-
-            std::cout << "State_Type = " << State_Type << '\n';
-            std::cout << "state.size() = " << state.size() << '\n';
-
-            get_new_data(State_Type).nGrow();
-
-
     	    new_sources[n].reset(new MultiFab(grids, dmap, NUM_STATE, get_new_data(State_Type).nGrow()));
     	}
 
@@ -594,9 +587,6 @@ Castro::initData ()
               ca_initdata(level, cur_time, ARLIM_3D(lo), ARLIM_3D(hi), ns,
               S_new[mfi].dataPtr(), ARLIM_3D((S_new[mfi]).loVect()), ARLIM_3D((S_new[mfi]).hiVect()), ZFILL(dx),
               ZFILL(gridloc.lo()), ZFILL(gridloc.hi()));
-
-
-               std::cout << "Called python\n\n\n";
 
 /*
 #ifdef DIMENSION_AGNOSTIC
@@ -996,10 +986,6 @@ Castro::post_timestep (int iteration)
     	    sum_per_test = true;
 
     	}
-
-        // Not breaking here
-        //std::cout << "Here??????\n";
-
             if (sum_int_test || sum_per_test)
     	       sum_integrated_quantities();
     }
@@ -1608,7 +1594,6 @@ Castro::apply_tagging_func(TagBoxArray& tags, int clearval, int tagval, Real tim
 
     for (int j = 0; j < err_list.size(); j++)
     {
-        //std::cout << "do I break here?\n\n";
         auto mf = derive(err_list[j].name(), time, err_list[j].nGrow());
 
         BL_ASSERT(mf);

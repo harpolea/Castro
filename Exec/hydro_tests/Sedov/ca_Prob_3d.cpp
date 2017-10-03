@@ -33,14 +33,10 @@ void amrex_probinit (const int* init,
          const amrex_real* problo,
          const amrex_real* probhi) {
 
-    //Py_Initialize();
-
     Py_BEGIN_ALLOW_THREADS;
 
     // Make sure own the GIL
     PyGILState_STATE gil_state = PyGILState_Ensure();
-
-    //Py_BEGIN_ALLOW_THREADS
 
     const char* pymodule = "Prob_3d";
     const char* pyfunc = "amrex_probinit";
@@ -69,25 +65,6 @@ void amrex_probinit (const int* init,
 
     // build the module object
     PyObject *pModule = PyImport_ImportModule(pymodule);
-
-    // call this again to set up desc_lst as PyImport_ImportModule
-    // manages to destroy all the global variables?
-
-    //amrex::ParmParse pp("amr");
-    //pp.query("probin_file", probin_file);
-    //variableReSetUp();
-
-    /*std::cout << "After import module in Castro::ca_initdata, state variables are:\n";
-    std::cout <<  "size = " << get_desc_lst().size() << '\n';
-    for (int typ = 0; typ < get_desc_lst().size(); typ++)
-    {
-     const amrex::StateDescriptor& desc = get_desc_lst()[typ];
-
-     for (int n = 0; n < desc.nComp(); n++)
-     {
-         std::cout << desc.name(n) << '\n';
-     }
-    }*/
 
     if (pModule != NULL) {
         PyObject *pDict = PyModule_GetDict(pModule);
@@ -130,11 +107,7 @@ void amrex_probinit (const int* init,
     // restore previous GIL state and return
     PyGILState_Release(gil_state);
 
-    std::cout << "released GIL\n";
-
     Py_END_ALLOW_THREADS;
-
-    //Py_Finalize();
 
 }
 
@@ -144,11 +117,6 @@ void Castro::ca_initdata(int& level, amrex::Real& time,
                         double* state, const int* slo, const int* shi,
                         const amrex::Real* dx, const amrex::Real* xlo, const amrex::Real* xhi)
 {
-
-    std::cout << "Calling ca_initdata\n";
-
-    // initialise python interpreter
-    //Py_Initialize();
 
     PyObject *pValue;
 
@@ -199,18 +167,6 @@ void Castro::ca_initdata(int& level, amrex::Real& time,
     pp.query("probin_file", probin_file);
     variableReSetUp();
 
-    /*std::cout << "After import module in Castro::ca_initdata, state variables are:\n";
-    std::cout <<  "size = " << get_desc_lst().size() << '\n';
-    for (int typ = 0; typ < get_desc_lst().size(); typ++)
-    {
-        const amrex::StateDescriptor& desc = get_desc_lst()[typ];
-
-        for (int n = 0; n < desc.nComp(); n++)
-        {
-            std::cout << desc.name(n) << '\n';
-        }
-    }*/
-
     if (pModule != NULL) {
         PyObject *pDict = PyModule_GetDict(pModule);
         PyObject *pFunc = PyDict_GetItemString(pDict, pyfunc);
@@ -231,12 +187,8 @@ void Castro::ca_initdata(int& level, amrex::Real& time,
             PyObject *pstate = PyObject_CallObject(pFunc, pArgs);
             Py_DECREF(pArgs);
 
-            //std::cout << "Called python object\n";
-
             int NVAR;
             ca_get_nvar(&NVAR);
-
-            //std::cout << "size of state = " << sizeof(state)/sizeof(*state) << '\n';
 
             for (int i = 0; i < (shi[0]+1)*(shi[1]+1)*(shi[2]+1)*NVAR; i++) {
 
@@ -271,7 +223,6 @@ void Castro::ca_initdata(int& level, amrex::Real& time,
     else {
         PyErr_Print();
         fprintf(stderr, "Failed to load \"%s\"\n", pymodule);
-
     }
 
     //Py_DECREF(plo); // pArgs will decref these
@@ -286,8 +237,6 @@ void Castro::ca_initdata(int& level, amrex::Real& time,
     //Py_DECREF(pValue);
     // restore previous GIL state and return
     PyGILState_Release(gil_state);
-
-    //Py_Finalize();
 
     //std::cout <<  "exiting\n";
 }
