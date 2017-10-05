@@ -8,25 +8,21 @@ import sys
 
 # we need to mock riemann_util here as it relies on stuff from meth_params and the fortran wrapper does not set the variables in the actual fortran object properly
 
-class mocked_riemann:
-    class riemann_util_module:
-        def gr_cons_state(q, state, c):
-            state[:] = q[:len(state)]
-
-sys.modules['riemann_util'] = mocked_riemann
-
-import Prob_3d
-
 class TestCase(unittest.TestCase):
 
+    def mocked_gr_cons_state(q, state, c):
+        state[:] = q[:len(state)]
+
     def test_amrex_probinit(self):
+
+        from Prob_3d import amrex_probinit
 
         probin = "probin.3d.testa"
 
         problo = [0,0,0]
         probhi = [1,1,1]
 
-        Prob_3d.amrex_probinit(problo, probhi, probin)
+        amrex_probinit(problo, probhi, probin)
 
         print(f'probdata = {probdata}')
 
@@ -41,8 +37,10 @@ class TestCase(unittest.TestCase):
         np.testing.assert_equal(probdata.xn_zone[0], 1.0)
         np.testing.assert_equal(probdata.e_ambient, 1.5e-4)
 
-
+    @patch('Prob_3d.riemann.gr_cons_state', new=mocked_gr_cons_state)
     def test_ca_initdata(self):
+
+        from Prob_3d import amrex_probinit, ca_initdata
 
         lo = [0,0,0]
         hi = [5,5,5]
@@ -52,9 +50,9 @@ class TestCase(unittest.TestCase):
 
         probin = "probin.3d.testa"
 
-        Prob_3d.amrex_probinit(xlo, xhi, probin)
+        amrex_probinit(xlo, xhi, probin)
 
-        state = Prob_3d.ca_initdata(lo, hi, lo, hi, delta, xlo, xhi, probin=probin[:-1])
+        state = ca_initdata(lo, hi, lo, hi, delta, xlo, xhi, probin=probin[:-1])
         state = np.reshape(state, (hi[0]+1, hi[1]+1, hi[2]+1, 7), order='F')
 
         np.testing.assert_array_equal(state[:,:,:,0], np.ones_like(state[:,:,:,0]) * 0.1)
