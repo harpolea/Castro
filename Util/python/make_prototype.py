@@ -40,7 +40,7 @@ def make_prototype(inputs_filename, dim):
             elif m.group(1) == 'max_step':
                 lines[i] = 'max_step = 0\n'
             elif m.group(1) == 'stop_time':
-                lines[i] = 'stop_time = 0.0'
+                lines[i] = 'stop_time = 0.000000000001'
             elif m.group(1) == 'amr.checkpoint_files_output' and m.group(2).rstrip() != '0':
                 lines[i] = 'amr.checkpoint_files_output = 0\n'
                 set_checkpoint_output = True

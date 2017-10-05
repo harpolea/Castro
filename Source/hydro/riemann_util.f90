@@ -56,8 +56,8 @@ contains
     ! calculates the conserved state from the primitive variables
     use meth_params_module, only: NQ, QRHO, QU, QV, QW, QREINT, &
          NVAR, URHO, UMX, UMY, UMZ, UEDEN, UEINT, UTEMP, &
-         npassive, upass_map, qpass_map, QTEMP, QPRES
-    use eos_module, only: eos
+         npassive, upass_map, qpass_map, QTEMP, QPRES, small_dens, small_temp
+    use eos_module, only: eos, eos_init, initialized
     use eos_type_module, only: eos_input_re, eos_t, eos_input_rt
     use metric_module, only: calculate_scalar_W
 
@@ -66,6 +66,8 @@ contains
 
     real(rt) :: W, rhoh, p
     type (eos_t)     :: eos_state
+
+    !write(*,*) "NQ = ", NQ, " NVAR = ", NVAR
 
     call calculate_scalar_W(q(QU:QW), gamma_up, W)
 
@@ -77,6 +79,8 @@ contains
     eos_state % e    = q(QREINT) / q(QRHO)
     eos_state % p = q(QPRES)
     eos_state % T = q(QTEMP)
+
+    if (.not. initialized) call eos_init(small_dens=small_dens, small_temp=small_temp)
 
     call eos(eos_input_re, eos_state)
 

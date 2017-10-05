@@ -6,6 +6,7 @@ INCLUDE_FOLDERS = /home/alice/Documents/amrex/Src/Base /home/alice/Documents/amr
 INCLUDES = $(addprefix -I, $(INCLUDE_FOLDERS))
 
 KIND_MAP = kind_map
+ARGUMENT_MAP = argument_map
 
 LIBTOOL = ar src
 
@@ -36,8 +37,8 @@ f90wrap_probdata.f90: libsrc.a
 f90wrap_prob_params.f90: libsrc.a
 	f90wrap -c -m prob_params ../../../Source/driver/prob_params.f90 -v -k $(KIND_MAP)
 
-f90wrap_meth_params_f2py.f90: libsrc.a
-	f90wrap -c -m meth_params ../../../Source/driver/meth_params_f2py.F90 -v -k $(KIND_MAP)
+f90wrap_meth_params.f90: libsrc.a
+	f90wrap -c -m meth_params ../../../Source/driver/meth_params.F90 -v -k $(KIND_MAP) --skip 'ca_finalize_meth_params' 'ca_set_castro_method_params'
 
 
 # NOTE: the order of the compilation and linking stuff here is VERY IMPORTANT
@@ -55,16 +56,16 @@ _probdata.cpython-36m-x86_64-linux-gnu.so: f90wrap_probdata.f90
 _prob_params.cpython-36m-x86_64-linux-gnu.so: f90wrap_prob_params.f90
 	f2py-f90wrap --build-dir f90wrap -c -m _prob_params $< --verbose $(COMPILE_FLAGS) $(INCLUDES) -L. -lsrc $(LINK_FLAGS)
 
-_meth_params.cpython-36m-x86_64-linux-gnu.so: f90wrap_meth_params_f2py.f90
+_meth_params.cpython-36m-x86_64-linux-gnu.so: f90wrap_meth_params.f90
 	-f2py-f90wrap --build-dir f90wrap -c -m _meth_params $< --verbose $(COMPILE_FLAGS) $(INCLUDES) -L. -lsrc $(LINK_FLAGS)
 	sed -i 's/\,&slen(f90wrap_[a-z_]\+)\,""//' f90wrap/src.linux-x86_64-3.6/_meth_paramsmodule.c
 	f2py-f90wrap --build-dir f90wrap -c -m _meth_params $< --verbose $(COMPILE_FLAGS) $(INCLUDES) -L. -lsrc $(LINK_FLAGS)
 
-#clean:
-#	-rm *.o *.so f90wrap* libsrc.a
-#	-rm -r eos
-#	-rm -r src.linux*
-#	-rm prob_params.py
-#	-rm probdata.py
-#	-rm riemann_util.py
-#	-rm -r f90wrap
+clean::
+	-rm *.o *.so f90wrap* libsrc.a
+	-rm -r eos
+	-rm -r src.linux*
+	-rm prob_params.py
+	-rm probdata.py
+	-rm riemann_util.py
+	-rm -r f90wrap

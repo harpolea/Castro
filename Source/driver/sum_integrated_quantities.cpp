@@ -72,13 +72,13 @@ Castro::sum_integrated_quantities ()
 	    int i = 0;
 	    mass       = foo[i++];
 	    mom[0]     = foo[i++];
-            mom[1]     = foo[i++];
-            mom[2]     = foo[i++];
+        mom[1]     = foo[i++];
+        mom[2]     = foo[i++];
 	    ang_mom[0] = foo[i++];
 	    ang_mom[1] = foo[i++];
 	    ang_mom[2] = foo[i++];
 	    rho_e      = foo[i++];
-            rho_E      = foo[i++];
+        rho_E      = foo[i++];
 
 	    std::cout << '\n';
 	    std::cout << "TIME= " << time << " MASS        = "   << mass      << '\n';

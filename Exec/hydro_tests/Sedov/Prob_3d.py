@@ -3,7 +3,7 @@ from eos import eos_type_module, eos_module
 from riemann_util import riemann_util_module as riemann
 from probdata import probdata_module as probdata
 from prob_params import prob_params_module as prob_params
-#from meth_params import meth_params_module as meth_params
+from meth_params import meth_params_module as meth_params
 import re
 
 def amrex_probinit (problo, probhi, probin):# bind(c)
@@ -37,25 +37,26 @@ def amrex_probinit (problo, probhi, probin):# bind(c)
     # for some reason an extra garbage character is stuck on the end, so get rid of that
     params = py_read_probin(probin[:-1])
 
-    #tlock.lock.release()
-
-    extract_dict(params, 'p_ambient', probdata.p_ambient)
-    extract_dict(params, 'dens_ambient', probdata.dens_ambient)
-    extract_dict(params, 'temp_ambient', probdata.temp_ambient)
-    extract_dict(params, 'exp_energy', probdata.exp_energy)
-    extract_dict(params, 'r_init', probdata.r_init)
-    extract_dict(params, 'nsub', probdata.nsub)
+    if 'p_ambient' in params:
+        probdata.p_ambient = params['p_ambient']
+    if 'dens_ambient' in params:
+        probdata.dens_ambient = params['dens_ambient']
+    if 'temp_ambient' in params:
+        probdata.temp_ambient = params['temp_ambient']
+    if 'exp_energy' in params:
+        probdata.exp_energy = params['exp_energy']
+    if 'r_init' in params:
+        probdata.r_init = params['r_init']
+    if 'nsub' in params:
+        probdata.nsub = params['nsub']
 
     probdata.xn_zone[:] = 0.0
     probdata.xn_zone[0] = 1.0
 
     eos_state = eos_type_module.Eos_T()
 
-    #meth_params.ca_set_castro_method_params()
-
-    #print(meth_params)
-
-    #print(f'small dens = {meth_params.small_des}')
+    if meth_params.qu == 0:
+        meth_params.f_set_castro_method_params()
 
     eos_module.eos_init(1.e-20, 1.e-20)
 
@@ -103,7 +104,7 @@ def amrex_probinit (problo, probhi, probin):# bind(c)
 # :::              right hand corner of grid.  (does not include
 # :::		   ghost region).
 # ::: -----------------------------------------------------------
-def ca_initdata(lo, hi, slo, shi, delta, xlo, xhi):
+def ca_initdata(lo, hi, slo, shi, delta, xlo, xhi, probin="probin.3d.sph"):
 
     """use probdata_module
     use meth_params_module , only: NVAR, NQ, QRHO, QU, QV, QW, QREINT, QPRES, URHO, UMX, UMY, UMZ, UEDEN, UEINT, UFS, UTEMP
@@ -116,6 +117,9 @@ def ca_initdata(lo, hi, slo, shi, delta, xlo, xhi):
 
     print('Calling Prob_3d.py:ca_initdata')
 
+    if meth_params.qu == 0:
+        meth_params.f_set_castro_method_params()
+
     gamma_up = np.zeros(9)
     gamma_up[0] = 1.0
     gamma_up[4] = 1.0
@@ -124,8 +128,6 @@ def ca_initdata(lo, hi, slo, shi, delta, xlo, xhi):
     xn_zone = np.zeros(2)
     xn_zone[:] = 0.0
     xn_zone[0] = 1.0
-
-    probin = "probin.3d.sph"
 
     params = py_read_probin(probin)
 
@@ -146,6 +148,8 @@ def ca_initdata(lo, hi, slo, shi, delta, xlo, xhi):
     e_zone = exp_energy / vctr / dens_ambient
 
     eos_state = eos_type_module.Eos_T()
+    if eos_module.get_initialized() != 0:
+        eos_module.eos_init(1.e-20, 1.e-20)
     eos_state.e = e_zone
     eos_state.rho = dens_ambient
     eos_state.xn = xn_zone[:len(eos_state.xn)]
@@ -161,6 +165,8 @@ def ca_initdata(lo, hi, slo, shi, delta, xlo, xhi):
     state = np.zeros((shi[0]+1, shi[1]+1, shi[2]+1, NVAR))
     q = np.zeros((shi[0]+1, shi[1]+1, shi[2]+1, NQ))
 
+    #print(meth_params)
+
     # minus 1 as stupid fortran array numbering from 1
     QRHO = meth_params.qrho-1
     QU = meth_params.qu-1
@@ -174,10 +180,7 @@ def ca_initdata(lo, hi, slo, shi, delta, xlo, xhi):
 
     q[:,:,:,QRHO] = dens_ambient
 
-    centre = np.zeros(3)
-    centre[0] = 0.5#*(problo[0] + probhi[0])
-    centre[1] = 0.5#*(problo[1] + probhi[1])
-    centre[2] = 0.5#*(problo[2] + probhi[2])
+    centre = prob_params.center
 
     for k in range(lo[2], hi[2]+1):
         zmin = xlo[2] + delta[2]*(k-lo[2])
@@ -212,7 +215,7 @@ def ca_initdata(lo, hi, slo, shi, delta, xlo, xhi):
                 q[i,j,k,QREINT] = eint
                 q[i,j,k,QPRES] = eos_state.p
 
-                riemann.gr_cons_state(q[i,j,k,:], state[i,j,k,:], gamma_up)
+                riemann.gr_cons_state(np.asfortranarray(q[i,j,k,:]), np.asfortranarray(state[i,j,k,:]), np.asfortranarray(gamma_up))
 
                 state[i,j,k,UTEMP] = eos_state.T
 
@@ -223,9 +226,9 @@ def ca_initdata(lo, hi, slo, shi, delta, xlo, xhi):
     if UFS < len(state[lo[0],lo[1],lo[2],:]):
         state[:,:,:,UFS] = state[:,:,:,URHO]
 
-    print("Leaving Prob_3d.py:ca_initdata\n")
+    meth_params.f_finalize_meth_params()
 
-    #print(f'state = {np.ascontiguousarray(np.ndarray.flatten(state[:,lo[1],lo[2],URHO]))}')
+    print("Leaving Prob_3d.py:ca_initdata\n")
 
     return list(np.ascontiguousarray(np.ndarray.flatten(state.T)))
 
@@ -273,9 +276,3 @@ def py_read_probin(filename):
         sys.exit("error opening the input file")
 
     return params
-
-def extract_dict(dictionary, param, variable):
-    try:
-        variable = dictionary[param]
-    except KeyError:
-        pass

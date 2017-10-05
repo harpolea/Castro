@@ -437,7 +437,84 @@ contains
     !$acc update device(xl_ext, yl_ext, zl_ext, xr_ext, yr_ext, zr_ext)
 
 
-  end subroutine ca_set_castro_method_params
+end subroutine ca_set_castro_method_params
+
+subroutine f_set_castro_method_params()
+    implicit none
+
+    integer :: dm, Density, Xmom, Ymom, Zmom, Eden, Eint, Temp, numadv, nspec, naux, QLAST
+
+  call ca_set_castro_method_params()
+
+  Density = 0
+  Xmom = 1
+  Ymom = 2
+  Zmom = 3
+  Eden = 4
+  Eint = 5
+  Temp = 6
+
+  URHO  = Density   + 1
+  UMX   = Xmom      + 1
+  UMY   = Xmom      + 2
+  UMZ   = Xmom      + 3
+  UEDEN = Eden      + 1
+  UEINT = Eint      + 1
+  UTEMP = Temp      + 1
+  UFS = UTEMP + 1
+
+  numadv = 0
+  nspec = 0
+  naux = 0
+
+  NTHERM = 7
+  NVAR = NTHERM + nspec + naux + numadv
+  nadv = numadv
+
+  QTHERM = NTHERM + 1 ! the + 1 is for QGAME which is always defined in primitive mode
+
+  QVAR = QTHERM + nspec + naux + numadv
+
+  ! NQ will be the number of hydro + radiation variables in the primitive
+  ! state.  Initialize it just for hydro here
+  NQ = QVAR
+
+  ! We use these to index into the state "Q"
+  QRHO  = 1
+
+  QU    = 2
+  QV    = 3
+  QW    = 4
+
+  QGAME = 5
+
+  QLAST   = QGAME
+
+  QPRES   = QLAST + 1
+  QREINT  = QLAST + 2
+
+  QTEMP   = QTHERM ! = QLAST + 3
+
+  if (numadv >= 1) then
+     QFA = QTHERM + 1
+     QFS = QFA + numadv
+
+  else
+     QFA = 1   ! density
+     QFS = QTHERM + 1
+
+  end if
+
+  if (naux >= 1) then
+     QFX = QFS + nspec
+
+  else
+     QFX = 1
+
+  end if
+
+
+end subroutine f_set_castro_method_params
 
 
   subroutine ca_finalize_meth_params() bind(C, name="ca_finalize_meth_params")
@@ -450,7 +527,13 @@ contains
     deallocate(zl_ext_bc_type)
     deallocate(zr_ext_bc_type)
 
-  end subroutine ca_finalize_meth_params
+end subroutine ca_finalize_meth_params
+
+subroutine f_finalize_meth_params()
+
+  call ca_finalize_meth_params()
+
+end subroutine f_finalize_meth_params
 
 
 end module meth_params_module

@@ -427,6 +427,8 @@ contains
     call eos(eos_input_re, eos_state)
     gamma = eos_state % gam1
 
+    !write(*,*) "rho = ", uin(:,:,:,URHO)
+
     do k = lo(3), hi(3)
        do j = lo(2), hi(2)
           do i = lo(1), hi(1)
