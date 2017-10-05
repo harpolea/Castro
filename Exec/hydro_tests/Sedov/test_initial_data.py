@@ -1,4 +1,4 @@
-from unittest.mock import patch, Mock
+from unittest.mock import patch
 import unittest
 from probdata import probdata_module as probdata
 from prob_params import prob_params_module as prob_params
@@ -9,9 +9,6 @@ import sys
 # we need to mock riemann_util here as it relies on stuff from meth_params and the fortran wrapper does not set the variables in the actual fortran object properly
 
 class TestCase(unittest.TestCase):
-
-    def mocked_gr_cons_state(q, state, c):
-        state[:] = q[:len(state)]
 
     def test_amrex_probinit(self):
 
@@ -36,6 +33,9 @@ class TestCase(unittest.TestCase):
         np.testing.assert_equal(probdata.nsub, 10)
         np.testing.assert_equal(probdata.xn_zone[0], 1.0)
         np.testing.assert_equal(probdata.e_ambient, 1.5e-4)
+
+    def mocked_gr_cons_state(q, state, c):
+        state[:] = q[:len(state)]
 
     @patch('Prob_3d.riemann.gr_cons_state', new=mocked_gr_cons_state)
     def test_ca_initdata(self):
