@@ -440,11 +440,18 @@ contains
 end subroutine ca_set_castro_method_params
 
 subroutine f_set_castro_method_params()
+    use network, only : nspec, naux
     implicit none
 
-    integer :: dm, Density, Xmom, Ymom, Zmom, Eden, Eint, Temp, numadv, nspec, naux, QLAST
+    integer :: dm, Density, Xmom, Ymom, Zmom, Eden, Eint, Temp, numadv, QLAST, FirstSpec, FirstAux, FirstAdv, cnt
 
   call ca_set_castro_method_params()
+
+  numadv = 0
+
+  NTHERM = 7
+  NVAR = NTHERM + nspec + naux + numadv
+  nadv = numadv
 
   Density = 0
   Xmom = 1
@@ -454,6 +461,29 @@ subroutine f_set_castro_method_params()
   Eint = 5
   Temp = 6
 
+  cnt = Temp + 1
+
+  if (nadv > 0) then
+      FirstAdv = cnt
+      cnt = cnt + nadv
+  else
+      FirstAdv = 0
+  endif
+
+  if (nspec > 0) then
+      FirstSpec = cnt
+      cnt = cnt + nspec
+  else
+      FirstSpec = 0
+  endif
+
+  if (naux > 0) then
+      FirstAux = cnt
+      cnt = cnt + naux
+  else
+      FirstAux = 0
+  endif
+
   URHO  = Density   + 1
   UMX   = Xmom      + 1
   UMY   = Xmom      + 2
@@ -461,15 +491,20 @@ subroutine f_set_castro_method_params()
   UEDEN = Eden      + 1
   UEINT = Eint      + 1
   UTEMP = Temp      + 1
-  UFS = UTEMP + 1
 
-  numadv = 0
-  nspec = 0
-  naux = 0
+  if (numadv .ge. 1) then
+     UFA   = FirstAdv  + 1
+  else
+     UFA = 1
+  end if
 
-  NTHERM = 7
-  NVAR = NTHERM + nspec + naux + numadv
-  nadv = numadv
+  UFS   = FirstSpec + 1
+
+  if (naux .ge. 1) then
+     UFX = FirstAux  + 1
+  else
+     UFX = 1
+  end if
 
   QTHERM = NTHERM + 1 ! the + 1 is for QGAME which is always defined in primitive mode
 

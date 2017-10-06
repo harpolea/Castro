@@ -21,42 +21,42 @@ TARGETS = eos riemann_util probdata prob_params meth_params
 
 objForExecs += $(addprefix $(pwd), $(addprefix _, $(addsuffix .cpython-36m-x86_64-linux-gnu.so, $(TARGETS))))
 
-libsrc.a: ${LIBSRC_OBJECTS}
+$(addprefix $(pwd),libsrc.a): ${LIBSRC_OBJECTS}
 	mkdir -p f90wrap
 	${LIBTOOL} $@ $?
 
-f90wrap_eos.f90: libsrc.a
+$(addprefix $(pwd),f90wrap_eos.f90): libsrc.a
 	f90wrap -c -m eos ../../../Microphysics/EOS/*.F90 ../../../Microphysics/EOS/*.f90 ../../../Microphysics/EOS/gamma_law/gamma_law.F90 -v -P -k $(KIND_MAP)
 
-f90wrap_riemann_util.f90: libsrc.a
+$(addprefix $(pwd),f90wrap_riemann_util.f90): libsrc.a
 	f90wrap -m riemann_util ../../../Source/hydro/riemann_util.f90 -v -k $(KIND_MAP)
 
-f90wrap_probdata.f90: libsrc.a
+$(addprefix $(pwd),f90wrap_probdata.f90): libsrc.a
 	f90wrap -c -m probdata probdata.f90 -v -k $(KIND_MAP)
 
-f90wrap_prob_params.f90: libsrc.a
+$(addprefix $(pwd),f90wrap_prob_params.f90): libsrc.a
 	f90wrap -c -m prob_params ../../../Source/driver/prob_params.f90 -v -k $(KIND_MAP)
 
-f90wrap_meth_params.f90: libsrc.a
+$(addprefix $(pwd),f90wrap_meth_params.f90): libsrc.a
 	f90wrap -c -m meth_params ../../../Source/driver/meth_params.F90 -v -k $(KIND_MAP) --skip 'ca_finalize_meth_params' 'ca_set_castro_method_params'
 
 
 # NOTE: the order of the compilation and linking stuff here is VERY IMPORTANT
-_eos.cpython-36m-x86_64-linux-gnu.so: f90wrap_eos.f90
+$(addprefix $(pwd),_eos.cpython-36m-x86_64-linux-gnu.so): f90wrap_eos.f90
 	-f2py-f90wrap --build-dir f90wrap -c -m _eos  f90wrap_eos*.f90 f90wrap_gamma_law.f90 --verbose $(COMPILE_FLAGS) $(INCLUDES) -L. -lsrc $(LINK_FLAGS)
 	sed -i 's/\,&slen(f90wrap_[a-z_]\+)\,""//' f90wrap/src.linux-x86_64-3.6/_eosmodule.c
 	f2py-f90wrap --build-dir f90wrap -c -m _eos  f90wrap_eos*.f90 f90wrap_gamma_law.f90 --verbose $(COMPILE_FLAGS) $(INCLUDES) -L. -lsrc $(LINK_FLAGS)
 
-_riemann_util.cpython-36m-x86_64-linux-gnu.so: f90wrap_riemann_util.f90
+$(addprefix $(pwd),_riemann_util.cpython-36m-x86_64-linux-gnu.so): f90wrap_riemann_util.f90
 	f2py-f90wrap --build-dir f90wrap -c -m _riemann_util $< --verbose  $(COMPILE_FLAGS) $(INCLUDES) -L. -lsrc $(LINK_FLAGS)
 
-_probdata.cpython-36m-x86_64-linux-gnu.so: f90wrap_probdata.f90
+$(addprefix $(pwd),_probdata.cpython-36m-x86_64-linux-gnu.so): f90wrap_probdata.f90
 	f2py-f90wrap --build-dir f90wrap -c -m _probdata $< --verbose $(COMPILE_FLAGS) $(INCLUDES) -L. -lsrc $(LINK_FLAGS)
 
-_prob_params.cpython-36m-x86_64-linux-gnu.so: f90wrap_prob_params.f90
+$(addprefix $(pwd),_prob_params.cpython-36m-x86_64-linux-gnu.so): f90wrap_prob_params.f90
 	f2py-f90wrap --build-dir f90wrap -c -m _prob_params $< --verbose $(COMPILE_FLAGS) $(INCLUDES) -L. -lsrc $(LINK_FLAGS)
 
-_meth_params.cpython-36m-x86_64-linux-gnu.so: f90wrap_meth_params.f90
+$(addprefix $(pwd),_meth_params.cpython-36m-x86_64-linux-gnu.so): f90wrap_meth_params.f90
 	-f2py-f90wrap --build-dir f90wrap -c -m _meth_params $< --verbose $(COMPILE_FLAGS) $(INCLUDES) -L. -lsrc $(LINK_FLAGS)
 	sed -i 's/\,&slen(f90wrap_[a-z_]\+)\,""//' f90wrap/src.linux-x86_64-3.6/_meth_paramsmodule.c
 	f2py-f90wrap --build-dir f90wrap -c -m _meth_params $< --verbose $(COMPILE_FLAGS) $(INCLUDES) -L. -lsrc $(LINK_FLAGS)
@@ -68,4 +68,5 @@ clean::
 	-rm prob_params.py
 	-rm probdata.py
 	-rm riemann_util.py
+	-rm actual_network.py
 	-rm -r f90wrap

@@ -829,6 +829,7 @@ Castro::writePlotFile (const std::string& dir,
     //
     if (derive_names.size() > 0)
     {
+
     	for (std::list<std::string>::iterator it = derive_names.begin();
     	     it != derive_names.end(); ++it)
     	{

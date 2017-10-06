@@ -226,8 +226,6 @@ def ca_initdata(lo, hi, slo, shi, delta, xlo, xhi, probin="probin.3d.sph"):
     if UFS < len(state[lo[0],lo[1],lo[2],:]):
         state[:,:,:,UFS] = state[:,:,:,URHO]
 
-    meth_params.f_finalize_meth_params()
-
     print("Leaving Prob_3d.py:ca_initdata\n")
 
     return list(np.ascontiguousarray(np.ndarray.flatten(state.T)))

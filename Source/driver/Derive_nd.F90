@@ -559,7 +559,7 @@ contains
     real(rt)     :: q(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),NQ)
     real(rt)   :: qaux(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),NQAUX)
 
-    s(:,:,:,:ncomp_u) = u(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),:)
+    s(:,:,:,:min(NVAR,ncomp_u)) = u(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),:min(NVAR,ncomp_u))
 
     call ca_ctoprim(lo, hi, &
                       s, lo, hi, &
@@ -1274,7 +1274,7 @@ contains
     real(rt)     :: q(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),NQ)
     real(rt)   :: qaux(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),NQAUX)
 
-    s(:,:,:,:nc) = dat(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),:)
+    s(:,:,:,:min(nc, NVAR)) = dat(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),:min(nc, NVAR))
 
     call ca_ctoprim(lo, hi, &
                       s, lo, hi, &
@@ -1320,7 +1320,7 @@ contains
     real(rt)   :: qaux(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),NQAUX)
     real(rt)   :: gamma_up(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),9)
 
-    s(:,:,:,:nc) = dat(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),:)
+    s(:,:,:,:min(nc, NVAR)) = dat(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),:min(nc, NVAR))
 
     call calculate_gamma_up(gamma_up, lo, hi)
 
@@ -1368,7 +1368,7 @@ contains
     real(rt)     :: q(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),NQ)
     real(rt)   :: qaux(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),NQAUX)
 
-    s(:,:,:,:nc) = dat(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),:)
+    s(:,:,:,:min(nc, NVAR)) = dat(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),:min(nc, NVAR))
 
     call ca_ctoprim(lo, hi, &
                       s, lo, hi, &
@@ -1414,7 +1414,7 @@ contains
     real(rt)     :: q(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),NQ)
     real(rt)   :: qaux(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),NQAUX)
 
-    s(:,:,:,:nc) = dat(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),:)
+    s(:,:,:,:min(nc, NVAR)) = dat(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),:min(nc, NVAR))
 
     call ca_ctoprim(lo, hi, &
                       s, lo, hi, &
@@ -1460,7 +1460,7 @@ contains
     real(rt)     :: q(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),NQ)
     real(rt)   :: qaux(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),NQAUX)
 
-    s(:,:,:,:nc) = dat(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),:)
+    s(:,:,:,:min(nc, NVAR)) = dat(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),:min(nc, NVAR))
 
     call ca_ctoprim(lo, hi, &
                       s, lo, hi, &

@@ -35,7 +35,7 @@ class TestCase(unittest.TestCase):
         np.testing.assert_equal(probdata.e_ambient, 1.5e-4)
 
     def mocked_gr_cons_state(q, state, c):
-        state[:] = q[:len(state)]
+        state[:min(len(state), len(q))] = q[:min(len(state), len(q))]
 
     @patch('Prob_3d.riemann.gr_cons_state', new=mocked_gr_cons_state)
     def test_ca_initdata(self):
@@ -53,7 +53,7 @@ class TestCase(unittest.TestCase):
         amrex_probinit(xlo, xhi, probin)
 
         state = ca_initdata(lo, hi, lo, hi, delta, xlo, xhi, probin=probin[:-1])
-        state = np.reshape(state, (hi[0]+1, hi[1]+1, hi[2]+1, 7), order='F')
+        state = np.reshape(state, (hi[0]+1, hi[1]+1, hi[2]+1, 8), order='F')
 
         np.testing.assert_array_equal(state[:,:,:,0], np.ones_like(state[:,:,:,0]) * 0.1)
 
