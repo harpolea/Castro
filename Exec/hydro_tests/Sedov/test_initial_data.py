@@ -4,24 +4,23 @@ from probdata import probdata_module as probdata
 from prob_params import prob_params_module as prob_params
 from meth_params import meth_params_module as meth_params
 import numpy as np
-import sys
+import sys, os
 
 # we need to mock riemann_util here as it relies on stuff from meth_params and the fortran wrapper does not set the variables in the actual fortran object properly
 
 class TestCase(unittest.TestCase):
 
+    def setUp(self, root_dir=os.getcwd()):
+        self.probin = root_dir + "/" + "probin.3d.testa"
+
     def test_amrex_probinit(self):
 
         from Prob_3d import amrex_probinit
 
-        probin = "probin.3d.testa"
-
         problo = [0,0,0]
         probhi = [1,1,1]
 
-        amrex_probinit(problo, probhi, probin)
-
-        print(f'probdata = {probdata}')
+        amrex_probinit(problo, probhi, self.probin)
 
         centre = 0.5 * (np.array(problo) + np.array(probhi))
 
@@ -48,11 +47,9 @@ class TestCase(unittest.TestCase):
         xlo = [0,0,0]
         xhi = [1,1,1]
 
-        probin = "probin.3d.testa"
+        amrex_probinit(xlo, xhi, self.probin)
 
-        amrex_probinit(xlo, xhi, probin)
-
-        state = ca_initdata(lo, hi, lo, hi, delta, xlo, xhi, probin=probin[:-1])
+        state = ca_initdata(lo, hi, lo, hi, delta, xlo, xhi, probin=self.probin[:-1])
         state = np.reshape(state, (hi[0]+1, hi[1]+1, hi[2]+1, 8), order='F')
 
         np.testing.assert_array_equal(state[:,:,:,0], np.ones_like(state[:,:,:,0]) * 0.1)

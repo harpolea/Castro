@@ -5,6 +5,7 @@ from probdata import probdata_module as probdata
 from prob_params import prob_params_module as prob_params
 from meth_params import meth_params_module as meth_params
 import re
+import sys
 
 def amrex_probinit (problo, probhi, probin):# bind(c)
 
@@ -271,6 +272,6 @@ def py_read_probin(filename):
                             params[m.group(1)] = params[m.group(1)][0]
 
     except:
-        sys.exit("error opening the input file")
+        sys.exit(f"error opening the input file: {filename}")
 
     return params

@@ -6,15 +6,30 @@ import sys
 from pathlib import Path
 from yt_plot import Simulation
 from validate_inputs import check_parameter_file
+from unittest.mock import patch
+import warnings
 
-def make_prototype(inputs_filename, dim):
+def make_prototype(root_dir, inputs_filename, dim):
     try:
         infile = open(inputs_filename)
     except:
         sys.exit("error opening the input file")
 
+    print("Checking parameter file")
     check_parameter_file(inputs_filename, dim=dim)
 
+    print("Testing initial data")
+    sys.path.insert(0, root_dir)
+    try:
+        from test_initial_datas import TestCase
+        t = TestCase()
+        t.setUp(root_dir=root_dir)
+        t.test_amrex_probinit()
+        t.test_ca_initdata()
+    except ModuleNotFoundError:
+        warnings.warn("Please write tests for the initial data", ImportWarning)
+
+    print("Making prototype")
     protofile = open(inputs_filename + '.proto', mode='w')
 
     lines = infile.readlines()
@@ -74,8 +89,9 @@ def run_prototype(root_dir, executable, inputs_file, plot_field='prim_density'):
     else:
         dim = 3
 
-    plot_name = make_prototype(root_dir + '/' + inputs_file, dim)
+    plot_name = make_prototype(root_dir, root_dir + '/' + inputs_file, dim)
 
+    print("Running prototype")
     # check to see if output file from Castro exists - if so, delete
     if Path(root_dir + '/' + plot_name + '00000').is_dir():
         shutil.rmtree(root_dir + '/' + plot_name + '00000')
@@ -90,6 +106,7 @@ def run_prototype(root_dir, executable, inputs_file, plot_field='prim_density'):
         print(output.decode())
         sys.exit()
 
+    print("Plotting intitial data")
     # plotting
     sim = Simulation(root_dir, plot_name)
     plot = sim.plot_at_time(plot_field, 0)
