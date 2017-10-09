@@ -687,39 +687,6 @@ void
 Castro::variableReSetUp ()
 {
 
-  // This is a copy of the above function but without ca_set_method_params
-
-
-  // initialize the start time for our CPU-time tracker
-  startCPUTime = ParallelDescriptor::second();
-
-
-  // Output the git commit hashes used to build the executable.
-
-  if (ParallelDescriptor::IOProcessor()) {
-
-    const char* castro_hash  = buildInfoGetGitHash(1);
-    const char* amrex_hash   = buildInfoGetGitHash(2);
-    const char* microphysics_hash = buildInfoGetGitHash(3);
-    const char* buildgithash = buildInfoGetBuildGitHash();
-    const char* buildgitname = buildInfoGetBuildGitName();
-
-    if (strlen(castro_hash) > 0) {
-      std::cout << "\n" << "Castro git describe: " << castro_hash << "\n";
-    }
-    if (strlen(amrex_hash) > 0) {
-      std::cout << "AMReX git describe: " << amrex_hash << "\n";
-    }
-    if (strlen(microphysics_hash) > 0) {
-      std::cout << "Microphysics git describe: " << microphysics_hash << "\n";
-    }
-    if (strlen(buildgithash) > 0){
-      std::cout << buildgitname << " git describe: " << buildgithash << "\n";
-    }
-
-    std::cout << "\n";
-  }
-
   BL_ASSERT(desc_lst.size() == 0);
 
   // Get options, set phys_bc
@@ -783,7 +750,6 @@ Castro::variableReSetUp ()
   ca_get_method_params(&NUM_GROW);
 
   const Real run_strt = ParallelDescriptor::second() ;
-
 
   // we want const_grav in F90, get it here from parmparse, since it
   // it not in the Castro namespace
@@ -858,16 +824,8 @@ Castro::variableReSetUp ()
   BL_ASSERT(ngrow_state >= 0);
 
   store_in_checkpoint = true;
-  desc_lst.addDescriptor(State_Type,IndexType::TheCellType(),
-			 StateDescriptor::Point,ngrow_state,NUM_STATE,
-			 interp,state_data_extrap,store_in_checkpoint);
 
   // Source terms. Currently this holds dS/dt for each of the NVAR state variables.
-
-  store_in_checkpoint = true;
-  desc_lst.addDescriptor(Source_Type, IndexType::TheCellType(),
-			 StateDescriptor::Point,NUM_GROW,NUM_STATE,
-			 &cell_cons_interp, state_data_extrap,store_in_checkpoint);
 
   Array<BCRec>       bcs(NUM_STATE);
   Array<std::string> name(NUM_STATE);
@@ -966,8 +924,8 @@ Castro::variableReSetUp ()
 
   if (use_custom_knapsack_weights) {
       Knapsack_Weight_Type = desc_lst.size();
-      desc_lst.addDescriptor(Knapsack_Weight_Type, IndexType::TheCellType(), StateDescriptor::Point,
-			     0, 1, &pc_interp);
+    //  desc_lst.addDescriptor(Knapsack_Weight_Type, IndexType::TheCellType(), StateDescriptor::Point,
+		//	     0, 1, &pc_interp);
       // Because we use piecewise constant interpolation, we do not use bc and BndryFunc.
       desc_lst.setComponent(Knapsack_Weight_Type, 0, "KnapsackWeight",
 			    bc, BndryFunc(ca_nullfill));

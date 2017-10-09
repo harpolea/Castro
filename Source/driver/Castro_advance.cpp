@@ -40,7 +40,6 @@ Castro::advance (Real time,
     initialize_advance(time, dt, amr_iteration, amr_ncycle);
 
     // Do the advance.
-
       for (int iter = 0; iter < MOL_STAGES; ++iter) {
     	mol_iteration = iter;
     	dt_new = do_advance(time, dt, amr_iteration, amr_ncycle);
@@ -180,6 +179,7 @@ Castro::initialize_do_advance(Real time, Real dt, int amr_iteration, int amr_ncy
     	// first MOL stage
     	Sborder.define(grids, dmap, NUM_STATE, NUM_GROW);
     	const Real prev_time = state[State_Type].prevTime();
+
     	expand_state(Sborder, prev_time, NUM_GROW);
 
       } else {
@@ -200,6 +200,7 @@ Castro::initialize_do_advance(Real time, Real dt, int amr_iteration, int amr_ncy
 
     	Sborder.define(grids, dmap, NUM_STATE, NUM_GROW);
     	const Real new_time = state[State_Type].curTime();
+
     	expand_state(Sborder, new_time, NUM_GROW);
       }
 }

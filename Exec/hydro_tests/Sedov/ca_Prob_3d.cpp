@@ -1,14 +1,3 @@
-/*
-Compile me using
-
-g++ -I/home/alice/anaconda3/include/python3.6m cpp_code.cpp -o cpp_code -L/home/alice/anaconda3/lib -lpython3.6m
-
-or:
-
-g++ `python3.6-config --cflags` ca_Prob_3d.cpp -o cpp_code `python3.6-config --ldflags` -I/home/alice/Documents/amrex/Src/Base -I/home/alice/Documents/amrex/Src/AmrCore -I/home/alice/Documents/amrex/Src/Amr
-
-*/
-
 #include "Python.h"
 #include <AMReX.H>
 #include <AMReX_Utility.H>
@@ -20,12 +9,7 @@ g++ `python3.6-config --cflags` ca_Prob_3d.cpp -o cpp_code `python3.6-config --l
 #include <typeinfo>
 #include <AMReX_PROB_AMR_F.H>
 
-
 using namespace amrex;
-
-//int main() {
-//    return 0;
-//}
 
 void amrex_probinit (const int* init,
          const int* name,
@@ -69,7 +53,6 @@ void amrex_probinit (const int* init,
     if (pModule != NULL) {
         PyObject *pDict = PyModule_GetDict(pModule);
         PyObject *pFunc = PyDict_GetItemString(pDict, pyfunc);
-        /* pFunc is a new reference */
 
         if (pFunc && PyCallable_Check(pFunc)) {
 
@@ -82,8 +65,6 @@ void amrex_probinit (const int* init,
             PyObject *pstate = PyObject_CallObject(pFunc, pArgs);
             Py_DECREF(pArgs);
 
-         //std::cout << "Called python object\n";
-
         } else {
             if (PyErr_Occurred())
                 PyErr_Print();
@@ -94,8 +75,6 @@ void amrex_probinit (const int* init,
             Py_DECREF(pprobin);
         }
 
-     //Py_XDECREF(pFunc); //borrowed ref
-     //Py_XDECREF(pDict); borrowed ref
     } else {
         PyErr_Print();
         fprintf(stderr, "Failed to load \"%s\"\n", pymodule);
@@ -155,13 +134,8 @@ void Castro::ca_initdata(int& level, amrex::Real& time,
         PyTuple_SetItem(pxhi, i, PyLong_FromLong(xhi[i]));
     }
 
-    //while (pValue != NULL) Py_DECREF(pValue);
-
     // build the module object
     PyObject *pModule = PyImport_ImportModule(pymodule);
-
-    // call this again to set up desc_lst as PyImport_ImportModule
-    // manages to destroy all the global variables?
 
     amrex::ParmParse pp("amr");
     pp.query("probin_file", probin_file);
@@ -170,7 +144,6 @@ void Castro::ca_initdata(int& level, amrex::Real& time,
     if (pModule != NULL) {
         PyObject *pDict = PyModule_GetDict(pModule);
         PyObject *pFunc = PyDict_GetItemString(pDict, pyfunc);
-        /* pFunc is a new reference */
 
         if (pFunc && PyCallable_Check(pFunc)) {
 
@@ -192,16 +165,12 @@ void Castro::ca_initdata(int& level, amrex::Real& time,
 
             for (int i = 0; i < (shi[0]+1)*(shi[1]+1)*(shi[2]+1)*NVAR; i++) {
 
-                pValue = PyList_GetItem(pstate, i); // doesn't INCREF pValue
+                pValue = PyList_GetItem(pstate, i);
 
                 if (pValue != NULL)
                     state[i] = PyFloat_AsDouble(pValue);
-                //std::cout << "Made double at " << i << " = " << PyFloat_AsDouble(pValue) <<'\n';
             }
-            //Py_DECREF(pValue);; //borrowed ref from pstate
             Py_DECREF(pstate);
-
-            //std::cout << "Made state\n";
 
         } else {
             if (PyErr_Occurred())
@@ -217,26 +186,17 @@ void Castro::ca_initdata(int& level, amrex::Real& time,
             Py_DECREF(pxhi);
         }
 
-        //Py_XDECREF(pFunc); //borrowed ref
-        //Py_XDECREF(pDict); borrowed ref
     }
     else {
         PyErr_Print();
         fprintf(stderr, "Failed to load \"%s\"\n", pymodule);
     }
 
-    //Py_DECREF(plo); // pArgs will decref these
-    //Py_DECREF(phi);
-    //Py_DECREF(pslo);
-    //Py_DECREF(pshi);
-    //Py_DECREF(pdx);
-    //Py_DECREF(pxlo);
-    //Py_DECREF(pxhi);
     Py_DECREF(pModule);
 
-    //Py_DECREF(pValue);
-    // restore previous GIL state and return
     PyGILState_Release(gil_state);
 
-    //std::cout <<  "exiting\n";
+    StateData& statedata2 = (*this).get_state_data(0);
+    const StateDescriptor& desc2 = *(statedata2.descriptor());
+    std::cout << "in Castro::ca_initdata, end of function = " << desc2.nComp() << '\n';
 }

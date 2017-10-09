@@ -607,6 +607,7 @@ Castro::initData ()
               ca_check_initial_species(ARLIM_3D(lo), ARLIM_3D(hi),
     				   BL_TO_FORTRAN_3D(S_new[mfi]), &idx);
        }
+
        enforce_consistent_e(S_new);
 
        // Do a FillPatch so that we can get the ghost zones filled.
@@ -897,6 +898,7 @@ Castro::computeInitialDt (int                   finest_level,
     // Limit dt's by the value of stop_time.
     //
     const Real eps = 0.001*dt_0;
+
     Real cur_time  = state[State_Type].curTime();
     if (stop_time >= 0.0) {
         if ((cur_time + dt_0) > (stop_time - eps))

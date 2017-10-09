@@ -102,7 +102,7 @@ public:
     // Define data descriptors.
     //
     static void variableSetUp ();
-	static void variableReSetUp ();
+	void variableReSetUp ();
     //
     // Define tagging functions.
     //

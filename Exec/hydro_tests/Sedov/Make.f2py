@@ -16,10 +16,7 @@ LINK_FLAGS = -lgfortran -lquadmath -L/usr/lib/gcc/x86_64-linux-gnu/7 -lstdc++
 
 TARGETS = eos riemann_util probdata prob_params meth_params
 
-#TARGETS = $(addsuffix '.cpython-36m-x86_64-linux-gnu.so', $(TARGETS))
-#TARGETS = $(addprefix '_', $(TARGETS))
-
-objForExecs += $(addprefix $(pwd), $(addprefix _, $(addsuffix .cpython-36m-x86_64-linux-gnu.so, $(TARGETS))))
+#objForExecs += $(addprefix $(pwd), $(addprefix _, $(addsuffix .cpython-36m-x86_64-linux-gnu.so, $(TARGETS))))
 
 $(addprefix $(pwd),libsrc.a): ${LIBSRC_OBJECTS}
 	mkdir -p f90wrap
