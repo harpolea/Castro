@@ -1001,16 +1001,16 @@ Castro::post_timestep (int iteration)
 
     	if (sum_per > 0.0) {
 
-    	  const int num_per_old = floor((cumtime - dtlev) / sum_per);
-    	  const int num_per_new = floor((cumtime        ) / sum_per);
+            const int num_per_old = floor((cumtime - dtlev) / sum_per);
+            const int num_per_new = floor((cumtime        ) / sum_per);
 
-    	  if (num_per_old != num_per_new)
+    	    if (num_per_old != num_per_new)
     	    sum_per_test = true;
 
     	}
 
-            if (sum_int_test || sum_per_test)
-    	       sum_integrated_quantities();
+        if (sum_int_test || sum_per_test)
+	       sum_integrated_quantities();
     }
 }
 

@@ -8,7 +8,7 @@ using namespace amrex;
 Real
 Castro::sumDerive (const std::string& name,
                    Real               time,
-		   bool               local)
+		           bool               local)
 {
     Real sum     = 0.0;
     auto mf = derive(name, time, 0);
@@ -17,18 +17,18 @@ Castro::sumDerive (const std::string& name,
 
     if (level < parent->finestLevel())
     {
-	const MultiFab& mask = getLevel(level+1).build_fine_mask();
-	MultiFab::Multiply(*mf, mask, 0, 0, 1, 0);
+	    const MultiFab& mask = getLevel(level+1).build_fine_mask();
+	    MultiFab::Multiply(*mf, mask, 0, 0, 1, 0);
     }
 
 #ifdef _OPENMP
 #pragma omp parallel reduction(+:sum)
 #endif
     {
-	for (MFIter mfi(*mf,true); mfi.isValid(); ++mfi)
-	{
-	    sum += (*mf)[mfi].sum(mfi.tilebox(),0);
-	}
+    	for (MFIter mfi(*mf,true); mfi.isValid(); ++mfi)
+    	{
+    	    sum += (*mf)[mfi].sum(mfi.tilebox(),0);
+    	}
     }
 
     if (!local)
@@ -53,8 +53,8 @@ Castro::volWgtSum (const std::string& name,
 
     if (level < parent->finestLevel() && finemask)
     {
-	const MultiFab& mask = getLevel(level+1).build_fine_mask();
-	MultiFab::Multiply(*mf, mask, 0, 0, 1, 0);
+    	const MultiFab& mask = getLevel(level+1).build_fine_mask();
+    	MultiFab::Multiply(*mf, mask, 0, 0, 1, 0);
     }
 
 #ifdef _OPENMP
@@ -64,7 +64,7 @@ Castro::volWgtSum (const std::string& name,
     {
         FArrayBox& fab = (*mf)[mfi];
 
-	Real s = 0.0;
+	    Real s = 0.0;
         const Box& box  = mfi.tilebox();
         const int* lo   = box.loVect();
         const int* hi   = box.hiVect();
@@ -74,7 +74,7 @@ Castro::volWgtSum (const std::string& name,
         // whatever quantity is passed in, not strictly the "mass".
         //
 
-	ca_summass(ARLIM_3D(lo),ARLIM_3D(hi),BL_TO_FORTRAN_3D(fab),
+	    ca_summass(ARLIM_3D(lo),ARLIM_3D(hi),BL_TO_FORTRAN_3D(fab),
 		   ZFILL(dx),BL_TO_FORTRAN_3D(volume[mfi]),&s);
 
         sum += s;
@@ -101,8 +101,8 @@ Castro::volWgtSquaredSum (const std::string& name,
 
     if (level < parent->finestLevel())
     {
-	const MultiFab& mask = getLevel(level+1).build_fine_mask();
-	MultiFab::Multiply(*mf, mask, 0, 0, 1, 0);
+	    const MultiFab& mask = getLevel(level+1).build_fine_mask();
+	    MultiFab::Multiply(*mf, mask, 0, 0, 1, 0);
     }
 
 #ifdef _OPENMP
