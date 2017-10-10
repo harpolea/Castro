@@ -432,6 +432,133 @@ contains
 
 end subroutine swectoprim
 
+subroutine compctoprim(lo, hi, &
+                   uin, uin_lo, uin_hi, &
+                   q,     q_lo,   q_hi, &
+                   qaux, qa_lo,  qa_hi)
+
+  use mempool_module, only : bl_allocate, bl_deallocate
+  use actual_network, only : nspec, naux
+  use eos_module, only : eos
+  use eos_type_module, only : eos_t, eos_input_re
+  use meth_params_module, only : NVAR, URHO, UMX, UMY, UMZ, UEDEN, UEINT,&
+                                 QRHO, QU, QV, QW, QREINT, QTEMP, &
+                                 NQ, QC, QCSML, QGAMC, QDPDR, QDPDE, NQAUX, QFS, QFX, QGAME, QPRES, UTEMP, &
+                                 npassive, upass_map, qpass_map, dual_energy_eta1, &
+                                 small_dens
+  use bl_constants_module, only: ZERO, HALF, ONE
+  use castro_util_module, only: position
+
+  use amrex_fort_module, only : rt => amrex_real
+
+  implicit none
+
+  integer, intent(in) :: lo(3), hi(3)
+  integer, intent(in) :: uin_lo(3), uin_hi(3)
+  integer, intent(in) :: q_lo(3), q_hi(3)
+  integer, intent(in) :: qa_lo(3), qa_hi(3)
+
+  real(rt)        , intent(in ) :: uin(uin_lo(1):uin_hi(1),uin_lo(2):uin_hi(2),uin_lo(3):uin_hi(3),NVAR)
+
+  real(rt)        , intent(inout) :: q(q_lo(1):q_hi(1),q_lo(2):q_hi(2),q_lo(3):q_hi(3),NQ)
+  real(rt)        , intent(inout) :: qaux(qa_lo(1):qa_hi(1),qa_lo(2):qa_hi(2),qa_lo(3):qa_hi(3),NQAUX)
+
+  real(rt)        , parameter :: small = 1.d-8
+
+  integer          :: i, j, k, g
+  integer          :: n, iq, ipassive
+  real(rt)         :: kineng
+  type (eos_t)     :: eos_state
+
+  q(:,:,:,:) = 0.0d0
+
+  do k = lo(3), hi(3)
+     do j = lo(2), hi(2)
+
+        do i = lo(1), hi(1)
+           if (uin(i,j,k,URHO) .le. ZERO) then
+              print *,'   '
+              print *,'>>> Error: advection_util_nd.F90::compctoprim ',i, j, k
+              print *,'>>> ... negative density ', uin(i,j,k,URHO)
+              call bl_error("Error:: advection_util_nd.f90 :: compctoprim")
+           else if (uin(i,j,k,URHO) /= uin(i,j,k,URHO)) then
+               print *,'   '
+               print *,'>>> Error: advection_util_nd.F90::compctoprim ',i, j, k
+               print *,'>>> ... density is nan ', uin(i,j,k,URHO)
+               write(*,*) uin(:,:,:,URHO)
+               call bl_error("Error:: advection_util_nd.f90 :: compctoprim")
+           else if (uin(i,j,k,URHO) .lt. small_dens) then
+              print *,'   '
+              print *,'>>> Error: advection_util_nd.F90::compctoprim ',i, j, k
+              print *,'>>> ... small density ', uin(i,j,k,URHO)
+              call bl_error("Error:: advection_util_nd.f90 :: compctoprim")
+           endif
+        end do
+
+        do i = lo(1), hi(1)
+
+            q(i,j,k,QRHO) = uin(i,j,k,URHO)
+            q(i,j,k,QU:QW) = uin(i,j,k,UMX:UMZ) / uin(i,j,k,URHO)
+
+            kineng = HALF * q(i,j,k,QRHO) * (q(i,j,k,QU)**2 + q(i,j,k,QV)**2 + q(i,j,k,QW)**2)
+
+            if ( (uin(i,j,k,UEDEN) - kineng) / uin(i,j,k,UEDEN) .gt. dual_energy_eta1) then
+                q(i,j,k,QREINT) = (uin(i,j,k,UEDEN) - kineng) / uin(i,j,k,URHO)
+             else
+                q(i,j,k,QREINT) = uin(i,j,k,UEINT) / uin(i,j,k,URHO)
+            endif
+
+            q(i,j,k,QTEMP) = uin(i,j,k,UTEMP)
+
+        enddo
+     enddo
+  enddo
+
+  ! Load passively advected quatities into q
+    do ipassive = 1, npassive
+       n  = upass_map(ipassive)
+       iq = qpass_map(ipassive)
+       do k = lo(3),hi(3)
+          do j = lo(2),hi(2)
+             do i = lo(1),hi(1)
+                q(i,j,k,iq) = uin(i,j,k,n)/q(i,j,k,QRHO)
+             enddo
+          enddo
+       enddo
+    enddo
+
+    ! get gamc, p, T, c, csml using q state
+    do k = lo(3), hi(3)
+       do j = lo(2), hi(2)
+          do i = lo(1), hi(1)
+
+             eos_state % T   = q(i,j,k,QTEMP )
+             eos_state % rho = q(i,j,k,QRHO  )
+             eos_state % e   = q(i,j,k,QREINT)
+             eos_state % xn  = q(i,j,k,QFS:QFS+nspec-1)
+             eos_state % aux = q(i,j,k,QFX:QFX+naux-1)
+
+             call eos(eos_input_re, eos_state)
+
+             q(i,j,k,QTEMP)  = eos_state % T
+             q(i,j,k,QREINT) = eos_state % e * q(i,j,k,QRHO)
+             q(i,j,k,QPRES)  = eos_state % p
+             q(i,j,k,QGAME)  = q(i,j,k,QPRES) / q(i,j,k,QREINT) + ONE
+
+             qaux(i,j,k,QDPDR)  = eos_state % dpdr_e
+             qaux(i,j,k,QDPDE)  = eos_state % dpde
+
+
+             qaux(i,j,k,QGAMC)  = eos_state % gam1
+             qaux(i,j,k,QC   )  = eos_state % cs
+
+             qaux(i,j,k,QCSML)  = max(small, small * qaux(i,j,k,QC))
+          enddo
+       enddo
+enddo
+
+end subroutine compctoprim
+
 
 ! :::
 ! ::: ------------------------------------------------------------------

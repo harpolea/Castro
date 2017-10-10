@@ -379,4 +379,88 @@ enddo
 end subroutine swe_HLL
 
 
+
+subroutine swe_to_comp(swe, slo, shi, comp, clo, chi, lo, hi)
+    use meth_params_module, only: NQ, QVAR, QRHO, QU, QV, QW, &
+         NVAR, URHO, UMX, UMY, UMZ, NQAUX, QTEMP, UTEMP, UEDEN, UEINT, &
+         dual_energy_eta1
+    use probdata_module, only : g
+
+    integer, intent(in)   :: slo(3), shi(3), clo(3), chi(3), lo(3), hi(3)
+    real(rt), intent(in)  :: swe(slo(1):shi(1), slo(2):shi(2), slo(3):shi(3), NVAR)
+    real(rt), intent(inout) :: comp(clo(1):chi(1), clo(2):chi(2), clo(3):chi(3), NVAR)
+
+    real(rt) :: q_swe(slo(1):shi(1), slo(2):shi(2), slo(3):shi(3), QVAR)
+    real(rt) :: q_comp(clo(1):chi(1), clo(2):chi(2), clo(3):chi(3), QVAR)
+    real(rt) :: qaux(clo(1):chi(1), clo(2):chi(2), clo(3):chi(3),NQAUX)
+    real(rt) :: kineng
+
+    integer i, j, k
+
+    ! phi = gh
+    call swectoprim(lo, hi, swe, slo, shi, q_swe, slo, shi, qaux, clo, chi)
+
+    call compctoprim(lo, hi, comp, clo, chi, q_comp, clo, chi, qaux, clo, chi)
+
+    do k = lo(3), hi(3)
+        do j = lo(2), hi(2)
+            do i = lo(1), hi(1)
+                q_comp(i,j,k,QU:QV) = q_swe(i,j,k,QU:QV)
+                q_comp(i,j,k,QW) = 0.d0
+
+                kineng = 0.5d0 * q_comp(i,j,k,QRHO) * (q_comp(i,j,k,QU)**2 + q_comp(i,j,k,QV)**2 + q_comp(i,j,k,QW)**2)
+
+                if ( (comp(i,j,k,UEDEN) - kineng) / comp(i,j,k,UEDEN) .gt. dual_energy_eta1) then
+                    q_comp(i,j,k,QREINT) = (comp(i,j,k,UEDEN) - kineng) / comp(i,j,k,URHO)
+                 else
+                    q_comp(i,j,k,QREINT) = comp(i,j,k,UEINT) / comp(i,j,k,URHO)
+                endif
+
+                q_comp(i,j,k,QTEMP) = comp(i,j,k,UTEMP)
+
+                call comp_cons_state(q_comp(i,j,k,:), comp(i,j,k,:))
+            enddo
+        enddo
+    enddo
+
+end subroutine swe_to_comp
+
+
+
+subroutine comp_to_swe(swe, slo, shi, comp, clo, chi, lo, hi)
+    use meth_params_module, only: QVAR, QRHO, QU, QV, QW, &
+         NVAR, URHO, UMX, UMY, UMZ
+    use probdata_module, only : g
+
+
+    integer, intent(in)   :: slo(3), shi(3), clo(3), chi(3), lo(3), hi(3)
+    real(rt), intent(out)  :: swe(slo(1):shi(1), slo(2):shi(2), slo(3):shi(3), NVAR)
+    real(rt), intent(in) :: comp(clo(1):chi(1), clo(2):chi(2), clo(3):chi(3), NVAR)
+
+    real(rt) :: q_swe(slo(1):shi(1), slo(2):shi(2), slo(3):shi(3), QVAR)
+    real(rt) :: q_comp(clo(1):chi(1), clo(2):chi(2), clo(3):chi(3), QVAR)
+    real(rt) :: qaux(clo(1):chi(1), clo(2):chi(2), clo(3):chi(3),NQAUX)
+    real(rt) :: kineng
+
+
+    integer i, j, k
+
+    ! phi = gh
+
+    call compctoprim(lo, hi, comp, clo, chi, q_comp, clo, chi, qaux, clo, chi)
+
+    do k = lo(3), hi(3)
+        do j = lo(2), hi(2)
+            do i = lo(1), hi(1)
+                q_swe(i,j,k,QU:QV) = q_comp(i,j,k,QU:QV)
+                q_swe(i,j,k,QW) = 0.d0
+
+                call swe_cons_state(q_swe(i,j,k,:), swe(i,j,k,:))
+            enddo
+        enddo
+    enddo
+
+end subroutine comp_to_swe
+
+
 end module actual_riemann_module

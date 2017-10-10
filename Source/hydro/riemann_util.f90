@@ -79,7 +79,7 @@ contains
 
   subroutine comp_cons_state(q, U)
     ! calculates the conserved state from the primitive variables
-    use meth_params_module, only: QVAR, QRHO, QU, QV, QW, &
+    use meth_params_module, only: QVAR, QRHO, QU, QV, QW, QTEMP, &
          NVAR, URHO, UMX, UMY, UMZ, UEDEN, UEINT, UTEMP, QREINT, &
          npassive, upass_map, qpass_map, small_dens, small_temp
 
@@ -101,7 +101,7 @@ contains
 
     ! we don't care about T here, but initialize it to make NaN
     ! checking happy
-    U(UTEMP) = ZERO
+    U(UTEMP) = q(QTEMP)
 
   end subroutine comp_cons_state
 
