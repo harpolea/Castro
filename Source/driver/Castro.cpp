@@ -17,11 +17,11 @@
 #include <Castro.H>
 #include <Castro_F.H>
 #include <Derive_F.H>
+#include <Castro_error_F.H>
 #include <AMReX_VisMF.H>
 #include <AMReX_TagBox.H>
 #include <AMReX_FillPatchUtil.H>
 #include <AMReX_ParmParse.H>
-#include <Castro_error_F.H>
 
 #ifdef _OPENMP
 #include <omp.h>
@@ -35,6 +35,7 @@ bool         Castro::dump_old      = false;
 
 int          Castro::verbose       = 0;
 ErrorList    Castro::err_list;
+int          Castro::num_err_list_default = 0;
 int          Castro::radius_grow   = 1;
 BCRec        Castro::phys_bc;
 int          Castro::NUM_STATE     = -1;
@@ -1286,12 +1287,35 @@ Castro::errorEst (TagBoxArray& tags,
     if (use_post_step_regrid)
 	   t = get_state_data(State_Type).curTime();
 
-    // Apply each of the built-in tagging functions.
+    // Apply each of the specified tagging functions.
 
-    for (int j = 0; j < err_list.size(); j++)
+
+    for (int j = 0; j < num_err_list_default; j++)
 	   apply_tagging_func(tags, clearval, tagval, t, j);
 
+    // Now apply the user-specified tagging functions.
+    // Include problem-specific hooks before and after.
+
+    problem_pre_tagging_hook(tags, clearval, tagval, t);
+
+    for (int j = num_err_list_default; j < err_list.size(); j++)
+        apply_tagging_func(tags, clearval, tagval, t, j);
+
     // Now we'll tag any user-specified zones using the full state array.
+
+    apply_problem_tags(tags, clearval, tagval, time);
+
+    problem_post_tagging_hook(tags, clearval, tagval, t);
+}
+
+
+
+void
+Castro::apply_problem_tags (TagBoxArray& tags,
+                            int          clearval,
+                            int          tagval,
+                            Real         time)
+{
 
     const int*  domain_lo = geom.Domain().loVect();
     const int*  domain_hi = geom.Domain().hiVect();
@@ -1342,6 +1366,7 @@ Castro::errorEst (TagBoxArray& tags,
             tagfab.tags_and_untags(itags, tilebx);
 	}
     }
+
 }
 
 

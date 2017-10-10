@@ -6,9 +6,9 @@ module actual_riemann_module
                                  URHO, UMX, UMY, UMZ, &
                                  UFS, UFX, &
                                  QRHO, QU, QV, QW, &
-                                 QFS, QFX, &
+                                 QFS, QFX, QC, QCSML, QREINT, QPRES, QGAMC, &
                                  npassive, upass_map, qpass_map, &
-                                 small_dens, &
+                                 small_dens, small_pres, &
                                  use_eos_in_riemann
   use riemann_util_module
 
@@ -23,10 +23,10 @@ module actual_riemann_module
 
 contains
 
-  subroutine swe_HLL(ql, qr, qpd_lo, qpd_hi, &
+  subroutine comp_HLL(ql, qr, qpd_lo, qpd_hi, &
                   qaux, qa_lo, qa_hi, &
                   uflx, uflx_lo, uflx_hi, &
-                  idir, ilo, ihi, jlo, jhi, kc, kflux, k3d, &
+                  idir, ilo, ihi, &
                   domlo, domhi)
 
 
@@ -42,7 +42,7 @@ contains
     integer, intent(in) :: qpd_lo(3), qpd_hi(3)
     integer, intent(in) :: qa_lo(3), qa_hi(3)
     integer, intent(in) :: uflx_lo(3), uflx_hi(3)
-    integer, intent(in) :: idir, ilo, ihi, jlo, jhi
+    integer, intent(in) :: idir, ilo(3), ihi(3)
     integer, intent(in) :: domlo(3), domhi(3)
 
     real(rt), intent(in) :: ql(qpd_lo(1):qpd_hi(1),qpd_lo(2):qpd_hi(2),qpd_lo(3):qpd_hi(3),NQ)
@@ -53,7 +53,6 @@ contains
     real(rt), intent(in) :: qaux(qa_lo(1):qa_hi(1),qa_lo(2):qa_hi(2),qa_lo(3):qa_hi(3),NQAUX)
 
     real(rt), intent(inout) :: uflx(uflx_lo(1):uflx_hi(1),uflx_lo(2):uflx_hi(2),uflx_lo(3):uflx_hi(3),NVAR)
-    integer, intent(in) :: kc, kflux, k3d
 
     ! Note:
     !
@@ -69,7 +68,7 @@ contains
     !         kflux = kc, but in later calls, when uflx = {flux1,flux2,flux3},
     !         kflux = k3d
 
-    integer :: i, j
+    integer :: i, j, k
 
     integer :: iu, iv1, iv2, sx, sy, sz
     logical :: special_bnd_lo, special_bnd_hi, special_bnd_lo_x, special_bnd_hi_x
@@ -79,7 +78,7 @@ contains
     real(rt) :: S_l, S_r, S_c, Smax_l, Smax_r, Smax
     real(rt) :: rl, ul, v1l, v2l, pl, rel, cl
     real(rt) :: rr, ur, v1r, v2r, pr, rer, cr
-    real(rt) :: wl, wr, scr
+    real(rt) :: cavg, csmall, gamcl, gamcr
 
     if (idir == 1) then
        iu = QU
@@ -121,8 +120,8 @@ contains
 
     bnd_fac_z = 1
     if (idir == 3) then
-       if ( k3d == domlo(3)   .and. special_bnd_lo .or. &
-            k3d == domhi(3)+1 .and. special_bnd_hi ) then
+       if ( k == domlo(3)   .and. special_bnd_lo .or. &
+            k == domhi(3)+1 .and. special_bnd_hi ) then
           bnd_fac_z = 0
        end if
     end if
@@ -131,7 +130,9 @@ contains
     Smax_r = maxval(abs(qr(:,:,:,QU-1+idir))) + maxval(sqrt(g * qr(:,:,:,QRHO)))
     Smax = max(Smax_r, Smax_l)
 
-    do j = jlo, jhi
+    do k = ilo(3), ihi(3)
+
+    do j = ilo(2), ihi(2)
 
        bnd_fac_y = 1
        if (idir == 2) then
@@ -142,7 +143,7 @@ contains
        end if
 
        !dir$ ivdep
-       do i = ilo, ihi
+       do i = ilo(1), ihi(1)
           rl = max(ql(i,j,k,QRHO), small_dens)
 
           ! pick left velocities based on direction
@@ -188,34 +189,35 @@ contains
 
           if (S_r <= ZERO) then
              ! R region
-             call swe_cons_state(qr(i,j,kc,:), U_state)
-             call swe_compute_flux(idir, bnd_fac, U_state, F_state)
+             call comp_cons_state(qr(i,j,k,:), U_state)
+             call comp_compute_flux(idir, bnd_fac, U_state, F_state, pr)
 
          else if (S_r > ZERO .and. S_l <= ZERO) then
              ! * region
-             call swe_cons_state(ql(i,j,kc,:), U_state)
-             call swe_compute_flux(idir, bnd_fac, U_state, F_state)
+             call comp_cons_state(ql(i,j,k,:), U_state)
+             call comp_compute_flux(idir, bnd_fac, U_state, F_state, pl)
 
-             call swe_cons_state(qr(i,j,kc,:), U_hll_state)
-             call swe_compute_flux(idir, bnd_fac, U_hll_state, Fr_state)
+             call comp_cons_state(qr(i,j,k,:), U_hll_state)
+             call comp_compute_flux(idir, bnd_fac, U_hll_state, Fr_state, pr)
 
              ! correct the flux
              F_state(:) = (S_r * F_state(:) - S_l * Fr_state(:) + S_r * S_l * (U_hll_state(:) - U_state(:)))/ (S_r - S_l)
 
           else
              ! L region
-             call swe_cons_state(ql(i,j,kc,:), U_state)
-             call swe_compute_flux(idir, bnd_fac, U_state, F_state)
+             call comp_cons_state(ql(i,j,k,:), U_state)
+             call comp_compute_flux(idir, bnd_fac, U_state, F_state, pl)
 
           endif
 
-          uflx(i,j,kflux,:) = F_state(:)
+          uflx(i,j,k,:) = F_state(:)
        enddo
     enddo
+enddo
 
-  end subroutine swe_HLL
+  end subroutine comp_HLL
 
-  subroutine comp_HLL(ql, qr, qpd_lo, qpd_hi, &
+  subroutine swe_HLL(ql, qr, qpd_lo, qpd_hi, &
                   qaux, qa_lo, qa_hi, &
                   uflx, uflx_lo, uflx_hi, &
                   idir, ilo, ihi, jlo, jhi, kc, kflux, k3d, &
@@ -349,24 +351,24 @@ contains
 
           if (S_r <= ZERO) then
              ! R region
-             call comp_cons_state(qr(i,j,kc,:), U_state)
-             call comp_compute_flux(idir, bnd_fac, U_state, F_state)
+             call swe_cons_state(qr(i,j,kc,:), U_state)
+             call swe_compute_flux(idir, bnd_fac, U_state, F_state)
 
          else if (S_r > ZERO .and. S_l <= ZERO) then
              ! * region
-             call comp_cons_state(ql(i,j,kc,:), U_state)
-             call comp_compute_flux(idir, bnd_fac, U_state, F_state)
+             call swe_cons_state(ql(i,j,kc,:), U_state)
+             call swe_compute_flux(idir, bnd_fac, U_state, F_state)
 
-             call comp_cons_state(qr(i,j,kc,:), U_hll_state)
-             call comp_compute_flux(idir, bnd_fac, U_hll_state, Fr_state)
+             call swe_cons_state(qr(i,j,kc,:), U_hll_state)
+             call swe_compute_flux(idir, bnd_fac, U_hll_state, Fr_state)
 
              ! correct the flux
              F_state(:) = (S_r * F_state(:) - S_l * Fr_state(:) + S_r * S_l * (U_hll_state(:) - U_state(:)))/ (S_r - S_l)
 
           else
              ! L region
-             call comp_cons_state(ql(i,j,kc,:), U_state)
-             call comp_compute_flux(idir, bnd_fac, U_state, F_state)
+             call swe_cons_state(ql(i,j,kc,:), U_state)
+             call swe_compute_flux(idir, bnd_fac, U_state, F_state)
 
           endif
 
@@ -374,7 +376,7 @@ contains
        enddo
     enddo
 
-end subroutine comp_HLL
+end subroutine swe_HLL
 
 
 end module actual_riemann_module

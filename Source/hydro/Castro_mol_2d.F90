@@ -125,7 +125,7 @@ subroutine ca_mol_single_stage(time, &
 
      call compute_reconstruction_tvd(q(:,:,n), q_lo, q_hi, &
                                     sxm, sxp, sym, syp, sxm, sxp, q_lo, q_hi, & ! extra sxm, sxp are dummy
-                                    lo_3D, hi_3D, [dx, dy, ZERO], 0, 0)
+                                    lo_3D, hi_3D, [dx, dy, ZERO])
 
      ! Construct the interface states -- this is essentially just a
      ! reshuffling of interface states from zone-center indexing to

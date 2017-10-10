@@ -385,7 +385,8 @@ Castro::variableSetUp ()
   for (int i = 0; i < NUM_STATE; i++)
     state_type_source_names[i] = name[i] + "_source";
 
-  desc_lst.setComponent(Source_Type,Density,state_type_source_names,bcs,BndryFunc(ca_denfill,ca_hypfill));
+  desc_lst.setComponent(Source_Type,Density,state_type_source_names,bcs,
+                        BndryFunc(ca_generic_single_fill,ca_generic_multi_fill));
 
   if (use_custom_knapsack_weights) {
       Knapsack_Weight_Type = desc_lst.size();
@@ -541,10 +542,6 @@ Castro::variableSetUp ()
     source_names[n] = "";
 
   source_names[ext_src] = "user-defined external";
-
-#ifdef GRAVITY
-  source_names[grav_src] = "gravity";
-#endif
 
   // method of lines Butcher tableau
 #define SECONDORDER_TVD

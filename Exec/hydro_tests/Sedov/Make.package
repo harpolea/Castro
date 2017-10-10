@@ -1,5 +1,6 @@
+f90EXE_sources += extern.f90
 ca_f90EXE_sources += probdata.f90
-ca_f90EXE_sources += actual_network.f90
+f90EXE_sources += actual_network.f90
 
 CXXFLAGS += -I/home/alice/anaconda3/include/python3.6m -I/home/alice/anaconda3/include/python3.6m  -Wsign-compare -DNDEBUG -g -fwrapv -O3 -Wall
 

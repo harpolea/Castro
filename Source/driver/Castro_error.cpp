@@ -1,6 +1,7 @@
 
 #include "Castro.H"
 #include "Castro_error_F.H"
+#include <Castro_prob_err_F.H>
 
 using std::string;
 using namespace amrex;
@@ -29,5 +30,14 @@ Castro::ErrorSetUp ()
 #endif
 
 //   err_list.add("entropy",1,ErrorRec::Special,ca_enterror);
+
+
+
+    // Save the number of built-in functions; this will help us
+    // distinguish between those, and the ones the user is about to add.
+
+    num_err_list_default = err_list.size();
+
+#include <Castro_prob_err_list.H>
 
 }
