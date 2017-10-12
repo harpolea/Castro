@@ -84,11 +84,12 @@ def guesstimate_runtime(root_dir, executable, inputs_file, max_runtime=60, max_n
         # one on one process
         n_processes = 1
         n_nodes = 1
+        runtime = int(np.ceil(time_est))
     elif time_est / scaling_factor / processes_per_node < 2 * target_runtime:
         n_processes = int(np.ceil(time_est / scaling_factor / target_runtime))
         n_nodes = 1
 
-        time_est = time_est / scaling_factor / n_processes
+        runtime = int(np.ceil(time_est / scaling_factor / n_processes)
 
     else:
 
@@ -110,3 +111,17 @@ def guesstimate_runtime(root_dir, executable, inputs_file, max_runtime=60, max_n
 
             if ok == 'n':
                 sys.exit()
+
+        runtime = int(np.ceil(time_est / (n_nodes * n_processes) / scaling_factor))
+
+    return n_processes, n_nodes, runtime
+
+def generate_submit_script(root_dir, executable, inputs_file, max_runtime=60, max_nodes=10, target_runtime=2):
+
+    n_processes, n_nodes, runtime = guesstimate_runtime(root_dir, executable, inputs_file, max_runtime=max_runtime, max_nodes=max_nodes, target_runtime=target_runtime)
+
+    with open(inputs_file[7:] + '_submit_script', mode='w') as submit_script:
+        submit_script.write('#!/bin/bash\n')
+        submit_script.write(f'#PBS -l walltime={runtime}\n')
+        submit_script.write(f'#PBS -l nodes={n_nodes}:ppn={n_processes}\n')
+        submit_script.write(f'\ncd $PBS_O_WORKDIR\n\nmodule load python gcc/6.1.0 openmpi/2.0.2/gcc\n\n{executable} {inputs_file}')
