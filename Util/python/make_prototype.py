@@ -9,7 +9,7 @@ from validate_inputs import check_parameter_file
 from unittest.mock import patch
 import warnings
 
-def make_prototype(root_dir, inputs_filename, dim):
+def make_prototype(root_dir, inputs_filename, dim, max_step=0):
     try:
         infile = open(inputs_filename)
     except:
@@ -53,7 +53,7 @@ def make_prototype(root_dir, inputs_filename, dim):
 
                 lines[i] = 'amr.n_cell = ' + str(values)[1:-1] + '\n'
             elif m.group(1) == 'max_step':
-                lines[i] = 'max_step = 0\n'
+                lines[i] = 'max_step = ' + max_step + '\n'
             elif m.group(1) == 'stop_time':
                 lines[i] = 'stop_time = 0.000000000001'
             elif m.group(1) == 'amr.checkpoint_files_output' and m.group(2).rstrip() != '0':
@@ -82,14 +82,14 @@ def make_prototype(root_dir, inputs_filename, dim):
 
     return plot_name
 
-def run_prototype(root_dir, executable, inputs_file, plot_field='prim_density'):
+def run_prototype(root_dir, executable, inputs_file, plot_field='prim_density', max_step=0):
     m = re.match('Castro(\d)d.', executable)
     if m:
         dim = int(m.group(1))
     else:
         dim = 3
 
-    plot_name = make_prototype(root_dir, root_dir + '/' + inputs_file, dim)
+    plot_name = make_prototype(root_dir, root_dir + '/' + inputs_file, dim, max_step=max_step)
 
     print("Running prototype")
     # check to see if output file from Castro exists - if so, delete
@@ -106,10 +106,12 @@ def run_prototype(root_dir, executable, inputs_file, plot_field='prim_density'):
         print(output.decode())
         sys.exit()
 
-    print("Plotting intitial data")
-    # plotting
-    sim = Simulation(root_dir, plot_name)
-    plot = sim.plot_at_time(plot_field, 0)
-    #plot_3d = sim.plot3d_at_time('prim_density', 0, None, 'Temp')
+    if plot_field is not None:
 
-    return sim, plot
+        print("Plotting intitial data")
+        # plotting
+        sim = Simulation(root_dir, plot_name)
+        plot = sim.plot_at_time(plot_field, 0)
+        #plot_3d = sim.plot3d_at_time('prim_density', 0, None, 'Temp')
+
+        return sim, plot
