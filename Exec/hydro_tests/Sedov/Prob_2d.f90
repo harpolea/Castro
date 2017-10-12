@@ -19,7 +19,7 @@ subroutine amrex_probinit (init,name,namlen,problo,probhi) bind(c)
   type(eos_t) :: eos_state
 
   namelist /fortin/ p_ambient, dens_ambient, exp_energy, &
-       r_init, nsub, temp_ambient
+       r_init, nsub, temp_ambient, swe_to_comp_level
 
   ! Build "probin" filename -- the name of file containing fortin namelist.
   integer, parameter :: maxlen = 256
@@ -41,6 +41,7 @@ subroutine amrex_probinit (init,name,namlen,problo,probhi) bind(c)
   r_init = 0.05e0_rt          ! initial radius of the explosion (in cm)
   nsub = 4
   temp_ambient = -1.e2_rt     ! Set original temp. to negative, which is overwritten in the probin file
+  swe_to_comp_level = 0
 
   ! set explosion center
   center(1) = HALF*(problo(1) + probhi(1))
@@ -134,157 +135,161 @@ subroutine ca_initdata(level,time,lo,hi,nscal, &
   real(rt) :: e_zone
   type(eos_t) :: eos_state
 
-  ! Cylindrical problem in Cartesian coordinates
-  if (coord_type == 0) then
+  if (level <= swe_to_comp_level) then
+      ! shallow water layer
+  else ! compressible layer
+      ! Cylindrical problem in Cartesian coordinates
+      if (coord_type == 0) then
 
-     ! set explosion pressure -- we will convert the point-explosion
-     ! energy into a corresponding pressure distributed throughout the
-     ! perturbed volume
-     vctr = M_PI*r_init**2
+         ! set explosion pressure -- we will convert the point-explosion
+         ! energy into a corresponding pressure distributed throughout the
+         ! perturbed volume
+         vctr = M_PI*r_init**2
 
-     e_zone = exp_energy/vctr/dens_ambient
+         e_zone = exp_energy/vctr/dens_ambient
 
-     eos_state % e = e_zone
-     eos_state % rho = dens_ambient
-     eos_state % xn(:) = xn_zone(:)
-     eos_state % T = 1000.00 ! initial guess
+         eos_state % e = e_zone
+         eos_state % rho = dens_ambient
+         eos_state % xn(:) = xn_zone(:)
+         eos_state % T = 1000.00 ! initial guess
 
-     call eos(eos_input_re, eos_state)
+         call eos(eos_input_re, eos_state)
 
-     p_exp = eos_state % p
+         p_exp = eos_state % p
 
-     do j = lo(2), hi(2)
-        ymin = xlo(2) + delta(2)*dble(j-lo(2))
+         do j = lo(2), hi(2)
+            ymin = xlo(2) + delta(2)*dble(j-lo(2))
 
-        do i = lo(1), hi(1)
-           xmin = xlo(1) + delta(1)*dble(i-lo(1))
+            do i = lo(1), hi(1)
+               xmin = xlo(1) + delta(1)*dble(i-lo(1))
 
-           vol_pert    = 0.e0_rt
-           vol_ambient = 0.e0_rt
+               vol_pert    = 0.e0_rt
+               vol_ambient = 0.e0_rt
 
-           do jj = 0, nsub-1
-              yy = ymin + (delta(2)/dble(nsub))*(jj + 0.5e0_rt)
+               do jj = 0, nsub-1
+                  yy = ymin + (delta(2)/dble(nsub))*(jj + 0.5e0_rt)
 
-              do ii = 0, nsub-1
-                 xx = xmin + (delta(1)/dble(nsub))*(ii + 0.5e0_rt)
+                  do ii = 0, nsub-1
+                     xx = xmin + (delta(1)/dble(nsub))*(ii + 0.5e0_rt)
 
-                 dist = (center(1)-xx)**2 + (center(2)-yy)**2
+                     dist = (center(1)-xx)**2 + (center(2)-yy)**2
 
-                 if (dist <= r_init**2) then
-                    vol_pert    = vol_pert    + 1.e0_rt
-                 else
-                    vol_ambient = vol_ambient + 1.e0_rt
-                 endif
+                     if (dist <= r_init**2) then
+                        vol_pert    = vol_pert    + 1.e0_rt
+                     else
+                        vol_ambient = vol_ambient + 1.e0_rt
+                     endif
 
-              enddo
-           enddo
+                  enddo
+               enddo
 
-           p_zone = (vol_pert*p_exp + vol_ambient*p_ambient)/ (vol_pert + vol_ambient)
+               p_zone = (vol_pert*p_exp + vol_ambient*p_ambient)/ (vol_pert + vol_ambient)
 
-           eos_state % p = p_zone
-           eos_state % rho = dens_ambient
-           eos_state % xn(:) = xn_zone(:)
-           eos_state % T = 1000.0   ! initial guess
+               eos_state % p = p_zone
+               eos_state % rho = dens_ambient
+               eos_state % xn(:) = xn_zone(:)
+               eos_state % T = 1000.0   ! initial guess
 
-           call eos(eos_input_rp, eos_state)
+               call eos(eos_input_rp, eos_state)
 
-           eint = dens_ambient * eos_state % e
+               eint = dens_ambient * eos_state % e
 
-           state(i,j,URHO) = dens_ambient
-           state(i,j,UMX:UMZ) = 0.e0_rt
+               state(i,j,URHO) = dens_ambient
+               state(i,j,UMX:UMZ) = 0.e0_rt
 
-           state(i,j,UEDEN) = eint +  &
-                0.5e0_rt*(sum(state(i,j,UMX:UMZ)**2)/state(i,j,URHO))
+               state(i,j,UEDEN) = eint +  &
+                    0.5e0_rt*(sum(state(i,j,UMX:UMZ)**2)/state(i,j,URHO))
 
-           state(i,j,UEINT) = eint
+               state(i,j,UEINT) = eint
 
-           state(i,j,UFS) = state(i,j,URHO)
+               state(i,j,UFS) = state(i,j,URHO)
 
-           state(i,j,UTEMP) = eos_state % T
+               state(i,j,UTEMP) = eos_state % T
 
-        enddo
-     enddo
+            enddo
+         enddo
 
-  ! Spherical problem in cylindrical (axisymmetric) coordinates
-  else if (coord_type == 1) then
+      ! Spherical problem in cylindrical (axisymmetric) coordinates
+      else if (coord_type == 1) then
 
-     ! set explosion pressure -- we will convert the point-explosion
-     ! energy into a corresponding pressure distributed throughout the
-     ! perturbed volume
-     vctr = FOUR3RD*M_PI*r_init**3
+         ! set explosion pressure -- we will convert the point-explosion
+         ! energy into a corresponding pressure distributed throughout the
+         ! perturbed volume
+         vctr = FOUR3RD*M_PI*r_init**3
 
-     e_zone = exp_energy/vctr/dens_ambient
+         e_zone = exp_energy/vctr/dens_ambient
 
-     eos_state % e = e_zone
-     eos_state % rho = dens_ambient
-     eos_state % xn(:) = xn_zone(:)
-     eos_state % T = 1000.0  ! initial guess
+         eos_state % e = e_zone
+         eos_state % rho = dens_ambient
+         eos_state % xn(:) = xn_zone(:)
+         eos_state % T = 1000.0  ! initial guess
 
-     call eos(eos_input_re, eos_state)
+         call eos(eos_input_re, eos_state)
 
-     p_exp = eos_state % p
+         p_exp = eos_state % p
 
-     do j = lo(2), hi(2)
-        ymin = xlo(2) + delta(2)*dble(j-lo(2))
+         do j = lo(2), hi(2)
+            ymin = xlo(2) + delta(2)*dble(j-lo(2))
 
-        do i = lo(1), hi(1)
-           xmin = xlo(1) + delta(1)*dble(i-lo(1))
+            do i = lo(1), hi(1)
+               xmin = xlo(1) + delta(1)*dble(i-lo(1))
 
-           vol_pert    = 0.e0_rt
-           vol_ambient = 0.e0_rt
+               vol_pert    = 0.e0_rt
+               vol_ambient = 0.e0_rt
 
-           do jj = 0, nsub-1
-              yy = ymin + (delta(2)/dble(nsub))*(dble(jj) + 0.5e0_rt)
+               do jj = 0, nsub-1
+                  yy = ymin + (delta(2)/dble(nsub))*(dble(jj) + 0.5e0_rt)
 
-              do ii = 0, nsub-1
-                 xx = xmin + (delta(1)/dble(nsub))*(dble(ii) + 0.5e0_rt)
+                  do ii = 0, nsub-1
+                     xx = xmin + (delta(1)/dble(nsub))*(dble(ii) + 0.5e0_rt)
 
-                 dist = sqrt(xx**2 + yy**2)
+                     dist = sqrt(xx**2 + yy**2)
 
-                 ! The volume of a cell is a annular cylindrical region.
-                 ! The main thing that matters is the distance from the
-                 ! symmetry axis.
-                 !   V = pi*dy*(x_r**2 - x_l**2) = pi*dy*dx*HALF*xx
-                 ! (where x_r is the coordinate of the x right edge,
-                 !        x_l is the coordinate of the x left edge,
-                 !    and xx  is the coordinate of the x center of the cell)
-                 !
-                 ! since dx and dy are constant, they cancel out
-                 if (dist <= r_init) then
-                    vol_pert    = vol_pert    + xx
-                 else
-                    vol_ambient = vol_ambient + xx
-                 endif
+                     ! The volume of a cell is a annular cylindrical region.
+                     ! The main thing that matters is the distance from the
+                     ! symmetry axis.
+                     !   V = pi*dy*(x_r**2 - x_l**2) = pi*dy*dx*HALF*xx
+                     ! (where x_r is the coordinate of the x right edge,
+                     !        x_l is the coordinate of the x left edge,
+                     !    and xx  is the coordinate of the x center of the cell)
+                     !
+                     ! since dx and dy are constant, they cancel out
+                     if (dist <= r_init) then
+                        vol_pert    = vol_pert    + xx
+                     else
+                        vol_ambient = vol_ambient + xx
+                     endif
 
-              enddo
-           enddo
+                  enddo
+               enddo
 
-           p_zone = (vol_pert*p_exp + vol_ambient*p_ambient)/ (vol_pert + vol_ambient)
-           eos_state % p = p_zone
-           eos_state % rho = dens_ambient
-           eos_state % xn(:) = xn_zone(:)
+               p_zone = (vol_pert*p_exp + vol_ambient*p_ambient)/ (vol_pert + vol_ambient)
+               eos_state % p = p_zone
+               eos_state % rho = dens_ambient
+               eos_state % xn(:) = xn_zone(:)
 
-           call eos(eos_input_rp, eos_state)
+               call eos(eos_input_rp, eos_state)
 
-           eint = dens_ambient * eos_state % e
+               eint = dens_ambient * eos_state % e
 
-           state(i,j,URHO) = dens_ambient
-           state(i,j,UMX:UMZ) = 0.e0_rt
+               state(i,j,URHO) = dens_ambient
+               state(i,j,UMX:UMZ) = 0.e0_rt
 
-           state(i,j,UEDEN) = eint + &
-                0.5e0_rt*(sum(state(i,j,UMX:UMZ)**2)/state(i,j,URHO))
+               state(i,j,UEDEN) = eint + &
+                    0.5e0_rt*(sum(state(i,j,UMX:UMZ)**2)/state(i,j,URHO))
 
-           state(i,j,UEINT) = eint
+               state(i,j,UEINT) = eint
 
-           state(i,j,UFS) = state(i,j,URHO)
+               state(i,j,UFS) = state(i,j,URHO)
 
-           state(i,j,UTEMP) = eos_state % T
+               state(i,j,UTEMP) = eos_state % T
 
-        enddo
-     enddo
+            enddo
+         enddo
 
-  else
-     call bl_abort('Dont know this geometry')
+      else
+         call bl_abort('Dont know this geometry')
+      end if
   end if
 
 end subroutine ca_initdata

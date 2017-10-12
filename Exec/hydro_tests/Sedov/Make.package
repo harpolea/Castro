@@ -2,8 +2,8 @@ f90EXE_sources += extern.f90
 ca_f90EXE_sources += probdata.f90
 f90EXE_sources += actual_network.f90
 
-CXXFLAGS += -I/home/alice/anaconda3/include/python3.6m -I/home/alice/anaconda3/include/python3.6m  -Wsign-compare -DNDEBUG -g -fwrapv -O3 -Wall
+CXXFLAGS += `python3.6-config --cflags`
 
-LDFLAGS += -L/home/alice/anaconda3/lib
+LDFLAGS += -L/Users/aliceharpole/anaconda3/lib `python3.6-config --ldflags`
 
-LIBRARIES += -lpython3.6m -lpthread -ldl -lutil -lrt -lm -Xlinker -export-dynamic
+#LIBRARIES += -L/Users/aliceharpole/anaconda3/lib -L/Users/aliceharpole/anaconda3/lib/python3.6 `python3.6-config --libs`

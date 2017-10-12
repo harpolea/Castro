@@ -15,7 +15,7 @@ subroutine amrex_probinit (init,name,namlen,problo,probhi) bind(c)
    integer :: untin
    integer :: i
 
-   namelist /fortin/ h_in, h_out, damn_rad, g
+   namelist /fortin/ h_in, h_out, damn_rad, g, swe_to_comp_level, dens_ambient
 
    integer, parameter :: maxlen=127
    character :: probin*(maxlen)
@@ -45,6 +45,9 @@ subroutine amrex_probinit (init,name,namlen,problo,probhi) bind(c)
    damn_rad = 0.2d0
 
    g = 1.0d0
+   dens_ambient = 1.0d0
+
+   swe_to_comp_level = 0
 
    ! Read namelists -- override the defaults
 
@@ -87,6 +90,8 @@ subroutine ca_initdata(level,time,lo,hi,nscal, &
   use network, only : nspec
   use bl_constants_module
   use prob_params_module, only: problo, center, probhi
+  use eos_module, only : eos
+  use eos_type_module, only : eos_t, eos_input_rp, eos_input_re, eos_input_rt
 
   use amrex_fort_module, only : rt => amrex_real
   implicit none
@@ -102,6 +107,7 @@ subroutine ca_initdata(level,time,lo,hi,nscal, &
   integer :: i, j, k, n
 
   real(rt)         :: dye
+  type(eos_t) :: eos_state
 
   state(:,:,:,:) = 0.0d0
   dye = ZERO
@@ -118,18 +124,54 @@ subroutine ca_initdata(level,time,lo,hi,nscal, &
 
            r = sqrt((xx - center(1))**2 + (yy - center(2))**2)
 
-           if (r < damn_rad) then
-               state(i,j,k,URHO) = h_in
-           else
-               state(i,j,k,URHO) = h_out
+           if (swe_to_comp_level <= level) then
+               ! shallow water level
+               if (r < damn_rad) then
+                   state(i,j,k,URHO) = h_in
+               else
+                   state(i,j,k,URHO) = h_out
+               end if
+
+               do n = 1,nspec
+                  state(i,j,k,UFS+n-1) = state(i,j,k,URHO) * state(i,j,k,UFS+n-1)
+               end do
+
+           else ! compressible level
+               e_zone = exp_energy/vctr/dens_ambient
+
+                eos_state % e = e_zone
+                eos_state % rho = dens_ambient
+                eos_state % xn(:) = xn_zone(:)
+                eos_state % T = 1000.00 ! initial guess
+
+                call eos(eos_input_re, eos_state)
+
+                p_zone = (vol_pert*p_exp + vol_ambient*p_ambient)/ (vol_pert + vol_ambient)
+
+               eos_state % p = p_zone
+               eos_state % rho = dens_ambient
+               eos_state % xn(:) = xn_zone(:)
+               eos_state % T = 1000.0   ! initial guess
+
+               call eos(eos_input_rp, eos_state)
+
+               eint = dens_ambient * eos_state % e
+
+               state(i,j,URHO) = dens_ambient
+               state(i,j,UMX:UMZ) = 0.e0_rt
+
+               state(i,j,UEDEN) = eint +  &
+                    0.5e0_rt*(sum(state(i,j,UMX:UMZ)**2)/state(i,j,URHO))
+
+               state(i,j,UEINT) = eint
+
+               state(i,j,UFS) = state(i,j,URHO)
+
+               state(i,j,UTEMP) = eos_state % T
            end if
 
            state(i,j,k,UFA)  = dye
            state(i,j,k,UFS:UFS-1+nspec) = ONE / nspec
-
-           do n = 1,nspec
-              state(i,j,k,UFS+n-1) = state(i,j,k,URHO) * state(i,j,k,UFS+n-1)
-           end do
 
         enddo
      enddo

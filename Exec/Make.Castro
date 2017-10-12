@@ -1,5 +1,5 @@
-AMREX_HOME ?= /home/alice/Documents/amrex
-CASTRO_HOME ?= /home/alice/Documents/Castro
+AMREX_HOME ?= /Users/aliceharpole/Documents/amrex
+CASTRO_HOME ?= /Users/aliceharpole/Documents/Castro
 
 # radiation needs hypre
 HYPRE_DIR ?= /path/to/Hypre

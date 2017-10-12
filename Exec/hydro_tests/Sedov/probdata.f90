@@ -7,5 +7,6 @@ module probdata_module
   real(rt), save :: xn_zone(nspec)
   real(rt), save :: r_init
   integer, save ::  nsub
+  integer, save :: swe_to_comp_level
 
 end module probdata_module
