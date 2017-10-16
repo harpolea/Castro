@@ -1,9 +1,12 @@
 subroutine amrex_probinit (init,name,namlen,problo,probhi) bind(c)
 
    use probdata_module
+   use prob_params_module, only : center
    use bl_constants_module
    use fundamental_constants_module
    use meth_params_module, only: small_temp, small_pres, small_dens
+   use eos_type_module, only : eos_t, eos_input_rt, eos_input_rp
+   use eos_module, only : eos
 
    use amrex_fort_module, only : rt => amrex_real
    implicit none
@@ -26,6 +29,7 @@ subroutine amrex_probinit (init,name,namlen,problo,probhi) bind(c)
    ! Temporary storage variables in case we need to switch the primary and secondary.
 
    integer :: ioproc
+   type(eos_t) :: eos_state
 
    ! For outputting -- determine if we are the IO processor
    call bl_pd_is_ioproc(ioproc)
@@ -55,12 +59,42 @@ subroutine amrex_probinit (init,name,namlen,problo,probhi) bind(c)
 
    swe_to_comp_level = 0
 
+   ! set explosion center
+   center(1:3) = HALF*(problo(1:3) + probhi(1:3))
+
    ! Read namelists -- override the defaults
 
    untin = 9
    open(untin,file=probin(1:namlen),form='formatted',status='old')
    read(untin,fortin)
    close(unit=untin)
+
+   xn_zone(:) = ZERO
+   xn_zone(1) = ONE
+
+   ! override the pressure iwth the temperature
+   if (temp_ambient > ZERO) then
+
+      eos_state % rho = dens_ambient
+      eos_state % xn(:) = xn_zone(:)
+      eos_state % T = temp_ambient
+
+      call eos(eos_input_rt, eos_state)
+
+      p_ambient = eos_state % p
+
+   endif
+
+   ! Calculate ambient state data
+
+   eos_state % rho = dens_ambient
+   eos_state % p   = p_ambient
+   eos_state % T   = 1.d5 ! Initial guess for iterations
+   eos_state % xn  = xn_zone
+
+   call eos(eos_input_rp, eos_state)
+
+   e_ambient = eos_state % e
 
 end subroutine amrex_probinit
 
@@ -118,6 +152,12 @@ subroutine ca_initdata(level,time,lo,hi,nscal, &
   state(:,:,:,:) = 0.0d0
   dye = ZERO
 
+  if (level <= swe_to_comp_level) then
+      write(*,*) "Initialising level ", level, " with SWE data"
+  else
+      write(*,*) "Initialising level ", level, " with compressible data"
+  endif
+
   !$OMP PARALLEL DO PRIVATE(i, j, k, xx, yy, zz, r)
   do k = lo(3), hi(3)
      zz = xlo(3) + delta(3)*dble(k-lo(3)+HALF)
@@ -130,7 +170,7 @@ subroutine ca_initdata(level,time,lo,hi,nscal, &
 
            r = sqrt((xx - center(1))**2 + (yy - center(2))**2)
 
-           if (swe_to_comp_level <= level) then
+           if (level <= swe_to_comp_level) then
                ! shallow water level
                if (r < damn_rad) then
                    state(i,j,k,URHO) = h_in
@@ -143,7 +183,9 @@ subroutine ca_initdata(level,time,lo,hi,nscal, &
                end do
 
            else ! compressible level
-               e_zone = exp_energy/vctr/dens_ambient
+
+                vctr = FOUR3RD*M_PI*r_init**3
+                e_zone = exp_energy/vctr/dens_ambient
 
                 eos_state % e = e_zone
                 eos_state % rho = dens_ambient
@@ -154,26 +196,26 @@ subroutine ca_initdata(level,time,lo,hi,nscal, &
 
                 p_zone = (vol_pert*p_exp + vol_ambient*p_ambient)/ (vol_pert + vol_ambient)
 
-               eos_state % p = p_zone
-               eos_state % rho = dens_ambient
-               eos_state % xn(:) = xn_zone(:)
-               eos_state % T = 1000.0   ! initial guess
+                eos_state % p = p_zone
+                eos_state % rho = dens_ambient
+                eos_state % xn(:) = xn_zone(:)
+                eos_state % T = 1000.0   ! initial guess
 
-               call eos(eos_input_rp, eos_state)
+                call eos(eos_input_rp, eos_state)
 
-               eint = dens_ambient * eos_state % e
+                eint = dens_ambient * eos_state % e
 
-               state(i,j,k,URHO) = dens_ambient
-               state(i,j,k,UMX:UMZ) = 0.e0_rt
+                state(i,j,k,URHO) = dens_ambient
+                state(i,j,k,UMX:UMZ) = 0.e0_rt
 
-               state(i,j,k,UEDEN) = eint +  &
+                state(i,j,k,UEDEN) = eint +  &
                     0.5e0_rt*(sum(state(i,j,k,UMX:UMZ)**2)/state(i,j,k,URHO))
 
-               state(i,j,k,UEINT) = eint
+                state(i,j,k,UEINT) = eint
 
-               state(i,j,k,UFS) = state(i,j,k,URHO)
+                state(i,j,k,UFS) = state(i,j,k,URHO)
 
-               state(i,j,k,UTEMP) = eos_state % T
+                state(i,j,k,UTEMP) = eos_state % T
            end if
 
            state(i,j,k,UFA)  = dye

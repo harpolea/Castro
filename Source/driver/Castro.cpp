@@ -554,6 +554,7 @@ Castro::initData ()
               ca_check_initial_species(ARLIM_3D(lo), ARLIM_3D(hi),
     				   BL_TO_FORTRAN_3D(S_new[mfi]), &idx);
        }
+       enforce_consistent_e(S_new);
 
        // Do a FillPatch so that we can get the ghost zones filled.
 
@@ -1230,6 +1231,24 @@ Castro::normalize_species (MultiFab& S_new)
 
        ca_normalize_species(BL_TO_FORTRAN_3D(S_new[mfi]),
 			    ARLIM_3D(bx.loVect()), ARLIM_3D(bx.hiVect()), &idx);
+    }
+}
+
+void
+Castro::enforce_consistent_e (MultiFab& S)
+{
+
+#ifdef _OPENMP
+#pragma omp parallel
+#endif
+    for (MFIter mfi(S,true); mfi.isValid(); ++mfi)
+    {
+        const Box& box     = mfi.tilebox();
+        const int* lo      = box.loVect();
+        const int* hi      = box.hiVect();
+
+	const int idx      = mfi.tileIndex();
+        ca_enforce_consistent_e(ARLIM_3D(lo), ARLIM_3D(hi), BL_TO_FORTRAN_3D(S[mfi]), &idx);
     }
 }
 

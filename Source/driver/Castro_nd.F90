@@ -537,6 +537,7 @@ subroutine ca_set_method_params(dm,Density,Xmom, &
   ! internal limitations, so the small_dens and small_temp
   ! may be modified coming back out of this routine.
 
+  call eos_init(small_dens=small_dens, small_temp=small_temp)
 
   ! Update device variables
 
