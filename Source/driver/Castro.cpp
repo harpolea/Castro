@@ -47,6 +47,9 @@ Real         Castro::lastDtBeforePlotLimiting = 0.0;
 Real         Castro::frac_change   = 1.e200;
 
 int          Castro::Density       = -1;
+int          Castro::Eden          = -1;
+int          Castro::Eint          = -1;
+int          Castro::Temp = -1;
 int          Castro::Xmom          = -1;
 int          Castro::Ymom          = -1;
 int          Castro::Zmom          = -1;
@@ -381,7 +384,52 @@ Castro::initMFs()
 
 #if (BL_SPACEDIM <= 2)
     if (!Geometry::IsCartesian())
-	   P_radial.define(getEdgeBoxArray(0), dmap, 1, 0);
+	P_radial.define(getEdgeBoxArray(0), dmap, 1, 0);
+#endif
+
+    if (do_reflux && level > 0) {
+
+	flux_reg.define(grids, dmap, crse_ratio, level, NUM_STATE);
+	flux_reg.setVal(0.0);
+
+#if (BL_SPACEDIM < 3)
+	if (!Geometry::IsCartesian()) {
+	    pres_reg.define(grids, dmap, crse_ratio, level, 1);
+	    pres_reg.setVal(0.0);
+	}
+#endif
+
+    }
+
+    // Set the flux register scalings.
+
+    if (do_reflux) {
+
+    	flux_crse_scale = -1.0;
+    	flux_fine_scale = 1.0;
+    }
+
+	// The fine pressure scaling depends on dimensionality,
+	// as the dimensionality determines the number of
+	// adjacent zones. In 1D the face is a point so
+	// there's only one fine neighbor for a given coarse
+	// face; in 2D there's crse_ratio[1] faces adjacent
+	// to a face perpendicular to the radial dimension;
+	// and in 3D there would be crse_ratio**2, though
+	// we do not separate the pressure out in 3D. Note
+	// that the scaling by dt has already been handled
+	// in the construction of the P_radial array.
+
+	// The coarse pressure scaling is the same as for the
+	// fluxes, we want the total refluxing contribution
+	// over the full set of fine timesteps to equal P_radial.
+
+#if (BL_SPACEDIM == 1)
+	pres_crse_scale = -1.0;
+	pres_fine_scale = 1.0;
+#elif (BL_SPACEDIM == 2)
+	pres_crse_scale = -1.0;
+	pres_fine_scale = 1.0 / crse_ratio[1];
 #endif
 
     if (keep_sources_until_end ) {
@@ -423,8 +471,8 @@ Castro::setGridInfo ()
 
     if (level == 0) {
 
-      int max_level = parent->maxLevel();
-      int nlevs = max_level + 1;
+      const int max_level = parent->maxLevel();
+      const int nlevs = max_level + 1;
 
       Real dx_level[3*nlevs];
       int domlo_level[3*nlevs];
@@ -551,6 +599,8 @@ Castro::initData ()
               // Verify that the sum of (rho X)_i = rho at every cell
     	  const int idx = mfi.tileIndex();
 
+          std::cout << "idx = " << idx << " lo = " <<  ARLIM_3D(lo) << " hi = " << ARLIM_3D(hi) << " mfi index = " << mfi.index() <<'\n';
+          std::cout << "data = " << S_new[mfi].dataPtr() << '\n';
               ca_check_initial_species(ARLIM_3D(lo), ARLIM_3D(hi),
     				   BL_TO_FORTRAN_3D(S_new[mfi]), &idx);
        }
@@ -1252,6 +1302,87 @@ Castro::enforce_consistent_e (MultiFab& S)
     }
 }
 
+Real
+Castro::enforce_min_density (MultiFab& S_old, MultiFab& S_new)
+{
+
+    // This routine sets the density in S_new to be larger than the density floor.
+    // Note that it will operate everywhere on S_new, including ghost zones.
+    // S_old is present so that, after the hydro call, we know what the old density
+    // was so that we have a reference for comparison. If you are calling it elsewhere
+    // and there's no meaningful reference state, just pass in the same MultiFab twice.
+
+    // The return value is the the negative fractional change in the state that has the
+    // largest magnitude. If there is no reference state, this is meaningless.
+
+    Real dens_change = 1.e0;
+
+    MultiFab reset_source;
+
+    if (print_update_diagnostics)
+    {
+
+	// Before we do anything, make a copy of the state.
+
+	reset_source.define(S_new.boxArray(), S_new.DistributionMap(), S_new.nComp(), 0);
+
+	MultiFab::Copy(reset_source, S_new, 0, 0, S_new.nComp(), 0);
+
+    }
+
+#ifdef _OPENMP
+#pragma omp parallel reduction(min:dens_change)
+#endif
+    for (MFIter mfi(S_new, true); mfi.isValid(); ++mfi) {
+
+	const Box& bx = mfi.growntilebox();
+
+	const FArrayBox& stateold = S_old[mfi];
+	FArrayBox& statenew = S_new[mfi];
+	const FArrayBox& vol      = volume[mfi];
+	const int idx = mfi.tileIndex();
+
+	ca_enforce_minimum_density(stateold.dataPtr(), ARLIM_3D(stateold.loVect()), ARLIM_3D(stateold.hiVect()),
+				   statenew.dataPtr(), ARLIM_3D(statenew.loVect()), ARLIM_3D(statenew.hiVect()),
+				   vol.dataPtr(), ARLIM_3D(vol.loVect()), ARLIM_3D(vol.hiVect()),
+				   ARLIM_3D(bx.loVect()), ARLIM_3D(bx.hiVect()),
+				   &dens_change, &verbose, &idx);
+
+    }
+
+    if (print_update_diagnostics)
+    {
+
+	// Evaluate what the effective reset source was.
+
+	MultiFab::Subtract(reset_source, S_new, 0, 0, S_old.nComp(), 0);
+
+	bool local = true;
+	Array<Real> reset_update = evaluate_source_change(reset_source, 1.0, local);
+
+#ifdef BL_LAZY
+        Lazy::QueueReduction( [=] () mutable {
+#endif
+	    ParallelDescriptor::ReduceRealSum(reset_update.dataPtr(), reset_update.size(), ParallelDescriptor::IOProcessorNumber());
+
+	    if (ParallelDescriptor::IOProcessor()) {
+		if (std::abs(reset_update[0]) != 0.0) {
+		    std::cout << std::endl << "  Contributions to the state from negative density resets:" << std::endl;
+
+		    print_source_change(reset_update);
+		}
+	    }
+
+#ifdef BL_LAZY
+        });
+#endif
+
+    }
+
+    return dens_change;
+
+}
+
 void
 Castro::avgDown (int state_indx)
 {
@@ -1501,7 +1632,7 @@ Castro::extern_init ()
     std::cout << "reading extern runtime parameters ..." << std::endl;
   }
 
-  int probin_file_length = probin_file.length();
+  const int probin_file_length = probin_file.length();
   Array<int> probin_file_name(probin_file_length);
 
   for (int i = 0; i < probin_file_length; i++)
@@ -1510,6 +1641,88 @@ Castro::extern_init ()
   ca_extern_init(probin_file_name.dataPtr(),&probin_file_length);
 }
 
+void
+Castro::reset_internal_energy(MultiFab& S_new)
+{
+
+    MultiFab old_state;
+
+    // Make a copy of the state so we can evaluate how much changed.
+
+    if (print_update_diagnostics)
+    {
+	old_state.define(S_new.boxArray(), S_new.DistributionMap(), S_new.nComp(), 0);
+        MultiFab::Copy(old_state, S_new, 0, 0, S_new.nComp(), 0);
+    }
+
+    int ng = S_new.nGrow();
+
+    // Ensure (rho e) isn't too small or negative
+#ifdef _OPENMP
+#pragma omp parallel
+#endif
+    for (MFIter mfi(S_new,true); mfi.isValid(); ++mfi)
+    {
+        const Box& bx = mfi.growntilebox(ng);
+	const int idx = mfi.tileIndex();
+
+        ca_reset_internal_e(ARLIM_3D(bx.loVect()), ARLIM_3D(bx.hiVect()),
+			    BL_TO_FORTRAN_3D(S_new[mfi]),
+			    &print_fortran_warnings, &idx);
+    }
+
+    // Flush Fortran output
+
+    if (verbose)
+      flush_output();
+
+    if (print_update_diagnostics)
+    {
+	// Evaluate what the effective reset source was.
+
+	MultiFab reset_source(S_new.boxArray(), S_new.DistributionMap(), S_new.nComp(), 0);
+
+	MultiFab::Copy(reset_source, S_new, 0, 0, S_new.nComp(), 0);
+
+	MultiFab::Subtract(reset_source, old_state, 0, 0, old_state.nComp(), 0);
+
+	bool local = true;
+	Array<Real> reset_update = evaluate_source_change(reset_source, 1.0, local);
+
+#ifdef BL_LAZY
+        Lazy::QueueReduction( [=] () mutable {
+#endif
+	    ParallelDescriptor::ReduceRealSum(reset_update.dataPtr(), reset_update.size(), ParallelDescriptor::IOProcessorNumber());
+
+	    if (ParallelDescriptor::IOProcessor()) {
+		if (std::abs(reset_update[Eint]) != 0.0) {
+		    std::cout << std::endl << "  Contributions to the state from negative energy resets:" << std::endl;
+
+		    print_source_change(reset_update);
+		}
+	    }
+
+#ifdef BL_LAZY
+	});
+#endif
+    }
+}
+
+void
+Castro::computeTemp(MultiFab& State)
+{
+
+  reset_internal_energy(State);
+
+  for (MFIter mfi(State,true); mfi.isValid(); ++mfi)
+    {
+        const Box& bx = mfi.growntilebox();
+
+        const int idx = mfi.tileIndex();
+	       ca_compute_temp(ARLIM_3D(bx.loVect()), ARLIM_3D(bx.hiVect()),
+                           BL_TO_FORTRAN_3D(State[mfi]), &idx);
+  }
+}
 
 
 void
@@ -1518,7 +1731,7 @@ Castro::set_special_tagging_flag(Real time)
    if (!do_special_tagging) return;
 
    MultiFab& S_new = get_new_data(State_Type);
-   Real max_den = S_new.norm0(Density);
+   const Real max_den = S_new.norm0(Density);
 
    int flag_was_changed = 0;
    ca_set_special_tagging_flag(max_den,&flag_was_changed);
@@ -1530,7 +1743,6 @@ Castro::set_special_tagging_flag(Real time)
       }
    }
 }
-
 
 Real
 Castro::getCPUTime()

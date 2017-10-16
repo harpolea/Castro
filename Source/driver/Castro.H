@@ -27,10 +27,6 @@ enum StateType { State_Type = 0,
 // Create storage for all source terms.
 
 enum sources { ext_src = 0,
-
-#ifdef GRAVITY
-               grav_src,
-#endif
 	       num_src };
 
 //

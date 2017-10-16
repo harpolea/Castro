@@ -22,11 +22,13 @@ contains
 
     implicit none
 
-    integer          :: lo(3), hi(3)
-    integer          :: u_lo(3), u_hi(3)
-    real(rt)         :: u(u_lo(1):u_hi(1),u_lo(2):u_hi(2),u_lo(3):u_hi(3),NVAR)
-    real(rt)         :: dx(3), dt, dt_tmp
-    real(rt)         :: rhoInv, ux, uy, uz, c, dt1, dt2, dt3
+    integer, intent(in) :: lo(3), hi(3)
+    integer, intent(in) :: u_lo(3), u_hi(3)
+    real(rt), intent(in) :: u(u_lo(1):u_hi(1),u_lo(2):u_hi(2),u_lo(3):u_hi(3),NVAR)
+    real(rt), intent(in) :: dx(3)
+    real(rt), intent(inout) :: dt
+
+    real(rt)         :: rhoInv, ux, uy, uz, c, dt1, dt2, dt3, dt_tmp
     integer          :: i, j, k
 
     ! Call EOS for the purpose of computing sound speed
@@ -72,6 +74,9 @@ contains
 
   end subroutine ca_estdt
 
+  ! Reactions-limited timestep
+
+
   ! Check whether the last timestep violated any of our stability criteria.
   ! If so, suggest a new timestep which would not.
 
@@ -90,12 +95,13 @@ contains
 
     implicit none
 
-    integer          :: lo(3), hi(3)
-    integer          :: so_lo(3), so_hi(3)
-    integer          :: sn_lo(3), sn_hi(3)
-    real(rt)         :: s_old(so_lo(1):so_hi(1),so_lo(2):so_hi(2),so_lo(3):so_hi(3),NVAR)
-    real(rt)         :: s_new(sn_lo(1):sn_hi(1),sn_lo(2):sn_hi(2),sn_lo(3):sn_hi(3),NVAR)
-    real(rt)         :: dx(3), dt_old, dt_new
+    integer, intent(in) :: lo(3), hi(3)
+    integer, intent(in) :: so_lo(3), so_hi(3)
+    integer, intent(in) :: sn_lo(3), sn_hi(3)
+    real(rt), intent(in) :: s_old(so_lo(1):so_hi(1),so_lo(2):so_hi(2),so_lo(3):so_hi(3),NVAR)
+    real(rt), intent(in) :: s_new(sn_lo(1):sn_hi(1),sn_lo(2):sn_hi(2),sn_lo(3):sn_hi(3),NVAR)
+    real(rt), intent(in) :: dx(3), dt_old
+    real(rt), intent(inout) :: dt_new
 
     integer          :: i, j, k
     real(rt)         :: tau_CFL

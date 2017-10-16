@@ -39,14 +39,6 @@ ca_F90EXE_sources += meth_params.F90
 
 NEED_MGUTIL =
 
-ifeq ($(USE_GRAV), TRUE)
-  NEED_MGUTIL = TRUE
-endif
-
-ifeq ($(USE_DIFFUSION), TRUE)
-  NEED_MGUTIL = TRUE
-endif
-
 ifdef NEED_MGUTIL
   ifeq ($(DIM), 1)
     ca_f90EXE_sources += MGutils_1d.f90

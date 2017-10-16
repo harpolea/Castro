@@ -159,7 +159,7 @@ Castro::locWgtSum (const std::string& name,
 #endif
     for (MFIter mfi(*mf,true); mfi.isValid(); ++mfi)
     {
-        FArrayBox& fab = (*mf)[mfi];
+        const FArrayBox& fab = (*mf)[mfi];
 
         Real s = 0.0;
         const Box& box  = mfi.tilebox();
@@ -209,7 +209,7 @@ Castro::locWgtSum2D (const std::string& name,
 #endif
     for (MFIter mfi(*mf,true); mfi.isValid(); ++mfi)
     {
-        FArrayBox& fab = (*mf)[mfi];
+        const FArrayBox& fab = (*mf)[mfi];
 
         Real s = 0.0;
         const Box& box  = mfi.tilebox();
@@ -490,8 +490,8 @@ Castro::volProductSum (const std::string& name1,
 #endif
     for (MFIter mfi(*mf1,true); mfi.isValid(); ++mfi)
     {
-        FArrayBox& fab1 = (*mf1)[mfi];
-        FArrayBox& fab2 = (*mf2)[mfi];
+        const FArrayBox& fab1 = (*mf1)[mfi];
+        const FArrayBox& fab2 = (*mf2)[mfi];
 
         Real s = 0.0;
         const Box& box  = mfi.tilebox();
@@ -535,7 +535,7 @@ Castro::locSquaredSum (const std::string& name,
 #endif
     for (MFIter mfi(*mf,true); mfi.isValid(); ++mfi)
     {
-        FArrayBox& fab = (*mf)[mfi];
+        const FArrayBox& fab = (*mf)[mfi];
 
         Real s = 0.0;
         const Box& box  = mfi.tilebox();

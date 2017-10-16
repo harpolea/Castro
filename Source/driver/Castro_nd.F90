@@ -349,7 +349,7 @@ end subroutine swap_outflow_data
 ! ::: ----------------------------------------------------------------
 ! :::
 
-subroutine ca_set_method_params(dm,Density,Xmom, &
+subroutine ca_set_method_params(dm,Density,Xmom,Eden,Eint,Temp, &
                                 FirstAdv,FirstSpec,FirstAux,numadv, &
                                 gravity_type_in, gravity_type_len) &
                                 bind(C, name="ca_set_method_params")
@@ -364,8 +364,8 @@ subroutine ca_set_method_params(dm,Density,Xmom, &
   implicit none
 
   integer, intent(in) :: dm
-  integer, intent(in) :: Density, Xmom, &
-       FirstAdv, FirstSpec, FirstAux
+  integer, intent(in) :: Density, Xmom, Eden, Eint, Temp, &
+                         FirstAdv, FirstSpec, FirstAux
   integer, intent(in) :: numadv
   integer, intent(in) :: gravity_type_len
   integer, intent(in) :: gravity_type_in(gravity_type_len)
@@ -392,6 +392,10 @@ subroutine ca_set_method_params(dm,Density,Xmom, &
   UMX   = Xmom      + 1
   UMY   = Xmom      + 2
   UMZ   = Xmom      + 3
+
+  UEDEN = Eden      + 1
+  UEINT = Eint      + 1
+  UTEMP = Temp + 1
 
   if (numadv .ge. 1) then
      UFA   = FirstAdv  + 1
@@ -434,6 +438,12 @@ subroutine ca_set_method_params(dm,Density,Xmom, &
   QGAME = 5
 
   QLAST   = QGAME
+
+
+  QPRES   = QLAST + 1
+  QREINT  = QLAST + 2
+
+  QTEMP = QTHERM ! = QLAST + 3
 
   if (numadv >= 1) then
      QFA = QTHERM + 1
@@ -738,8 +748,8 @@ subroutine ca_set_special_tagging_flag(dummy,flag) &
 
   use amrex_fort_module, only: rt => amrex_real
 
-  real(rt) :: dummy
-  integer  :: flag
+  real(rt), intent(in) :: dummy
+  integer, intent(in)  :: flag
 
 end subroutine ca_set_special_tagging_flag
 
@@ -755,8 +765,8 @@ subroutine ca_get_tagging_params(name, namlen) &
   use tagging_module
   use amrex_fort_module, only: rt => amrex_real
 
-  integer :: namlen
-  integer :: name(namlen)
+  integer, intent(in) :: namlen
+  integer, intent(in) :: name(namlen)
 
   integer :: un, i, status
 
