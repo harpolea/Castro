@@ -15,7 +15,8 @@ subroutine amrex_probinit (init,name,namlen,problo,probhi) bind(c)
    integer :: untin
    integer :: i
 
-   namelist /fortin/ h_in, h_out, damn_rad, g, swe_to_comp_level, dens_ambient
+   namelist /fortin/ h_in, h_out, damn_rad, g, swe_to_comp_level, p_ambient, dens_ambient, exp_energy, &
+        r_init, nsub, temp_ambient
 
    integer, parameter :: maxlen=127
    character :: probin*(maxlen)
@@ -45,7 +46,12 @@ subroutine amrex_probinit (init,name,namlen,problo,probhi) bind(c)
    damn_rad = 0.2d0
 
    g = 1.0d0
-   dens_ambient = 1.0d0
+   p_ambient = 1.e-5_rt        ! ambient pressure (in erg/cc)
+   dens_ambient = 1.e0_rt      ! ambient density (in g/cc)
+   exp_energy = 1.e0_rt        ! absolute energy of the explosion (in erg)
+   r_init = 0.05e0_rt          ! initial radius of the explosion (in cm)
+   nsub = 4
+   temp_ambient = -1.e2_rt
 
    swe_to_comp_level = 0
 
@@ -86,7 +92,7 @@ subroutine ca_initdata(level,time,lo,hi,nscal, &
 
   use probdata_module
   use meth_params_module, only : NVAR, URHO, UMX, UMY, UMZ, &
-       UFS, UFA
+       UFS, UFA, UEDEN, UEINT, UTEMP
   use network, only : nspec
   use bl_constants_module
   use prob_params_module, only: problo, center, probhi
@@ -106,7 +112,7 @@ subroutine ca_initdata(level,time,lo,hi,nscal, &
 
   integer :: i, j, k, n
 
-  real(rt)         :: dye
+  real(rt)         :: dye, eint, e_zone, p_zone, p_exp, vctr, vol_ambient, vol_pert
   type(eos_t) :: eos_state
 
   state(:,:,:,:) = 0.0d0
@@ -157,21 +163,21 @@ subroutine ca_initdata(level,time,lo,hi,nscal, &
 
                eint = dens_ambient * eos_state % e
 
-               state(i,j,URHO) = dens_ambient
-               state(i,j,UMX:UMZ) = 0.e0_rt
+               state(i,j,k,URHO) = dens_ambient
+               state(i,j,k,UMX:UMZ) = 0.e0_rt
 
-               state(i,j,UEDEN) = eint +  &
-                    0.5e0_rt*(sum(state(i,j,UMX:UMZ)**2)/state(i,j,URHO))
+               state(i,j,k,UEDEN) = eint +  &
+                    0.5e0_rt*(sum(state(i,j,k,UMX:UMZ)**2)/state(i,j,k,URHO))
 
-               state(i,j,UEINT) = eint
+               state(i,j,k,UEINT) = eint
 
-               state(i,j,UFS) = state(i,j,URHO)
+               state(i,j,k,UFS) = state(i,j,k,URHO)
 
-               state(i,j,UTEMP) = eos_state % T
+               state(i,j,k,UTEMP) = eos_state % T
            end if
 
            state(i,j,k,UFA)  = dye
-           state(i,j,k,UFS:UFS-1+nspec) = ONE / nspec
+           state(i,j,k,UFS:UFS-1+nspec) = state(i,j,k,URHO) / nspec
 
         enddo
      enddo
