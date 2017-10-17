@@ -1,4 +1,4 @@
-subroutine ca_mol_single_stage(time, &
+subroutine ca_mol_single_stage(time, level, &
                                lo, hi, domlo, domhi, &
                                stage_weight, &
                                uin, uin_lo, uin_hi, &
@@ -35,7 +35,7 @@ subroutine ca_mol_single_stage(time, &
 
   implicit none
 
-  integer, intent(in) :: lo(1), hi(1), verbose
+  integer, intent(in) :: lo(1), hi(1), verbose, level
   integer, intent(in) :: domlo(1), domhi(1)
   real(rt), intent(in) :: stage_weight
   integer, intent(in) :: uin_lo(3), uin_hi(3)

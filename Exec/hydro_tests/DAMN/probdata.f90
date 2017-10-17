@@ -9,7 +9,6 @@ module probdata_module
   real(rt), save          :: p_ambient, dens_ambient, exp_energy, temp_ambient, e_ambient, g
 
   integer, save           :: swe_to_comp_level
-  real(rt), save :: r_init
   integer, save ::  nsub
 
 end module probdata_module

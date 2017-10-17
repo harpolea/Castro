@@ -76,6 +76,38 @@ end subroutine ca_reset_internal_e
 
   end subroutine ca_normalize_species
 
+  subroutine ca_swe_to_comp(swe, slo, shi, comp, clo, chi, lo, hi) &
+       bind(C, name="ca_swe_to_comp")
+
+    use actual_riemann_module, only: swe_to_comp
+    use meth_params_module, only: NVAR
+
+    implicit none
+
+    integer, intent(in)   :: slo(3), shi(3), clo(3), chi(3), lo(3), hi(3)
+    real(rt), intent(in)  :: swe(slo(1):shi(1), slo(2):shi(2), slo(3):shi(3), NVAR)
+    real(rt), intent(inout) :: comp(clo(1):chi(1), clo(2):chi(2), clo(3):chi(3), NVAR)
+
+    call swe_to_comp(swe, slo, shi, comp, clo, chi, lo, hi)
+
+  end subroutine ca_swe_to_comp
+
+  subroutine ca_comp_to_swe(swe, slo, shi, comp, clo, chi, lo, hi) &
+       bind(C, name="ca_comp_to_swe")
+
+    use actual_riemann_module, only: comp_to_swe
+    use meth_params_module, only: NVAR
+
+    implicit none
+
+    integer, intent(in)   :: slo(3), shi(3), clo(3), chi(3), lo(3), hi(3)
+    real(rt), intent(out)  :: swe(slo(1):shi(1), slo(2):shi(2), slo(3):shi(3), NVAR)
+    real(rt), intent(in) :: comp(clo(1):chi(1), clo(2):chi(2), clo(3):chi(3), NVAR)
+
+    call comp_to_swe(swe, slo, shi, comp, clo, chi, lo, hi)
+
+  end subroutine ca_comp_to_swe
+
 
   subroutine ca_enforce_minimum_density(uin, uin_lo, uin_hi, &
                                         uout, uout_lo, uout_hi, &

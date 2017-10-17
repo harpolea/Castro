@@ -24,17 +24,19 @@ contains
 ! ::: ------------------------------------------------------------------
 ! :::
 
-  subroutine cmpflx(qm, qp, qpd_lo, qpd_hi, &
+  subroutine cmpflx(level, qm, qp, qpd_lo, qpd_hi, &
                     flx, flx_lo, flx_hi, &
                     qaux, qa_lo, qa_hi, &
                     idir, ilo, ihi, jlo, jhi, domlo, domhi)
 
     use actual_riemann_module
     use network, only: nspec, naux
+    use probdata_module, only: swe_to_comp_level
     use amrex_fort_module, only : rt => amrex_real
 
     implicit none
 
+    integer, intent(in) :: level
     integer, intent(in) :: qpd_lo(3), qpd_hi(3)
     integer, intent(in) :: flx_lo(3), flx_hi(3)
     integer, intent(in) :: qa_lo(3), qa_hi(3)
@@ -50,26 +52,32 @@ contains
 
     ! these will refer to the zone interfaces that we solve the
     ! Riemann problem across
-    integer :: imin, imax, jmin, jmax
+    integer :: imin(3), imax(3)
+
+    imin(:) = [ilo, jlo, 0]
+    imax(:) = [ihi, jhi, 0]
 
     if (idir == 1) then
-       imin = ilo
-       imax = ihi+1
-       jmin = jlo
-       jmax = jhi
+       imax(1) = ihi+1
     else
-       imin = ilo
-       imax = ihi
-       jmin = jlo
-       jmax = jhi+1
+       imax(2) = jhi+1
     endif
 
     ! Solve Riemann problem (godunov state passed back, but only (u,p) saved)
-    call swe_HLL(qm, qp, qpd_lo, qpd_hi, &
-             qaux, qa_lo, qa_hi, &
-             flx, flx_lo, flx_hi, &
-             idir, imin, imax, jmin, jmax, 0, 0, 0, &
-             [domlo(1), domlo(2), 0], [domhi(1), domhi(2), 0])
+
+    if (level <= swe_to_comp_level) then
+        call swe_HLL(qm, qp, qpd_lo, qpd_hi, &
+                 qaux, qa_lo, qa_hi, &
+                 flx, flx_lo, flx_hi, &
+                 idir, imin, imax, &
+                 [domlo(1), domlo(2), 0], [domhi(1), domhi(2), 0])
+    else
+        call comp_HLL(qm, qp, qpd_lo, qpd_hi, &
+                        qaux, qa_lo, qa_hi, &
+                        flx, flx_lo, flx_hi, &
+                        idir, imin, imax, &
+                        [domlo(1), domlo(2), 0], [domhi(1), domhi(2), 0])
+    endif
 
 
   end subroutine cmpflx

@@ -738,6 +738,17 @@ end subroutine compute_temp
 
   end function is_domain_corner
 
+  subroutine ca_get_swe_to_comp_level(lev_out) bind(C, name="ca_get_swe_to_comp_level")
+      use probdata_module, only: swe_to_comp_level
+
+      implicit none
+
+      integer, intent(inout) :: lev_out
+
+      lev_out = swe_to_comp_level
+
+  end subroutine ca_get_swe_to_comp_level
+
 
 
   subroutine ca_get_center(center_out) bind(C, name="ca_get_center")

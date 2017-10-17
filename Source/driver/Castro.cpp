@@ -599,9 +599,7 @@ Castro::initData ()
               // Verify that the sum of (rho X)_i = rho at every cell
     	  const int idx = mfi.tileIndex();
 
-          std::cout << "idx = " << idx << " lo = " <<  ARLIM_3D(lo) << " hi = " << ARLIM_3D(hi) << " mfi index = " << mfi.index() <<'\n';
-          std::cout << "data = " << S_new[mfi].dataPtr() << '\n';
-              ca_check_initial_species(ARLIM_3D(lo), ARLIM_3D(hi),
+           ca_check_initial_species(ARLIM_3D(lo), ARLIM_3D(hi),
     				   BL_TO_FORTRAN_3D(S_new[mfi]), &idx);
        }
        enforce_consistent_e(S_new);
@@ -1386,6 +1384,7 @@ Castro::enforce_min_density (MultiFab& S_old, MultiFab& S_new)
 void
 Castro::avgDown (int state_indx)
 {
+    // average level+1 down to level
     BL_PROFILE("Castro::avgDown(state_indx)");
 
     if (level == parent->finestLevel()) return;
@@ -1398,9 +1397,34 @@ Castro::avgDown (int state_indx)
     MultiFab&  S_crse   = get_new_data(state_indx);
     MultiFab&  S_fine   = fine_lev.get_new_data(state_indx);
 
-    amrex::average_down(S_fine, S_crse,
-			 fgeom, cgeom,
-			 0, S_fine.nComp(), fine_ratio);
+    int ng = S_crse.nGrow();
+
+    int swe_to_comp_level;
+    ca_get_swe_to_comp_level(&swe_to_comp_level);
+
+    if (level == swe_to_comp_level) {
+        // copy fine multifab
+        MultiFab S_fine_swe;
+        MultiFab::Copy(S_fine_swe, S_fine, 0, 0, S_fine.nComp(), 0);
+
+        for (MFIter mfi(S_fine_swe,true); mfi.isValid(); ++mfi)
+        {
+            const Box& bx = mfi.growntilebox(ng);
+    	    const int idx = mfi.tileIndex();
+            // do some conversion stuff
+            ca_comp_to_swe(BL_TO_FORTRAN_3D(S_fine_swe[mfi]), BL_TO_FORTRAN_3D(S_fine[mfi]), ARLIM_3D(bx.loVect()), ARLIM_3D(bx.hiVect()));
+        }
+
+        amrex::average_down(S_fine_swe, S_crse,
+    			 fgeom, cgeom,
+    			 0, S_fine.nComp(), fine_ratio);
+    } else {
+
+        amrex::average_down(S_fine, S_crse,
+    			 fgeom, cgeom,
+    			 0, S_fine.nComp(), fine_ratio);
+
+    }
 }
 
 void
@@ -1664,7 +1688,7 @@ Castro::reset_internal_energy(MultiFab& S_new)
     for (MFIter mfi(S_new,true); mfi.isValid(); ++mfi)
     {
         const Box& bx = mfi.growntilebox(ng);
-	const int idx = mfi.tileIndex();
+	    const int idx = mfi.tileIndex();
 
         ca_reset_internal_e(ARLIM_3D(bx.loVect()), ARLIM_3D(bx.hiVect()),
 			    BL_TO_FORTRAN_3D(S_new[mfi]),
@@ -1837,7 +1861,7 @@ Castro::check_for_nan(MultiFab& state, int check_ghost)
 
   int ng = 0;
   if (check_ghost == 1) {
-    ng = state.nComp();
+      ng = state.nComp();
   }
 
   if (state.contains_nan(Density,state.nComp(),ng,true))

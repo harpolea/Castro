@@ -1,6 +1,6 @@
 ! advection routines in support of method of lines integration
 
-subroutine ca_mol_single_stage(time, &
+subroutine ca_mol_single_stage(time, level, &
                                lo, hi, domlo, domhi, &
                                stage_weight, &
                                uin, uin_lo, uin_hi, &
@@ -34,7 +34,7 @@ subroutine ca_mol_single_stage(time, &
 
   implicit none
 
-  integer, intent(in) :: lo(2), hi(2), verbose
+  integer, intent(in) :: lo(2), hi(2), verbose, level
   integer, intent(in) :: domlo(2), domhi(2)
   real(rt), intent(in) :: stage_weight
   integer, intent(in) :: uin_lo(3), uin_hi(3)
@@ -156,12 +156,12 @@ subroutine ca_mol_single_stage(time, &
   deallocate(sxm, sxp, sym, syp)
 
   ! Get the fluxes from the Riemann solver
-  call cmpflx(qxm, qxp, qs_lo, qs_hi, &
+  call cmpflx(level, qxm, qxp, qs_lo, qs_hi, &
               flux1, flux1_lo, flux1_hi, &
               qaux, qa_lo, qa_hi, &
               1, lo(1), hi(1), lo(2), hi(2), domlo, domhi)
 
-  call cmpflx(qym, qyp, qs_lo, qs_hi, &
+  call cmpflx(level, qym, qyp, qs_lo, qs_hi, &
               flux2, flux2_lo, flux2_hi, &
               qaux, qa_lo, qa_hi, &
               2, lo(1), hi(1), lo(2), hi(2), domlo, domhi)

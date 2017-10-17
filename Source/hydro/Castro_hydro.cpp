@@ -42,11 +42,7 @@ Castro::construct_mol_hydro_source(Real time, Real dt)
   BL_PROFILE_VAR("Castro::advance_hydro_ca_umdrv()", CA_UMDRV);
 
 #ifdef _OPENMP
-#ifdef RADIATION
-#pragma omp parallel reduction(max:courno, max:nstep_fsp)
-#else
 #pragma omp parallel reduction(max:courno)
-#endif
 #endif
     {
 
@@ -107,7 +103,7 @@ Castro::construct_mol_hydro_source(Real time, Real dt)
 #endif
 
     	ca_mol_single_stage
-    	  (&time,
+    	  (&time, &level,
     	   lo, hi, domain_lo, domain_hi,
     	   &(b_mol[mol_iteration]),
     	   BL_TO_FORTRAN_3D(statein),

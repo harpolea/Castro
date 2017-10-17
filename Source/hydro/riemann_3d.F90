@@ -30,7 +30,7 @@ contains
 ! ::: ------------------------------------------------------------------
 ! :::
 
-  subroutine cmpflx(qm, qp, qpd_lo, qpd_hi, &
+  subroutine cmpflx(level, qm, qp, qpd_lo, qpd_hi, &
                     flx, flx_lo, flx_hi, &
                     qint, q_lo, q_hi, &
                     qaux, qa_lo, qa_hi, &
@@ -46,6 +46,7 @@ contains
 
     implicit none
 
+    integer, intent(in) :: level
     integer, intent(in) :: qpd_lo(3), qpd_hi(3)
     integer, intent(in) :: flx_lo(3), flx_hi(3)
     integer, intent(in) :: q_lo(3), q_hi(3)

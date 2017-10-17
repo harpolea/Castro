@@ -1,5 +1,5 @@
 
-! This module stores the runtime parameters that define the problem domain.  
+! This module stores the runtime parameters that define the problem domain.
 ! These parameter are initialized in set_problem_params().
 
 module prob_params_module
@@ -21,7 +21,7 @@ module prob_params_module
   ! dimension information
   integer         , save :: dim
 
-  ! indices that we use for dimension agnostic routines 
+  ! indices that we use for dimension agnostic routines
   ! to ensure we don't illegally access non-existent ghost cells
   ! the format is dg(1:dim) = 1, dg(dim+1:3) = 0
   integer         , save :: dg(3)
@@ -47,5 +47,5 @@ module prob_params_module
 
   ! one component for each coordinate direction flux
   type (momflux_t), save :: mom_flux_has_p(3)
-  
+
 end module prob_params_module

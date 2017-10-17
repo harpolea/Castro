@@ -1,6 +1,6 @@
 ! advection routines in support of method of lines integration
 
-subroutine ca_mol_single_stage(time, &
+subroutine ca_mol_single_stage(time, level, &
                                lo, hi, domlo, domhi, &
                                stage_weight, &
                                uin, uin_lo, uin_hi, &
@@ -37,7 +37,7 @@ subroutine ca_mol_single_stage(time, &
 
   implicit none
 
-  integer, intent(in) :: lo(3), hi(3), verbose
+  integer, intent(in) :: lo(3), hi(3), verbose, level
   integer, intent(in) ::  domlo(3), domhi(3)
   real(rt), intent(in) :: stage_weight
   integer, intent(in) :: uin_lo(3), uin_hi(3)

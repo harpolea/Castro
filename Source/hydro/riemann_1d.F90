@@ -6,9 +6,6 @@ module riemann_module
   use meth_params_module, only : NQ, NQAUX, NVAR, QRHO, QPRES, QREINT, &
                                  QFS, QFX, &
                                  NGDNV, GDU, GDPRES, QGAMC, QC, QCSML, &
-#ifdef RADIATION
-                                 GDERADS, GDLAMS, QGAMCG, QLAMS, &
-#endif
                                  small_temp, small_dens, small_pres, &
                                  npassive, upass_map, qpass_map, &
                                  cg_maxiter, cg_tol, cg_blend, &
@@ -31,13 +28,10 @@ contains
 ! ::: ------------------------------------------------------------------
 ! :::
 
-  subroutine cmpflx(lo, hi, domlo, domhi, &
+  subroutine cmpflx(level, lo, hi, domlo, domhi, &
                     qm, qp, qpd_lo, qpd_hi, &
                     flx, flx_lo, flx_hi, &
                     qint, qg_lo, qg_hi, &
-#ifdef RADIATION
-                    rflx, rflx_lo, rflx_hi, &
-#endif
                     qaux, qa_lo, qa_hi, &
                     ilo, ihi)
 
@@ -45,15 +39,13 @@ contains
     use eos_type_module, only: eos_input_re, eos_input_rt, eos_t
     use eos_module, only: eos
     use network, only: nspec, naux
-#ifdef RADIATION
-    use rad_params_module, only : ngroups
-#endif
     use actual_riemann_module, only : riemanncg, riemannus
 
     use amrex_fort_module, only : rt => amrex_real
 
     implicit none
 
+    integer, intent(in) :: level
     integer lo(1),hi(1)
     integer domlo(1),domhi(1)
     integer ilo,ihi
@@ -68,11 +60,6 @@ contains
     real(rt)           flx(flx_lo(1):flx_hi(1), NVAR)
     real(rt)          qint( qg_lo(1): qg_hi(1), NGDNV)
     real(rt)          qaux( qa_lo(1): qa_hi(1), NQAUX)
-
-#ifdef RADIATION
-    integer rflx_lo(3), rflx_hi(3)
-    real(rt)         rflx(rflx_lo(1):rflx_hi(1), 0:ngroups-1)
-#endif
 
     ! Local variables
     integer i
@@ -121,7 +108,7 @@ contains
           eos_state % e   = qp(i,QREINT)/qp(i,QRHO)
           eos_state % xn  = qp(i,QFS:QFS-1+nspec)
           eos_state % aux = qp(i,QFX:QFX-1+naux)
-          
+
           ! Protect against negative energies
 
           if (allow_negative_energy .eq. 0 .and. eos_state % e < ZERO) then
@@ -130,11 +117,11 @@ contains
           else
              call eos(eos_input_re, eos_state)
           endif
-          
+
           qp(i,QREINT) = qp(i,QRHO)*eos_state%e
           qp(i,QPRES) = eos_state%p
           !gamcp(i) = eos_state%gam1
-          
+
        enddo
 
     endif
@@ -147,9 +134,6 @@ contains
                       qaux, qa_lo, qa_hi, &
                       flx, flx_lo, flx_hi, &
                       qint, qg_lo, qg_hi, &
-#ifdef RADIATION
-                      rflx, rflx_lo, rflx_hi, &
-#endif
                       1, ilo, ihi+1, 0, 0, 0, 0, 0, &
                       [domlo(1), 0, 0], [domhi(1), 0, 0])
 

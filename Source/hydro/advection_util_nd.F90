@@ -5,7 +5,7 @@ module advection_util_module
 
   private
 
-  public enforce_minimum_density, compute_cfl, swectoprim
+  public enforce_minimum_density, compute_cfl, swectoprim, compctoprim
 
 contains
 

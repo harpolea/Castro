@@ -119,6 +119,14 @@ extern "C"
   void ca_normalize_species
     (BL_FORT_FAB_ARG_3D(S_new), const int* lo, const int* hi, const int* idx);
 
+  void ca_swe_to_comp
+    (BL_FORT_FAB_ARG_3D(S_swe), BL_FORT_FAB_ARG_3D(S_comp), const int* lo, const int* hi);
+
+  void ca_comp_to_swe
+    (BL_FORT_FAB_ARG_3D(S_swe), BL_FORT_FAB_ARG_3D(S_comp), const int* lo, const int* hi);
+
+  void ca_get_swe_to_comp_level(int* lev_out);
+
   void ca_get_center(amrex::Real* center);
   void ca_set_center(amrex::Real* center);
   void ca_find_center(amrex::Real* data, amrex::Real* center, int* icen,
@@ -308,6 +316,7 @@ extern "C"
 
   void ca_mol_single_stage
     (const amrex::Real* time,
+     const int* level,
      const int    lo[], const int    hi[],
      const int domlo[], const int domhi[],
      const amrex::Real *stage_weight,

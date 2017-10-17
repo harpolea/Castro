@@ -19,7 +19,7 @@ subroutine amrex_probinit (init,name,namlen,problo,probhi) bind(c)
    integer :: i
 
    namelist /fortin/ h_in, h_out, damn_rad, g, swe_to_comp_level, p_ambient, dens_ambient, exp_energy, &
-        r_init, nsub, temp_ambient
+        nsub, temp_ambient
 
    integer, parameter :: maxlen=127
    character :: probin*(maxlen)
@@ -53,7 +53,6 @@ subroutine amrex_probinit (init,name,namlen,problo,probhi) bind(c)
    p_ambient = 1.e-5_rt        ! ambient pressure (in erg/cc)
    dens_ambient = 1.e0_rt      ! ambient density (in g/cc)
    exp_energy = 1.e0_rt        ! absolute energy of the explosion (in erg)
-   r_init = 0.05e0_rt          ! initial radius of the explosion (in cm)
    nsub = 4
    temp_ambient = -1.e2_rt
 
@@ -163,13 +162,13 @@ subroutine ca_initdata(level,time,lo,hi,nscal, &
      zz = xlo(3) + delta(3)*dble(k-lo(3)+HALF)
 
      do j = lo(2), hi(2)
-         ymin = xlo(2) + delta(2)*dble(j-lo(2))
+        ymin = xlo(2) + delta(2)*dble(j-lo(2))
         yy = xlo(2) + delta(2)*dble(j-lo(2)+HALF)
 
         do i = lo(1), hi(1)
 
-               xmin = xlo(1) + delta(1)*dble(i-lo(1))
-           xx = xlo(1) + delta(1)*dble(i-lo(1)+HALF)
+            xmin = xlo(1) + delta(1)*dble(i-lo(1))
+            xx = xlo(1) + delta(1)*dble(i-lo(1)+HALF)
 
            r = sqrt((xx - center(1))**2 + (yy - center(2))**2)
 
@@ -187,7 +186,7 @@ subroutine ca_initdata(level,time,lo,hi,nscal, &
 
            else ! compressible level
 
-                vctr = M_PI*r_init**2
+                vctr = M_PI*damn_rad**2
                 e_zone = exp_energy/vctr/dens_ambient
 
                 vol_pert    = 0.e0_rt
@@ -212,7 +211,7 @@ subroutine ca_initdata(level,time,lo,hi,nscal, &
                           !    and xx  is the coordinate of the x center of the cell)
                           !
                           ! since dx and dy are constant, they cancel out
-                          if (dist <= r_init) then
+                          if (dist <= damn_rad) then
                              vol_pert    = vol_pert    + xx
                           else
                              vol_ambient = vol_ambient + xx

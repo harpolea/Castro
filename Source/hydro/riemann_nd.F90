@@ -16,7 +16,7 @@ module actual_riemann_module
 
   private
 
-  public :: swe_hll
+  public :: swe_hll, comp_hll, swe_to_comp, comp_to_swe
 
   real(rt), parameter :: smallu = 1.e-12_rt
   real(rt), parameter :: small = 1.e-8_rt
@@ -220,7 +220,7 @@ enddo
   subroutine swe_HLL(ql, qr, qpd_lo, qpd_hi, &
                   qaux, qa_lo, qa_hi, &
                   uflx, uflx_lo, uflx_hi, &
-                  idir, ilo, ihi, jlo, jhi, kc, kflux, k3d, &
+                  idir, ilo, ihi, &
                   domlo, domhi)
 
 
@@ -236,7 +236,7 @@ enddo
     integer, intent(in) :: qpd_lo(3), qpd_hi(3)
     integer, intent(in) :: qa_lo(3), qa_hi(3)
     integer, intent(in) :: uflx_lo(3), uflx_hi(3)
-    integer, intent(in) :: idir, ilo, ihi, jlo, jhi
+    integer, intent(in) :: idir, ilo(3), ihi(3)
     integer, intent(in) :: domlo(3), domhi(3)
 
     real(rt), intent(in) :: ql(qpd_lo(1):qpd_hi(1),qpd_lo(2):qpd_hi(2),qpd_lo(3):qpd_hi(3),NQ)
@@ -247,7 +247,6 @@ enddo
     real(rt), intent(in) :: qaux(qa_lo(1):qa_hi(1),qa_lo(2):qa_hi(2),qa_lo(3):qa_hi(3),NQAUX)
 
     real(rt), intent(inout) :: uflx(uflx_lo(1):uflx_hi(1),uflx_lo(2):uflx_hi(2),uflx_lo(3):uflx_hi(3),NVAR)
-    integer, intent(in) :: kc, kflux, k3d
 
     ! Note:
     !
@@ -263,7 +262,7 @@ enddo
     !         kflux = kc, but in later calls, when uflx = {flux1,flux2,flux3},
     !         kflux = k3d
 
-    integer :: i, j
+    integer :: i, j, k
 
     integer :: iu, iv1, iv2, sx, sy, sz
     logical :: special_bnd_lo, special_bnd_hi, special_bnd_lo_x, special_bnd_hi_x
@@ -271,6 +270,8 @@ enddo
 
     real(rt) :: U_hll_state(NVAR), U_state(NVAR), F_state(NVAR), Fr_state(NVAR)
     real(rt) :: S_l, S_r, S_c, Smax_l, Smax_r, Smax
+
+    k = ilo(3)
 
     if (idir == 1) then
        iu = QU
@@ -312,8 +313,8 @@ enddo
 
     bnd_fac_z = 1
     if (idir == 3) then
-       if ( k3d == domlo(3)   .and. special_bnd_lo .or. &
-            k3d == domhi(3)+1 .and. special_bnd_hi ) then
+       if ( k == domlo(3)   .and. special_bnd_lo .or. &
+            k == domhi(3)+1 .and. special_bnd_hi ) then
           bnd_fac_z = 0
        end if
     end if
@@ -322,7 +323,7 @@ enddo
     Smax_r = maxval(abs(qr(:,:,:,QU-1+idir))) + maxval(sqrt(g * qr(:,:,:,QRHO)))
     Smax = max(Smax_r, Smax_l)
 
-    do j = jlo, jhi
+    do j = ilo(2), ihi(2)
 
        bnd_fac_y = 1
        if (idir == 2) then
@@ -333,7 +334,7 @@ enddo
        end if
 
        !dir$ ivdep
-       do i = ilo, ihi
+       do i = ilo(1), ihi(1)
 
           ! Enforce that the fluxes through a symmetry plane or wall are hard zero.
           if ( special_bnd_lo_x .and. i== domlo(1) .or. &
@@ -351,15 +352,15 @@ enddo
 
           if (S_r <= ZERO) then
              ! R region
-             call swe_cons_state(qr(i,j,kc,:), U_state)
+             call swe_cons_state(qr(i,j,k,:), U_state)
              call swe_compute_flux(idir, bnd_fac, U_state, F_state)
 
          else if (S_r > ZERO .and. S_l <= ZERO) then
              ! * region
-             call swe_cons_state(ql(i,j,kc,:), U_state)
+             call swe_cons_state(ql(i,j,k,:), U_state)
              call swe_compute_flux(idir, bnd_fac, U_state, F_state)
 
-             call swe_cons_state(qr(i,j,kc,:), U_hll_state)
+             call swe_cons_state(qr(i,j,k,:), U_hll_state)
              call swe_compute_flux(idir, bnd_fac, U_hll_state, Fr_state)
 
              ! correct the flux
@@ -367,12 +368,12 @@ enddo
 
           else
              ! L region
-             call swe_cons_state(ql(i,j,kc,:), U_state)
+             call swe_cons_state(ql(i,j,k,:), U_state)
              call swe_compute_flux(idir, bnd_fac, U_state, F_state)
 
           endif
 
-          uflx(i,j,kflux,:) = F_state(:)
+          uflx(i,j,k,:) = F_state(:)
        enddo
     enddo
 
@@ -383,8 +384,9 @@ end subroutine swe_HLL
 subroutine swe_to_comp(swe, slo, shi, comp, clo, chi, lo, hi)
     use meth_params_module, only: NQ, QVAR, QRHO, QU, QV, QW, &
          NVAR, URHO, UMX, UMY, UMZ, NQAUX, QTEMP, UTEMP, UEDEN, UEINT, &
-         dual_energy_eta1
+         dual_energy_eta1, QPRES
     use probdata_module, only : g
+    use advection_util_module, only: swectoprim, compctoprim
 
     integer, intent(in)   :: slo(3), shi(3), clo(3), chi(3), lo(3), hi(3)
     real(rt), intent(in)  :: swe(slo(1):shi(1), slo(2):shi(2), slo(3):shi(3), NVAR)
@@ -405,6 +407,7 @@ subroutine swe_to_comp(swe, slo, shi, comp, clo, chi, lo, hi)
     do k = lo(3), hi(3)
         do j = lo(2), hi(2)
             do i = lo(1), hi(1)
+                q_comp(i,j,k,QRHO) = q_swe(i,j,k,QRHO)
                 q_comp(i,j,k,QU:QV) = q_swe(i,j,k,QU:QV)
                 q_comp(i,j,k,QW) = 0.d0
 
@@ -417,6 +420,7 @@ subroutine swe_to_comp(swe, slo, shi, comp, clo, chi, lo, hi)
                 endif
 
                 q_comp(i,j,k,QTEMP) = comp(i,j,k,UTEMP)
+                q_comp(i,j,k,QPRES) = 0.5d0 * g * q_swe(i,j,k,QRHO)**2
 
                 call comp_cons_state(q_comp(i,j,k,:), comp(i,j,k,:))
             enddo
@@ -431,6 +435,7 @@ subroutine comp_to_swe(swe, slo, shi, comp, clo, chi, lo, hi)
     use meth_params_module, only: QVAR, QRHO, QU, QV, QW, &
          NVAR, URHO, UMX, UMY, UMZ
     use probdata_module, only : g
+    use advection_util_module, only: compctoprim
 
 
     integer, intent(in)   :: slo(3), shi(3), clo(3), chi(3), lo(3), hi(3)
