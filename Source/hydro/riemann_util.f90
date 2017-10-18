@@ -149,7 +149,8 @@ contains
     use probdata_module, only: g
 
     integer, intent(in) :: idir, bnd_fac
-    real(rt)        , intent(in) :: U(NVAR), p
+    real(rt)        , intent(in) :: U(NVAR)
+    real(rt)        , intent(inout) :: p
     real(rt)        , intent(out) :: F(NVAR)
 
     integer :: ipassive, n

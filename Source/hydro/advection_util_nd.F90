@@ -369,11 +369,12 @@ contains
     use actual_network, only : nspec, naux
     use meth_params_module, only : NVAR, URHO, UMX, UMY, UMZ, &
                                    QRHO, QU, QV, QW, &
-                                   NQ, QC, QCSML, QGAMC, QDPDR, QDPDE, NQAUX, &
+                                   NQ, QC, QCSML, QGAMC, QDPDR, QDPDE, NQAUX, QPRES, &
                                    npassive, upass_map, qpass_map, dual_energy_eta1, &
                                    small_dens
     use bl_constants_module, only: ZERO, HALF, ONE
     use castro_util_module, only: position
+    use probdata_module, only : g
 
     use amrex_fort_module, only : rt => amrex_real
 
@@ -391,7 +392,7 @@ contains
 
     real(rt)        , parameter :: small = 1.d-8
 
-    integer          :: i, j, k, g
+    integer          :: i, j, k
     integer          :: n, iq, ipassive
 
     q(:,:,:,:) = 0.0d0
@@ -426,6 +427,7 @@ contains
 
               q(i,j,k,QRHO) = uin(i,j,k,URHO)
               q(i,j,k,QU:QW) = uin(i,j,k,UMX:UMZ) / uin(i,j,k,URHO)
+              q(i,j,k,QPRES) = 0.5d0 * g * uin(i,j,k,URHO)**2
 
           enddo
        enddo
@@ -441,7 +443,7 @@ subroutine compctoprim(lo, hi, &
   use mempool_module, only : bl_allocate, bl_deallocate
   use actual_network, only : nspec, naux
   use eos_module, only : eos
-  use eos_type_module, only : eos_t, eos_input_re
+  use eos_type_module, only : eos_t, eos_input_rp
   use meth_params_module, only : NVAR, URHO, UMX, UMY, UMZ, UEDEN, UEINT,&
                                  QRHO, QU, QV, QW, QREINT, QTEMP, &
                                  NQ, QC, QCSML, QGAMC, QDPDR, QDPDE, NQAUX, QFS, QFX, QGAME, QPRES, UTEMP, &
@@ -449,6 +451,7 @@ subroutine compctoprim(lo, hi, &
                                  small_dens
   use bl_constants_module, only: ZERO, HALF, ONE
   use castro_util_module, only: position
+  use probdata_module, only : g
 
   use amrex_fort_module, only : rt => amrex_real
 
@@ -466,7 +469,7 @@ subroutine compctoprim(lo, hi, &
 
   real(rt)        , parameter :: small = 1.d-8
 
-  integer          :: i, j, k, g
+  integer          :: i, j, k
   integer          :: n, iq, ipassive
   real(rt)         :: kineng
   type (eos_t)     :: eos_state
@@ -538,12 +541,14 @@ subroutine compctoprim(lo, hi, &
              eos_state % e   = q(i,j,k,QREINT)
              eos_state % xn  = q(i,j,k,QFS:QFS+nspec-1)
              eos_state % aux = q(i,j,k,QFX:QFX+naux-1)
+             eos_state % p = 0.5d0 * g * q(i,j,k,QRHO  )**2
+             q(i,j,k,QPRES)  = eos_state % p
 
-             call eos(eos_input_re, eos_state)
+             call eos(eos_input_rp, eos_state)
 
              q(i,j,k,QTEMP)  = eos_state % T
              q(i,j,k,QREINT) = eos_state % e * q(i,j,k,QRHO)
-             q(i,j,k,QPRES)  = eos_state % p
+             !q(i,j,k,QPRES)  = eos_state % p
              q(i,j,k,QGAME)  = q(i,j,k,QPRES) / q(i,j,k,QREINT) + ONE
 
              qaux(i,j,k,QDPDR)  = eos_state % dpdr_e

@@ -141,11 +141,11 @@ subroutine ca_initdata(level,time,lo,hi,nscal, &
   real(rt)         :: xlo(3), xhi(3), time, delta(3)
   real(rt)         :: state(state_lo(1):state_hi(1),state_lo(2):state_hi(2),state_lo(3):state_hi(3),NVAR)
 
-  real(rt)         :: xx, yy, zz, r, dist, xxx, yyy
+  real(rt)         :: xx, yy, zz, r
 
   integer :: i, j, k, n, ii, jj, kk
 
-  real(rt)         :: dye, eint, e_zone, p_zone, p_exp, vctr, vol_ambient, vol_pert, ymin, xmin
+  real(rt)         :: dye, eint, xmin, ymin
   type(eos_t) :: eos_state
 
   state(:,:,:,:) = 0.0d0
@@ -186,64 +186,18 @@ subroutine ca_initdata(level,time,lo,hi,nscal, &
 
            else ! compressible level
 
-                vctr = M_PI*damn_rad**2
-                e_zone = exp_energy!/vctr/h_out
-
-                vol_pert    = 0.e0_rt
-                vol_ambient = 0.e0_rt
-
-                do kk = 0, nsub-1
-
-                    do jj = 0, nsub-1
-                          ymin = xlo(2) + delta(2)*dble(j-lo(2))
-                          yyy = xlo(2) + delta(2)*dble(j-lo(2)+HALF)
-
-                       do ii = 0, nsub-1
-                          xmin = xlo(1) + delta(1)*dble(i-lo(1))
-                          xxx = xlo(1) + delta(1)*dble(i-lo(1)+HALF)
-
-                          dist = sqrt((xxx - center(1))**2 + (yyy - center(2))**2)
-
-                          ! The volume of a cell is a annular cylindrical region.
-                          ! The main thing that matters is the distance from the
-                          ! symmetry axis.
-                          !   V = pi*dy*(x_r**2 - x_l**2) = pi*dy*dx*HALF*xx
-                          ! (where x_r is the coordinate of the x right edge,
-                          !        x_l is the coordinate of the x left edge,
-                          !    and xx  is the coordinate of the x center of the cell)
-                          !
-                          ! since dx and dy are constant, they cancel out
-                          if (dist <= damn_rad) then
-                             vol_pert    = vol_pert    + xxx
-                          else
-                             vol_ambient = vol_ambient + xxx
-                          endif
-
-                       enddo
-                    enddo
-                enddo
-
                 if (r < damn_rad) then
                     state(i,j,k,URHO) = h_in
                 else
                     state(i,j,k,URHO) = h_out
                 end if
 
-                eos_state % e = e_zone
+                !eos_state % e = e_zone
                 eos_state % rho = state(i,j,k,URHO)
                 eos_state % xn(:) = xn_zone(:)
-                eos_state % T = 1000.00 ! initial guess
+                eos_state % p = 0.5d0 * g * state(i,j,k,URHO)**2
 
-                call eos(eos_input_re, eos_state)
-
-                !p_zone = (vol_pert*p_exp + vol_ambient*p_ambient)/ (vol_pert + vol_ambient)
-
-                !eos_state % p = p_zone
-                !eos_state % rho = state(i,j,k,URHO)
-                !eos_state % xn(:) = xn_zone(:)
-                !eos_state % T = 1000.0   ! initial guess
-
-                !call eos(eos_input_rp, eos_state)
+                call eos(eos_input_rp, eos_state)
 
                 eint = state(i,j,k,URHO) * eos_state % e
                 state(i,j,k,UMX:UMZ) = 0.e0_rt

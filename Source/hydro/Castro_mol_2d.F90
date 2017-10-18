@@ -22,7 +22,7 @@ subroutine ca_mol_single_stage(time, level, &
 
   use meth_params_module, only : NQ, QVAR, NVAR, UMX, &
                                  NQAUX, QFS, QFX, QRHO,&
-                                 first_order_hydro, difmag, URHO
+                                 first_order_hydro, difmag, URHO, QGAMC
   use advection_util_module, only : compute_cfl
   use advection_util_2d_module, only: normalize_species_fluxes
   use reconstruct_module, only : compute_reconstruction_tvd
@@ -31,6 +31,7 @@ subroutine ca_mol_single_stage(time, level, &
   use riemann_module, only: cmpflx
   use amrex_fort_module, only : rt => amrex_real
   use network, only : nspec, naux
+  use eos_type_module, only : eos_t
 
   implicit none
 
@@ -86,6 +87,8 @@ subroutine ca_mol_single_stage(time, level, &
 
   integer :: i, j, n
 
+  type (eos_t)     :: eos_state
+
   ngf = 1
 
   lo_3D  = [lo(1), lo(2), 0]
@@ -98,6 +101,8 @@ subroutine ca_mol_single_stage(time, level, &
 
   dx = delta(1)
   dy = delta(2)
+
+  qaux(:,:,QGAMC) = eos_state % gam1
 
   ! Check if we have violated the CFL criterion.
   call compute_cfl(q, q_lo, q_hi, &

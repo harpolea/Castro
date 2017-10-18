@@ -184,8 +184,13 @@ contains
           bnd_fac = bnd_fac_x*bnd_fac_y*bnd_fac_z
 
           ! signal speeds
-          S_l = min(ul - sqrt(gamcl*pl/rl), ur - sqrt(gamcr*pr/rr))
+          S_l = min(-Smax, min(ul - sqrt(gamcl*pl/rl), ur - sqrt(gamcr*pr/rr)))
           S_r = max(ul + sqrt(gamcl*pl/rl), ur + sqrt(gamcr*pr/rr))
+          if (Smax < S_r) then
+              write(*,*) "Smax = ", Smax, "S_r = ", S_r, "gamcl = ", gamcl, "gamcr = ", gamcr
+          endif
+
+           S_r = max(Smax, max(ul + sqrt(gamcl*pl/rl), ur + sqrt(gamcr*pr/rr)))
 
           if (S_r <= ZERO) then
              ! R region
@@ -387,12 +392,12 @@ subroutine swe_to_comp(swe, slo, shi, comp, clo, chi, lo, hi)
          dual_energy_eta1, QPRES
     use probdata_module, only : g
     use eos_module, only : eos
-    use eos_type_module, only : eos_t, eos_input_rt
+    use eos_type_module, only : eos_t, eos_input_rp
     use advection_util_module, only: swectoprim, compctoprim
 
     integer, intent(in)   :: slo(3), shi(3), clo(3), chi(3), lo(3), hi(3)
     real(rt), intent(in)  :: swe(slo(1):shi(1), slo(2):shi(2), slo(3):shi(3), NVAR)
-    real(rt), intent(inout) :: comp(clo(1):chi(1), clo(2):chi(2), clo(3):chi(3), NVAR)
+    real(rt), intent(out) :: comp(clo(1):chi(1), clo(2):chi(2), clo(3):chi(3), NVAR)
 
     real(rt) :: q_swe(slo(1):shi(1), slo(2):shi(2), slo(3):shi(3), QVAR)
     real(rt) :: q_comp(clo(1):chi(1), clo(2):chi(2), clo(3):chi(3), QVAR)
@@ -402,8 +407,11 @@ subroutine swe_to_comp(swe, slo, shi, comp, clo, chi, lo, hi)
 
     integer i, j, k
 
+    comp(:,:,:,:) = 0.0d0
+
     ! NOTE: not entirely sure what's happening here but hey it runs?
     if (swe(lo(1), lo(2), lo(3), URHO) == 0.0d0) then
+        write(*,*) "lo = ", lo, "hi = ", hi, "swe = ", swe(lo(1), lo(2), lo(3), :)
         comp(:,:,:,URHO) = 1.0d0
         comp(:,:,:,UEDEN) = 1.0d0
         return
@@ -418,13 +426,14 @@ subroutine swe_to_comp(swe, slo, shi, comp, clo, chi, lo, hi)
                 q_comp(i,j,k,QRHO) = q_swe(i,j,k,QRHO)
                 q_comp(i,j,k,QU:QV) = q_swe(i,j,k,QU:QV)
                 q_comp(i,j,k,QW) = 0.d0
+                q_comp(i,j,k,QPRES) = 0.5d0 * g * q_swe(i,j,k,QRHO)**2
 
                 kineng = 0.5d0 * q_comp(i,j,k,QRHO) * (q_comp(i,j,k,QU)**2 + q_comp(i,j,k,QV)**2 + q_comp(i,j,k,QW)**2)
 
                 eos_state % rho = q_comp(i,j,k,QRHO)
-                eos_state % T   = swe(i,j,k,UTEMP)
+                eos_state % p   = q_comp(i,j,k,QPRES)
 
-                call eos(eos_input_rt, eos_state)
+                call eos(eos_input_rp, eos_state)
 
                 q_comp(i,j,k,QREINT) = eos_state % e * q_comp(i,j,k,QRHO)
 
@@ -462,12 +471,14 @@ subroutine comp_to_swe(swe, slo, shi, comp, clo, chi, lo, hi)
     integer i, j, k
 
     ! phi = gh
+    swe(:,:,:,:) = 0.0d0
 
     call compctoprim(lo, hi, comp, clo, chi, q_comp, clo, chi, qaux, clo, chi)
 
     do k = lo(3), hi(3)
         do j = lo(2), hi(2)
             do i = lo(1), hi(1)
+                q_swe(i,j,k,QRHO) = q_comp(i,j,k,QRHO)
                 q_swe(i,j,k,QU:QV) = q_comp(i,j,k,QU:QV)
                 q_swe(i,j,k,QW) = 0.d0
 
