@@ -104,6 +104,21 @@ subroutine ca_mol_single_stage(time, level, &
 
   qaux(:,:,QGAMC) = eos_state % gam1
 
+  ! nan check
+  do n = 1, NVAR
+     do j = lo(2), hi(2)
+        do i = lo(1), hi(1)
+            if (q(i,j,n) /= q(i,j,n)) then
+                if (n==1) then
+                    q(i,j,n) = 1.0d0
+                else
+                    q(i,j,n) = 0.0d0
+                endif
+            endif
+        enddo
+    enddo
+  enddo
+
   ! Check if we have violated the CFL criterion.
   call compute_cfl(q, q_lo, q_hi, &
                    qaux, qa_lo, qa_hi, &
@@ -174,9 +189,9 @@ subroutine ca_mol_single_stage(time, level, &
   deallocate(qxm, qxp, qym, qyp)
 
   ! Normalize the species fluxes
-  call normalize_species_fluxes(flux1, flux1_lo, flux1_hi, &
-                                flux2, flux2_lo, flux2_hi, &
-                                [lo(1), lo(2), 0], [hi(1), hi(2), 0])
+  ! call normalize_species_fluxes(flux1, flux1_lo, flux1_hi, &
+  !                               flux2, flux2_lo, flux2_hi, &
+  !                               [lo(1), lo(2), 0], [hi(1), hi(2), 0])
 
 
   ! Make the update for this state
@@ -198,6 +213,10 @@ subroutine ca_mol_single_stage(time, level, &
 
            ! include source terms
            update(i,j,n) = update(i,j,n) + srcU(i,j,n)
+
+           if (update(i,j,n) /= update(i,j,n)) then
+               update(i,j,n) = 0.0d0
+           endif
         enddo
 
      enddo
@@ -208,6 +227,9 @@ subroutine ca_mol_single_stage(time, level, &
      do j = lo(2), hi(2)
         do i = lo(1), hi(1)+1
            flux1(i,j,n) = dt * flux1(i,j,n) * area1(i,j)
+           if (flux1(i,j,n) /= flux1(i,j,n)) then
+               flux1(i,j,n) = 0.0d0
+           endif
         enddo
      enddo
   enddo
@@ -216,7 +238,11 @@ subroutine ca_mol_single_stage(time, level, &
      do j = lo(2), hi(2)+1
         do i = lo(1), hi(1)
            flux2(i,j,n) = dt * flux2(i,j,n) * area2(i,j)
+           if (flux2(i,j,n) /= flux2(i,j,n)) then
+               flux2(i,j,n) = 0.0d0
+           endif
         enddo
      enddo
   enddo
+
 end subroutine ca_mol_single_stage

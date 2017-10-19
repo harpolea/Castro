@@ -389,14 +389,15 @@ end subroutine swe_HLL
 subroutine swe_to_comp(swe, slo, shi, comp, clo, chi, lo, hi)
     use meth_params_module, only: NQ, QVAR, QRHO, QU, QV, QW, &
          NVAR, URHO, UMX, UMY, UMZ, NQAUX, QTEMP, UTEMP, UEDEN, UEINT, &
-         dual_energy_eta1, QPRES
+         dual_energy_eta1, QPRES, UFS
     use probdata_module, only : g
     use eos_module, only : eos
     use eos_type_module, only : eos_t, eos_input_rp
     use advection_util_module, only: swectoprim, compctoprim
+    use network, only : nspec
 
     integer, intent(in)   :: slo(3), shi(3), clo(3), chi(3), lo(3), hi(3)
-    real(rt), intent(in)  :: swe(slo(1):shi(1), slo(2):shi(2), slo(3):shi(3), NVAR)
+    real(rt), intent(inout)  :: swe(slo(1):shi(1), slo(2):shi(2), slo(3):shi(3), NVAR)
     real(rt), intent(out) :: comp(clo(1):chi(1), clo(2):chi(2), clo(3):chi(3), NVAR)
 
     real(rt) :: q_swe(slo(1):shi(1), slo(2):shi(2), slo(3):shi(3), QVAR)
@@ -410,12 +411,12 @@ subroutine swe_to_comp(swe, slo, shi, comp, clo, chi, lo, hi)
     comp(:,:,:,:) = 0.0d0
 
     ! NOTE: not entirely sure what's happening here but hey it runs?
-    if (swe(lo(1), lo(2), lo(3), URHO) == 0.0d0) then
-        write(*,*) "lo = ", lo, "hi = ", hi, "swe = ", swe(lo(1), lo(2), lo(3), :)
-        comp(:,:,:,URHO) = 1.0d0
-        comp(:,:,:,UEDEN) = 1.0d0
-        return
-    endif
+    ! if (swe(lo(1), lo(2), lo(3), URHO) == 0.0d0) then
+    !     write(*,*) "lo = ", lo, "hi = ", hi, "swe = ", swe(lo(1), lo(2), lo(3), :)
+    !     comp(:,:,:,URHO) = 1.0d0
+    !     comp(:,:,:,UEDEN) = 1.0d0
+    !     return
+    ! endif
 
     ! phi = gh
     call swectoprim(lo, hi, swe, slo, shi, q_swe, slo, shi, qaux, clo, chi)
@@ -428,7 +429,7 @@ subroutine swe_to_comp(swe, slo, shi, comp, clo, chi, lo, hi)
                 q_comp(i,j,k,QW) = 0.d0
                 q_comp(i,j,k,QPRES) = 0.5d0 * g * q_swe(i,j,k,QRHO)**2
 
-                kineng = 0.5d0 * q_comp(i,j,k,QRHO) * (q_comp(i,j,k,QU)**2 + q_comp(i,j,k,QV)**2 + q_comp(i,j,k,QW)**2)
+                !kineng = 0.5d0 * q_comp(i,j,k,QRHO) * (q_comp(i,j,k,QU)**2 + q_comp(i,j,k,QV)**2 + q_comp(i,j,k,QW)**2)
 
                 eos_state % rho = q_comp(i,j,k,QRHO)
                 eos_state % p   = q_comp(i,j,k,QPRES)
@@ -438,11 +439,11 @@ subroutine swe_to_comp(swe, slo, shi, comp, clo, chi, lo, hi)
                 q_comp(i,j,k,QREINT) = eos_state % e * q_comp(i,j,k,QRHO)
 
                 q_comp(i,j,k,QTEMP) = swe(i,j,k,UTEMP)
-                q_comp(i,j,k,QPRES) = 0.5d0 * g * q_swe(i,j,k,QRHO)**2
 
                 call comp_cons_state(q_comp(i,j,k,:), comp(i,j,k,:))
 
                 comp(i,j,k,UTEMP) = swe(i,j,k,UTEMP)
+                comp(i,j,k,UFS:UFS-1+nspec) = comp(i,j,k,URHO) / nspec
             enddo
         enddo
     enddo
@@ -453,9 +454,10 @@ end subroutine swe_to_comp
 
 subroutine comp_to_swe(swe, slo, shi, comp, clo, chi, lo, hi)
     use meth_params_module, only: QVAR, QRHO, QU, QV, QW, &
-         NVAR, URHO, UMX, UMY, UMZ, QTEMP, UTEMP
+         NVAR, URHO, UMX, UMY, UMZ, QTEMP, UTEMP, UFS
     use probdata_module, only : g
     use advection_util_module, only: compctoprim
+    use network, only : nspec
 
 
     integer, intent(in)   :: slo(3), shi(3), clo(3), chi(3), lo(3), hi(3)
@@ -485,6 +487,8 @@ subroutine comp_to_swe(swe, slo, shi, comp, clo, chi, lo, hi)
                 call swe_cons_state(q_swe(i,j,k,:), swe(i,j,k,:))
 
                 swe(i,j,k,UTEMP) = comp(i,j,k,UTEMP)
+
+                swe(i,j,k,UFS:UFS-1+nspec) = swe(i,j,k,URHO) / nspec
             enddo
         enddo
     enddo

@@ -31,6 +31,8 @@ contains
     integer          :: i,j,n
     real(rt)         :: sum,fac
 
+    return
+
     do j = lo(2),hi(2)
        do i = lo(1),hi(1)+1
           sum = ZERO

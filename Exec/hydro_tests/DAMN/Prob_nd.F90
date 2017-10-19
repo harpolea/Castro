@@ -172,19 +172,19 @@ subroutine ca_initdata(level,time,lo,hi,nscal, &
 
            r = sqrt((xx - center(1))**2 + (yy - center(2))**2)
 
-           if (level <= swe_to_comp_level) then
-               ! shallow water level
-               if (r < damn_rad) then
-                   state(i,j,k,URHO) = h_in
-               else
-                   state(i,j,k,URHO) = h_out
-               end if
-
-               do n = 1,nspec
-                  state(i,j,k,UFS+n-1) = state(i,j,k,URHO) * state(i,j,k,UFS+n-1)
-               end do
-
-           else ! compressible level
+        !    if (level <= swe_to_comp_level) then
+        !        ! shallow water level
+        !        if (r < damn_rad) then
+        !            state(i,j,k,URHO) = h_in
+        !        else
+        !            state(i,j,k,URHO) = h_out
+        !        end if
+           !
+        !        !do n = 1,nspec
+        !         !  state(i,j,k,UFS+n-1) = state(i,j,k,URHO) * state(i,j,k,UFS+n-1)
+        !        !end do
+           !
+        !    else ! compressible level
 
                 if (r < damn_rad) then
                     state(i,j,k,URHO) = h_in
@@ -210,7 +210,7 @@ subroutine ca_initdata(level,time,lo,hi,nscal, &
                 state(i,j,k,UFS) = state(i,j,k,URHO)
 
                 state(i,j,k,UTEMP) = eos_state % T
-           end if
+          ! end if
 
            state(i,j,k,UFA)  = dye
            state(i,j,k,UFS:UFS-1+nspec) = state(i,j,k,URHO) / nspec

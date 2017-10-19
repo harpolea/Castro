@@ -54,9 +54,10 @@ contains
 
   subroutine swe_cons_state(q, U)
     ! calculates the conserved state from the primitive variables
-    use meth_params_module, only: QVAR, QRHO, QU, QV, QW, &
-         NVAR, URHO, UMX, UMY, UMZ, &
-         npassive, upass_map, qpass_map
+    use meth_params_module, only: QVAR, QRHO, QU, QV, QW, QTEMP, &
+         NVAR, URHO, UMX, UMY, UMZ, UEDEN, UEINT, UTEMP, QREINT, &
+         npassive, upass_map, qpass_map, UFS
+    use network, only : nspec
 
     real(rt)        , intent(in)  :: q(QVAR)
     real(rt)        , intent(out) :: U(NVAR)
@@ -70,10 +71,17 @@ contains
     U(URHO) = q(QRHO)
 
     ! since we advect all 3 velocity components regardless of dimension, this
-    ! will be general
-    U(UMX)  = q(QRHO) * q(QU)
-    U(UMY)  = q(QRHO) * q(QV)
-    U(UMZ)  = q(QRHO) * q(QW)
+    U(UMX:UMZ)  = q(QRHO) * q(QU:QW)
+
+    ! don't care for swe but might help
+    U(UEDEN) = q(QREINT) + 0.5d0*q(QRHO)*(q(QU)**2 + q(QV)**2 + q(QW)**2)
+    U(UEINT) = q(QREINT)
+
+    ! we don't care about T here, but initialize it to make NaN
+    ! checking happy
+    U(UTEMP) = q(QTEMP)
+
+    U(UFS:UFS-1+nspec) = U(URHO) / nspec
 
   end subroutine swe_cons_state
 
@@ -81,7 +89,8 @@ contains
     ! calculates the conserved state from the primitive variables
     use meth_params_module, only: QVAR, QRHO, QU, QV, QW, QTEMP, &
          NVAR, URHO, UMX, UMY, UMZ, UEDEN, UEINT, UTEMP, QREINT, &
-         npassive, upass_map, qpass_map, small_dens, small_temp
+         npassive, upass_map, qpass_map, small_dens, small_temp, UFS
+    use network, only : nspec
 
     real(rt)        , intent(in)  :: q(QVAR)
     real(rt)        , intent(out) :: U(NVAR)
@@ -103,13 +112,15 @@ contains
     ! checking happy
     U(UTEMP) = q(QTEMP)
 
+    U(UFS:UFS-1+nspec) = U(URHO) / nspec
+
   end subroutine comp_cons_state
 
 
   subroutine swe_compute_flux(idir, bnd_fac, U, F)
     ! returns the GR flux in direction idir
     use meth_params_module, only: NVAR, URHO, UMX, UMY, UMZ, &
-         npassive, upass_map
+         npassive, upass_map, UEDEN, UEINT, UTEMP
     use probdata_module, only: g
 
     integer, intent(in) :: idir, bnd_fac
@@ -120,25 +131,31 @@ contains
     real(rt)         :: u_flx
 
     if (idir == 1) then
-       u_flx = U(UMX)
+       u_flx = U(UMX) / U(URHO)
     elseif (idir == 2) then
-       u_flx = U(UMY)
+       u_flx = U(UMY) / U(URHO)
     elseif (idir == 3) then
-       u_flx = U(UMZ)
+       u_flx = U(UMZ) / U(URHO)
     endif
 
     if (bnd_fac == 0) then
        u_flx = ZERO
     endif
+
     F(:) = 0.0d0
 
-    F(URHO) = u_flx
+    F(URHO) = U(URHO) * u_flx
 
-    F(UMX) = U(UMX)*u_flx / U(URHO)
-    F(UMY) = U(UMY)*u_flx / U(URHO)
-    F(UMZ) = U(UMZ)*u_flx / U(URHO)
+    F(UMX) = U(UMX) * u_flx
+    F(UMY) = U(UMY) * u_flx
+    F(UMZ) = U(UMZ) * u_flx
 
     F(UMX-1+idir) = F(UMX-1+idir) + 0.5d0 * g * U(URHO)**2
+
+    F(UEINT) = U(UEINT) * u_flx
+    F(UEDEN) = (U(UEDEN) + 0.5d0 * g * U(URHO)**2) * u_flx
+
+    F(UTEMP) = 0.0d0
 
   end subroutine swe_compute_flux
 

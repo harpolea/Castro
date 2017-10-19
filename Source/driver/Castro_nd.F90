@@ -382,7 +382,7 @@ subroutine ca_set_method_params(dm,Density,Xmom,Eden,Eint,Temp, &
 
   ! NTHERM: number of thermodynamic variables (rho, 3 momenta, rho*e, rho*E, T)
   ! NVAR  : number of total variables in initial system
-  NTHERM = 4
+  NTHERM = 7
   NVAR = NTHERM + nspec + naux + numadv
 
   nadv = numadv

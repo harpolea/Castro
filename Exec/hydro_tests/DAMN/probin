@@ -8,14 +8,14 @@
    exp_energy = 1.0d-5
    dens_ambient = 1.0
    nsub = 10
-   swe_to_comp_level  = -1
+   swe_to_comp_level  = 0
 
 /
 
 &tagging
 
-  dengrad = 0.1
-  velgrad = 1.0
+  dengrad = 0.05
+  velgrad = 0.5
 
 /
 

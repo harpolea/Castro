@@ -28,7 +28,7 @@ contains
     integer, intent(in) :: uout_lo(3), uout_hi(3)
     integer, intent(in) ::  vol_lo(3),  vol_hi(3)
 
-    real(rt)        , intent(in) ::  uin( uin_lo(1): uin_hi(1), uin_lo(2): uin_hi(2), uin_lo(3): uin_hi(3),NVAR)
+    real(rt)        , intent(inout) ::  uin( uin_lo(1): uin_hi(1), uin_lo(2): uin_hi(2), uin_lo(3): uin_hi(3),NVAR)
     real(rt)        , intent(inout) :: uout(uout_lo(1):uout_hi(1),uout_lo(2):uout_hi(2),uout_lo(3):uout_hi(3),NVAR)
     real(rt)        , intent(in) ::  vol( vol_lo(1): vol_hi(1), vol_lo(2): vol_hi(2), vol_lo(3): vol_hi(3))
     real(rt)        , intent(inout) :: frac_change
@@ -298,7 +298,7 @@ contains
     real(rt)         :: dt, dx(3), courno
 
     real(rt)         :: courx, coury, courz, courmx, courmy, courmz, courtmp
-    real(rt)         :: dtdx, dtdy, dtdz, c
+    real(rt)         :: dtdx, dtdy, dtdz, c, large_number
     integer          :: i, j, k
 
     ! Compute running max of Courant number over grids
@@ -321,9 +321,38 @@ contains
        dtdz = ZERO
     endif
 
+    large_number = 1.0d30
+
     do k = lo(3),hi(3)
        do j = lo(2),hi(2)
           do i = lo(1),hi(1)
+
+              if (q(i,j,k,QRHO) .le. ZERO) then
+                 !print *, uin(:,:,:,URHO)
+                 print *,'   '
+                 print *,'>>> Error: advection_util_nd.F90::compute_cfl ',i, j, k
+                 print *,'>>> ... negative density ', q(i,j,k,QRHO)
+                 q(i,j,k,QRHO) = 1.0d0
+                 !call bl_error("Error:: advection_util_nd.f90 :: compute_cfl")
+             else if (q(i,j,k,QRHO) > large_number) then
+                    !print *, uin(:,:,:,URHO)
+                    print *,'   '
+                    print *,'>>> Error: advection_util_nd.F90::compute_cfl ',i, j, k
+                    print *,'>>> ... density is very large ', q(i,j,k,QRHO)
+                    q(i,j,k,QRHO) = 1.0d0
+                    !call bl_error("Error:: advection_util_nd.f90 :: compute_cfl")
+             else if (q(i,j,k,QRHO) /= q(i,j,k,QRHO)) then
+                  print *,'   '
+                  print *,'>>> Error: advection_util_nd.F90::compute_cfl ',i, j, k
+                  print *,'>>> ... density is nan ', q(i,j,k,QRHO)
+                  write(*,*) q(i,j,k,QRHO)
+                  call bl_error("Error:: advection_util_nd.f90 :: compute_cfl")
+              endif
+
+              ! stops weird nanning
+              if (maxval(abs(q(i,j,k,QU:QW))) > large_number) then
+                  q(i,j,k,QU:QW) = ZERO
+              endif
 
               c = sqrt(q(i,j,k,QRHO) * g)
 
@@ -351,9 +380,19 @@ contains
                print *,'>>> ... at cell (i,j,k)   : ', i, j, k
                print *,'>>> ... u,v,w, c            ', q(i,j,k,QU), q(i,j,k,QV), q(i,j,k,QW), c
                print *,'>>> ... density             ', q(i,j,k,QRHO)
+               print *,'>>> ... courtmp            ', courtmp
             endif
 
-            courno = max(courno, courtmp)
+            courno = max(min(1.0d0,courno), min(1.0d0,courtmp))
+
+            if (courno > ONE) then
+                print *,'   '
+                call bl_warning("Warning:: advection_util_nd.F90 :: CFL violation in compute_cfl")
+                print *,'>>> ... at cell (i,j,k)   : ', i, j, k
+                print *,'>>> ... u,v,w, c            ', q(i,j,k,QU), q(i,j,k,QV), q(i,j,k,QW), c
+                print *,'>>> ... density             ', q(i,j,k,QRHO)
+                print *,'>>> ... courno            ', courno
+            endif
           enddo
        enddo
     enddo
@@ -368,8 +407,8 @@ contains
     use mempool_module, only : bl_allocate, bl_deallocate
     use actual_network, only : nspec, naux
     use meth_params_module, only : NVAR, URHO, UMX, UMY, UMZ, &
-                                   QRHO, QU, QV, QW, &
-                                   NQ, QC, QCSML, QGAMC, QDPDR, QDPDE, NQAUX, QPRES, &
+                                   QRHO, QU, QV, QW, QTEMP, UTEMP, &
+                                   NQ, QC, QCSML, QGAMC, QDPDR, QDPDE, NQAUX, QPRES, QREINT, UEINT, &
                                    npassive, upass_map, qpass_map, dual_energy_eta1, &
                                    small_dens
     use bl_constants_module, only: ZERO, HALF, ONE
@@ -385,7 +424,7 @@ contains
     integer, intent(in) :: q_lo(3), q_hi(3)
     integer, intent(in) :: qa_lo(3), qa_hi(3)
 
-    real(rt)        , intent(in ) :: uin(uin_lo(1):uin_hi(1),uin_lo(2):uin_hi(2),uin_lo(3):uin_hi(3),NVAR)
+    real(rt)        , intent(inout) :: uin(uin_lo(1):uin_hi(1),uin_lo(2):uin_hi(2),uin_lo(3):uin_hi(3),NVAR)
 
     real(rt)        , intent(inout) :: q(q_lo(1):q_hi(1),q_lo(2):q_hi(2),q_lo(3):q_hi(3),NQ)
     real(rt)        , intent(inout) :: qaux(qa_lo(1):qa_hi(1),qa_lo(2):qa_hi(2),qa_lo(3):qa_hi(3),NQAUX)
@@ -406,7 +445,9 @@ contains
                 print *,'   '
                 print *,'>>> Error: advection_util_nd.F90::swectoprim ',i, j, k
                 print *,'>>> ... negative density ', uin(i,j,k,URHO)
-                call bl_error("Error:: advection_util_nd.f90 :: swectoprim")
+                uin(i,j,k,:) = 0.0d0
+                uin(i,j,k,URHO) = 1.0d0
+                !call bl_error("Error:: advection_util_nd.f90 :: swectoprim")
              else if (uin(i,j,k,URHO) /= uin(i,j,k,URHO)) then
                  print *,'   '
                  print *,'>>> Error: advection_util_nd.F90::swectoprim ',i, j, k
@@ -424,14 +465,34 @@ contains
           do i = lo(1), hi(1)
 
               q(i,j,k,:QW) = uin(i,j,k,:QW)
-
-              q(i,j,k,QRHO) = uin(i,j,k,URHO)
-              q(i,j,k,QU:QW) = uin(i,j,k,UMX:UMZ) / uin(i,j,k,URHO)
+              if (uin(i,j,k,URHO) .le. ZERO) then
+                  q(i,j,k,QRHO) = 1.0d0
+                  q(i,j,k,QU:QW) = 0.1d0 * uin(i,j,k,UMX:UMZ) / uin(i,j,k,URHO)
+              else
+                  q(i,j,k,QRHO) = uin(i,j,k,URHO)
+                  q(i,j,k,QU:QW) = uin(i,j,k,UMX:UMZ) / uin(i,j,k,URHO)
+              endif
               q(i,j,k,QPRES) = 0.5d0 * g * uin(i,j,k,URHO)**2
+
+              q(i,j,k,QREINT) = uin(i,j,k,UEINT)
+              q(i,j,k,QTEMP) = uin(i,j,k,UTEMP)
 
           enddo
        enddo
     enddo
+
+    ! Load passively advected quatities into q
+      do ipassive = 1, npassive
+         n  = upass_map(ipassive)
+         iq = qpass_map(ipassive)
+         do k = lo(3),hi(3)
+            do j = lo(2),hi(2)
+               do i = lo(1),hi(1)
+                  q(i,j,k,iq) = uin(i,j,k,n)/q(i,j,k,QRHO)
+               enddo
+            enddo
+         enddo
+      enddo
 
 end subroutine swectoprim
 
@@ -506,11 +567,12 @@ subroutine compctoprim(lo, hi, &
 
             kineng = HALF * q(i,j,k,QRHO) * (q(i,j,k,QU)**2 + q(i,j,k,QV)**2 + q(i,j,k,QW)**2)
 
-            if ( (uin(i,j,k,UEDEN) - kineng) / uin(i,j,k,UEDEN) .gt. dual_energy_eta1) then
-                q(i,j,k,QREINT) = (uin(i,j,k,UEDEN) - kineng) / uin(i,j,k,URHO)
-             else
-                q(i,j,k,QREINT) = uin(i,j,k,UEINT) / uin(i,j,k,URHO)
-            endif
+            ! if ( (uin(i,j,k,UEDEN) - kineng) / uin(i,j,k,UEDEN) .gt. dual_energy_eta1) then
+            !     q(i,j,k,QREINT) = (uin(i,j,k,UEDEN) - kineng) / uin(i,j,k,URHO)
+            !  else
+            !     q(i,j,k,QREINT) = uin(i,j,k,UEINT) / uin(i,j,k,URHO)
+            ! endif
+            q(i,j,k,QREINT) = uin(i,j,k,UEINT)
 
             q(i,j,k,QTEMP) = uin(i,j,k,UTEMP)
 
