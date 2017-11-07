@@ -54,24 +54,26 @@ contains
 
   subroutine swe_cons_state(q, U)
     ! calculates the conserved state from the primitive variables
-    use meth_params_module, only: QVAR, QRHO, QU, QV, QW, QTEMP, &
+    use meth_params_module, only: NQ, QRHO, QU, QV, QW, QTEMP, &
          NVAR, URHO, UMX, UMY, UMZ, UEDEN, UEINT, UTEMP, QREINT, &
          npassive, upass_map, qpass_map, UFS
     use network, only : nspec
 
-    real(rt)        , intent(in)  :: q(QVAR)
+    real(rt)        , intent(in)  :: q(NQ)
     real(rt)        , intent(out) :: U(NVAR)
 
-    integer  :: ipassive, n, nq
+    !integer  :: ipassive, n, nq
 
-    U(:) = 0.0d0
+    U(1:NVAR) = 0.0d0
 
-    U(:UMZ) = q(:UMZ)
+    !U(:UMZ) = q(:UMZ)
 
     U(URHO) = q(QRHO)
 
     ! since we advect all 3 velocity components regardless of dimension, this
-    U(UMX:UMZ)  = q(QRHO) * q(QU:QW)
+    U(UMX)  = q(QRHO) * q(QU)
+    U(UMY)  = q(QRHO) * q(QV)
+    U(UMZ)  = q(QRHO) * q(QW)
 
     ! don't care for swe but might help
     U(UEDEN) = q(QREINT) + 0.5d0*q(QRHO)*(q(QU)**2 + q(QV)**2 + q(QW)**2)
@@ -87,23 +89,25 @@ contains
 
   subroutine comp_cons_state(q, U)
     ! calculates the conserved state from the primitive variables
-    use meth_params_module, only: QVAR, QRHO, QU, QV, QW, QTEMP, &
+    use meth_params_module, only: NQ, QRHO, QU, QV, QW, QTEMP, &
          NVAR, URHO, UMX, UMY, UMZ, UEDEN, UEINT, UTEMP, QREINT, &
          npassive, upass_map, qpass_map, small_dens, small_temp, UFS
     use network, only : nspec
 
-    real(rt)        , intent(in)  :: q(QVAR)
+    real(rt)        , intent(in)  :: q(NQ)
     real(rt)        , intent(out) :: U(NVAR)
 
-    integer  :: ipassive, n, nq
+    !integer  :: ipassive, n, nq
 
-    U(:) = 0.0d0
+    U(1:NVAR) = 0.0d0
 
     U(URHO) = q(QRHO)
 
     ! since we advect all 3 velocity components regardless of dimension, this
     ! will be general
-    U(UMX:UMZ)  = q(QRHO) * q(QU:QW)
+    U(UMX)  = q(QRHO) * q(QU)
+    U(UMY)  = q(QRHO) * q(QV)
+    U(UMZ)  = q(QRHO) * q(QW)
 
     U(UEDEN) = q(QREINT) + 0.5d0*q(QRHO)*(q(QU)**2 + q(QV)**2 + q(QW)**2)
     U(UEINT) = q(QREINT)
@@ -113,6 +117,8 @@ contains
     U(UTEMP) = q(QTEMP)
 
     U(UFS:UFS-1+nspec) = U(URHO) / nspec
+
+    !write(*,*) "UMZ, QW, q(QW), U(UMZ), UEDEN, UEINT", UMZ, QW, q(QW), U(UMZ), UEDEN, UEINT
 
   end subroutine comp_cons_state
 
@@ -142,7 +148,7 @@ contains
        u_flx = ZERO
     endif
 
-    F(:) = 0.0d0
+    F(1:NVAR) = 0.0d0
 
     F(URHO) = U(URHO) * u_flx
 
@@ -184,7 +190,7 @@ contains
     if (bnd_fac == 0) then
        u_flx = ZERO
     endif
-    F(:) = 0.0d0
+    F(1:NVAR) = 0.0d0
 
     F(URHO) = U(URHO) * u_flx
 

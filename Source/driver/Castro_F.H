@@ -125,6 +125,12 @@ extern "C"
   void ca_comp_to_swe
     (BL_FORT_FAB_ARG_3D(S_swe), BL_FORT_FAB_ARG_3D(S_comp), const int* lo, const int* hi);
 
+void ca_swe_to_comp_self
+  (BL_FORT_FAB_ARG_3D(S_swe), const int* lo, const int* hi);
+
+void ca_comp_to_swe_self
+  (BL_FORT_FAB_ARG_3D(S_comp), const int* lo, const int* hi);
+
   void ca_get_swe_to_comp_level(int* lev_out);
 
   void ca_get_center(amrex::Real* center);

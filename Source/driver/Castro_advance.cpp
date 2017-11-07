@@ -158,7 +158,6 @@ Castro::initialize_do_advance(Real time, Real dt, int amr_iteration, int amr_ncy
       for (int i = 0; i < n_lost; i++)
 	     material_lost_through_boundary_temp[i] = 0.0;
 
-
     // For the hydrodynamics update we need to have NUM_GROW ghost zones available,
     // but the state data does not carry ghost zones. So we use a FillPatch
     // using the state data to give us Sborder, which does have ghost zones.
@@ -168,11 +167,16 @@ Castro::initialize_do_advance(Real time, Real dt, int amr_iteration, int amr_ncy
 
       if (mol_iteration == 0) {
 
+    //   MultiFab& S_old = get_old_data(State_Type);
+    //   std::cout << "nan checking\n";
+    //   // Check for NaN's.
+    //   check_for_nan(S_old);
+    //   std::cout << "checked nans\n";
+
     	// first MOL stage
     	Sborder.define(grids, dmap, NUM_STATE, NUM_GROW);
     	const Real prev_time = state[State_Type].prevTime();
     	expand_state(Sborder, prev_time, NUM_GROW);
-
       } else {
 
     	// the initial state for the kth stage follows the Butcher

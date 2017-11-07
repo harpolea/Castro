@@ -80,33 +80,103 @@ end subroutine ca_reset_internal_e
        bind(C, name="ca_swe_to_comp")
 
     use actual_riemann_module, only: swe_to_comp
-    use meth_params_module, only: NVAR
+    use meth_params_module, only: NVAR, URHO
 
     implicit none
 
     integer, intent(in)   :: slo(3), shi(3), clo(3), chi(3), lo(3), hi(3)
-    real(rt), intent(inout)  :: swe(slo(1):shi(1), slo(2):shi(2), slo(3):shi(3), NVAR)
+    real(rt), intent(in)  :: swe(slo(1):shi(1), slo(2):shi(2), slo(3):shi(3), NVAR)
     real(rt), intent(inout) :: comp(clo(1):chi(1), clo(2):chi(2), clo(3):chi(3), NVAR)
 
-    call swe_to_comp(swe, slo, shi, comp, clo, chi, lo, hi)
+    ! write(*,*) "calling ca_swe_to_comp"
+    ! write(*,*) "lo, slo, clo = ", lo, slo, clo
+    ! write(*,*) "hi, shi, chi = ", hi, shi, chi
+
+    if (sum(swe(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),URHO)) == 0.0d0) then
+        comp(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),1:NVAR) = swe(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),1:NVAR)
+    else
+        ! write(*,*) "ca_swe_to_comp", sum(swe(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),URHO))
+        call swe_to_comp(swe, slo, shi, comp, clo, chi, lo, hi)
+    endif
 
   end subroutine ca_swe_to_comp
+
+  subroutine ca_swe_to_comp_self(swe, slo, shi, lo, hi) &
+       bind(C, name="ca_swe_to_comp_self")
+
+    use actual_riemann_module, only: swe_to_comp
+    use meth_params_module, only: NVAR, URHO
+
+    implicit none
+
+    integer, intent(in)   :: slo(3), shi(3), lo(3), hi(3)
+    real(rt), intent(inout)  :: swe(slo(1):shi(1), slo(2):shi(2), slo(3):shi(3), NVAR)
+
+    real(rt) :: comp(slo(1):shi(1), slo(2):shi(2), slo(3):shi(3), NVAR)
+
+    ! write(*,*) "calling ca_swe_to_comp_self"
+    ! write(*,*) "lo, slo = ", lo, slo
+    ! write(*,*) "hi, shi = ", hi, shi
+
+    if (sum(swe(lo(1)+1:hi(1),lo(2):hi(2),lo(3):hi(3),URHO)) == 0.0d0) then
+        write(*,*) "ca_swe_to_comp_self, sum of rhos is zero :("
+        return
+    else
+        ! write(*,*) "ca_swe_to_comp_self", sum(swe(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),URHO))
+        call swe_to_comp(swe, slo, shi, comp, slo, shi, lo, hi)
+
+        swe(slo(1):shi(1), slo(2):shi(2), slo(3):shi(3), 1:NVAR) = comp(slo(1):shi(1), slo(2):shi(2), slo(3):shi(3), 1:NVAR)
+    endif
+
+end subroutine ca_swe_to_comp_self
 
   subroutine ca_comp_to_swe(swe, slo, shi, comp, clo, chi, lo, hi) &
        bind(C, name="ca_comp_to_swe")
 
     use actual_riemann_module, only: comp_to_swe
-    use meth_params_module, only: NVAR
+    use meth_params_module, only: NVAR, URHO
 
     implicit none
 
     integer, intent(in)   :: slo(3), shi(3), clo(3), chi(3), lo(3), hi(3)
     real(rt), intent(out)  :: swe(slo(1):shi(1), slo(2):shi(2), slo(3):shi(3), NVAR)
-    real(rt), intent(in) :: comp(clo(1):chi(1), clo(2):chi(2), clo(3):chi(3), NVAR)
+    real(rt), intent(inout) :: comp(clo(1):chi(1), clo(2):chi(2), clo(3):chi(3), NVAR)
+    !
+    ! write(*,*) "calling ca_comp_to_swe"
 
-    call comp_to_swe(swe, slo, shi, comp, clo, chi, lo, hi)
+    if (sum(comp(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),URHO)) == 0.0d0) then
+        swe(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),1:NVAR) = comp(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),1:NVAR)
+    else
+        call comp_to_swe(swe, slo, shi, comp, clo, chi, lo, hi)
+    endif
 
   end subroutine ca_comp_to_swe
+
+  subroutine ca_comp_to_swe_self(comp, clo, chi, lo, hi) &
+       bind(C, name="ca_comp_to_swe_self")
+
+    use actual_riemann_module, only: comp_to_swe
+    use meth_params_module, only: NVAR, URHO
+
+    implicit none
+
+    integer, intent(in)   :: clo(3), chi(3), lo(3), hi(3)
+    real(rt), intent(inout) :: comp(clo(1):chi(1), clo(2):chi(2), clo(3):chi(3), NVAR)
+
+    real(rt) :: swe(clo(1):chi(1), clo(2):chi(2), clo(3):chi(3), NVAR)
+
+    ! write(*,*) "calling ca_comp_to_swe_self"
+
+    if (sum(comp(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),URHO)) == 0.0d0) then
+        write(*,*) "ca_comp_to_swe_self, sum of rhos is zero :("
+        return
+    else
+        call comp_to_swe(swe, clo, chi, comp, clo, chi, lo, hi)
+
+        comp(clo(1):chi(1), clo(2):chi(2), clo(3):chi(3), 1:NVAR) = swe(clo(1):chi(1), clo(2):chi(2), clo(3):chi(3), 1:NVAR)
+    endif
+
+end subroutine ca_comp_to_swe_self
 
 
   subroutine ca_enforce_minimum_density(uin, uin_lo, uin_hi, &

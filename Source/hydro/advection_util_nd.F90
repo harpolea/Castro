@@ -424,30 +424,37 @@ contains
     integer, intent(in) :: q_lo(3), q_hi(3)
     integer, intent(in) :: qa_lo(3), qa_hi(3)
 
-    real(rt)        , intent(inout) :: uin(uin_lo(1):uin_hi(1),uin_lo(2):uin_hi(2),uin_lo(3):uin_hi(3),NVAR)
+    real(rt)        , intent(in) :: uin(uin_lo(1):uin_hi(1),uin_lo(2):uin_hi(2),uin_lo(3):uin_hi(3),NVAR)
 
     real(rt)        , intent(inout) :: q(q_lo(1):q_hi(1),q_lo(2):q_hi(2),q_lo(3):q_hi(3),NQ)
     real(rt)        , intent(inout) :: qaux(qa_lo(1):qa_hi(1),qa_lo(2):qa_hi(2),qa_lo(3):qa_hi(3),NQAUX)
 
     real(rt)        , parameter :: small = 1.d-8
 
-    integer          :: i, j, k
+    integer          :: i, j, k, ii, jj, kk
     integer          :: n, iq, ipassive
 
-    q(:,:,:,:) = 0.0d0
+    !q(:,:,:,:) = 0.0d0
 
     do k = lo(3), hi(3)
        do j = lo(2), hi(2)
 
           do i = lo(1), hi(1)
              if (uin(i,j,k,URHO) .le. ZERO) then
-                !print *, uin(:,:,:,URHO)
+                 do kk = lo(3), hi(3)
+                    do jj = lo(2), hi(2)
+
+                       do ii = lo(1), hi(1)
+                           print *, uin(ii,jj,kk,1:NVAR)
+                       enddo
+                   enddo
+               enddo
                 print *,'   '
                 print *,'>>> Error: advection_util_nd.F90::swectoprim ',i, j, k
                 print *,'>>> ... negative density ', uin(i,j,k,URHO)
-                uin(i,j,k,:) = 0.0d0
-                uin(i,j,k,URHO) = 1.0d0
-                !call bl_error("Error:: advection_util_nd.f90 :: swectoprim")
+                !uin(i,j,k,:) = 0.0d0
+                !uin(i,j,k,URHO) = 1.0d0
+                call bl_error("Error:: advection_util_nd.f90 :: swectoprim")
              else if (uin(i,j,k,URHO) /= uin(i,j,k,URHO)) then
                  print *,'   '
                  print *,'>>> Error: advection_util_nd.F90::swectoprim ',i, j, k
@@ -455,6 +462,14 @@ contains
                  write(*,*) uin(:,:,:,URHO)
                  call bl_error("Error:: advection_util_nd.f90 :: swectoprim")
              else if (uin(i,j,k,URHO) .lt. small_dens) then
+                 do kk = lo(3), hi(3)
+                    do jj = lo(2), hi(2)
+
+                       do ii = lo(1), hi(1)
+                           print *, uin(ii,jj,kk,1:NVAR)
+                       enddo
+                   enddo
+               enddo
                 print *,'   '
                 print *,'>>> Error: advection_util_nd.F90::swectoprim ',i, j, k
                 print *,'>>> ... small density ', uin(i,j,k,URHO)
@@ -463,14 +478,19 @@ contains
           end do
 
           do i = lo(1), hi(1)
+              !q(i,j,k,1:NQ) = 0.0d0
 
-              q(i,j,k,:QW) = uin(i,j,k,:QW)
+              !q(i,j,k,:QW) = uin(i,j,k,:QW)
               if (uin(i,j,k,URHO) .le. ZERO) then
                   q(i,j,k,QRHO) = 1.0d0
-                  q(i,j,k,QU:QW) = 0.1d0 * uin(i,j,k,UMX:UMZ) / uin(i,j,k,URHO)
+                  q(i,j,k,QU) = 0.1d0 * uin(i,j,k,UMX) !/ uin(i,j,k,URHO)
+                  q(i,j,k,QV) = 0.1d0 * uin(i,j,k,UMY) !/ uin(i,j,k,URHO)
+                  q(i,j,k,QW) = 0.1d0 * uin(i,j,k,UMZ) !/ uin(i,j,k,URHO)
               else
                   q(i,j,k,QRHO) = uin(i,j,k,URHO)
-                  q(i,j,k,QU:QW) = uin(i,j,k,UMX:UMZ) / uin(i,j,k,URHO)
+                  q(i,j,k,QU) = uin(i,j,k,UMX) / uin(i,j,k,URHO)
+                  q(i,j,k,QV) = uin(i,j,k,UMY) / uin(i,j,k,URHO)
+                  q(i,j,k,QW) = uin(i,j,k,UMZ) / uin(i,j,k,URHO)
               endif
               q(i,j,k,QPRES) = 0.5d0 * g * uin(i,j,k,URHO)**2
 
@@ -481,7 +501,7 @@ contains
        enddo
     enddo
 
-    ! Load passively advected quatities into q
+    !Load passively advected quatities into q
       do ipassive = 1, npassive
          n  = upass_map(ipassive)
          iq = qpass_map(ipassive)
@@ -535,7 +555,7 @@ subroutine compctoprim(lo, hi, &
   real(rt)         :: kineng
   type (eos_t)     :: eos_state
 
-  q(:,:,:,:) = 0.0d0
+  !q(:,:,:,:) = 0.0d0
 
   do k = lo(3), hi(3)
      do j = lo(2), hi(2)
@@ -561,6 +581,7 @@ subroutine compctoprim(lo, hi, &
         end do
 
         do i = lo(1), hi(1)
+            q(i,j,k,1:NQ) = 0.0d0
 
             q(i,j,k,QRHO) = uin(i,j,k,URHO)
             q(i,j,k,QU:QW) = uin(i,j,k,UMX:UMZ) / uin(i,j,k,URHO)
@@ -572,6 +593,7 @@ subroutine compctoprim(lo, hi, &
             !  else
             !     q(i,j,k,QREINT) = uin(i,j,k,UEINT) / uin(i,j,k,URHO)
             ! endif
+
             q(i,j,k,QREINT) = uin(i,j,k,UEINT)
 
             q(i,j,k,QTEMP) = uin(i,j,k,UTEMP)
@@ -623,7 +645,7 @@ subroutine compctoprim(lo, hi, &
              qaux(i,j,k,QCSML)  = max(small, small * qaux(i,j,k,QC))
           enddo
        enddo
-enddo
+   enddo
 
 end subroutine compctoprim
 

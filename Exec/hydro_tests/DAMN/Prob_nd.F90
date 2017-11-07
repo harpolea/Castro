@@ -148,7 +148,7 @@ subroutine ca_initdata(level,time,lo,hi,nscal, &
   real(rt)         :: dye, eint, xmin, ymin
   type(eos_t) :: eos_state
 
-  state(:,:,:,:) = 0.0d0
+  !state(:,:,:,:) = 0.0d0
   dye = ZERO
 
   if (level <= swe_to_comp_level) then
@@ -166,6 +166,8 @@ subroutine ca_initdata(level,time,lo,hi,nscal, &
         yy = xlo(2) + delta(2)*dble(j-lo(2)+HALF)
 
         do i = lo(1), hi(1)
+
+            state(i,j,k,1:NVAR) = 0.0d0
 
             xmin = xlo(1) + delta(1)*dble(i-lo(1))
             xx = xlo(1) + delta(1)*dble(i-lo(1)+HALF)

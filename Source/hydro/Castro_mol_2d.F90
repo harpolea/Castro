@@ -102,7 +102,7 @@ subroutine ca_mol_single_stage(time, level, &
   dx = delta(1)
   dy = delta(2)
 
-  qaux(:,:,QGAMC) = eos_state % gam1
+  qaux(qa_lo(1):qa_hi(1),qa_lo(2):qa_hi(2),QGAMC) = eos_state % gam1
 
   ! nan check
   do n = 1, NVAR

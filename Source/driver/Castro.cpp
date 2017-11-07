@@ -1322,11 +1322,11 @@ Castro::enforce_min_density (MultiFab& S_old, MultiFab& S_new)
     if (print_update_diagnostics)
     {
 
-	// Before we do anything, make a copy of the state.
+    	// Before we do anything, make a copy of the state.
 
-	reset_source.define(S_new.boxArray(), S_new.DistributionMap(), S_new.nComp(), 0);
+    	reset_source.define(S_new.boxArray(), S_new.DistributionMap(), S_new.nComp(), 0);
 
-	MultiFab::Copy(reset_source, S_new, 0, 0, S_new.nComp(), 0);
+    	MultiFab::Copy(reset_source, S_new, 0, 0, S_new.nComp(), 0);
 
     }
 
@@ -1404,28 +1404,33 @@ Castro::avgDown (int state_indx)
     int swe_to_comp_level;
     ca_get_swe_to_comp_level(&swe_to_comp_level);
 
+    // NOTE: this one is ok
     if (level == swe_to_comp_level) {
-        // copy fine multifab
-        MultiFab S_fine_swe;
-        MultiFab::Copy(S_fine_swe, S_fine, 0, 0, S_fine.nComp(), 0);
 
-        for (MFIter mfi(S_fine_swe,true); mfi.isValid(); ++mfi)
+        for (MFIter mfi(S_fine,true); mfi.isValid(); ++mfi)
         {
-            const Box& bx = mfi.growntilebox(ng);
-    	    const int idx = mfi.tileIndex();
+            const Box& bx = mfi.growntilebox(S_fine.nGrow());
             // do some conversion stuff
-            ca_comp_to_swe(BL_TO_FORTRAN_3D(S_fine_swe[mfi]), BL_TO_FORTRAN_3D(S_fine[mfi]), ARLIM_3D(bx.loVect()), ARLIM_3D(bx.hiVect()));
+            ca_comp_to_swe_self(BL_TO_FORTRAN_3D(S_fine[mfi]),
+                ARLIM_3D(bx.loVect()), ARLIM_3D(bx.hiVect()));
         }
-
-        amrex::average_down(S_fine_swe, S_crse,
-    			 fgeom, cgeom,
-    			 0, S_fine.nComp(), fine_ratio);
-    } else {
 
         amrex::average_down(S_fine, S_crse,
     			 fgeom, cgeom,
     			 0, S_fine.nComp(), fine_ratio);
 
+         for (MFIter mfi(S_fine,true); mfi.isValid(); ++mfi)
+         {
+             const Box& bx = mfi.growntilebox(S_fine.nGrow());
+             // do some conversion stuff
+             ca_swe_to_comp_self(BL_TO_FORTRAN_3D(S_fine[mfi]),
+                 ARLIM_3D(bx.loVect()), ARLIM_3D(bx.hiVect()));
+         }
+    } else {
+
+        amrex::average_down(S_fine, S_crse,
+    			 fgeom, cgeom,
+    			 0, S_fine.nComp(), fine_ratio);
     }
 }
 
