@@ -892,7 +892,7 @@ Castro::plotFileOutput(const std::string& dir,
 
     // convert to compressible
     // NOTE: this appears to be working???
-    if ((level <= swe_to_comp_level) && (plot_var_map[i].first == 0)) {
+    if (level <= swe_to_comp_level) {
         for (MFIter mfi(plotMF,true); mfi.isValid(); ++mfi)
         {
             const Box& bx = mfi.tilebox();//mfi.growntilebox(plotMF.nGrow());
@@ -911,7 +911,7 @@ Castro::plotFileOutput(const std::string& dir,
 
     // convert back
     // NOTE: not sure if need this
-    if ((level <= swe_to_comp_level) && (plot_var_map[i].first == 0)) {
+    if (level <= swe_to_comp_level) {
         for (MFIter mfi(plotMF,true); mfi.isValid(); ++mfi)
         {
             const Box& bx = mfi.growntilebox(plotMF.nGrow());
