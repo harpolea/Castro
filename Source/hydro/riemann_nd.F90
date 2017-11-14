@@ -395,7 +395,7 @@ end subroutine swe_HLL
 subroutine swe_to_comp(swe, slo, shi, comp, clo, chi, lo, hi)
     use meth_params_module, only: NQ, QVAR, QRHO, QU, QV, QW, &
          NVAR, URHO, UMX, UMY, UMZ, NQAUX, QTEMP, UTEMP, UEDEN, UEINT, &
-         dual_energy_eta1, QPRES, UFS
+         dual_energy_eta1, QPRES, UFS, UFA
     use probdata_module, only : g
     use eos_module, only : eos
     use eos_type_module, only : eos_t, eos_input_rp
@@ -413,37 +413,20 @@ subroutine swe_to_comp(swe, slo, shi, comp, clo, chi, lo, hi)
 
     integer i, j, k, n
 
-    !comp(:,:,:,:) = 0.0d0
-
-    ! NOTE: not entirely sure what's happening here but hey it runs?
-    ! if (swe(lo(1), lo(2), lo(3), URHO) == 0.0d0) then
-    !     write(*,*) "lo = ", lo, "hi = ", hi, "swe = ", swe(lo(1), lo(2), lo(3), :)
-    !     comp(:,:,:,URHO) = 1.0d0
-    !     comp(:,:,:,UEDEN) = 1.0d0
-    !     return
-    ! endif
-
     comp(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3), 1:NVAR) = swe(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3), 1:NVAR)
 
     ! phi = gh
     call swectoprim(lo, hi, swe, slo, shi, q_swe, slo, shi, qaux, slo, shi)
-    !return
-    !q_swe(lo(1):hi(1), lo(2):hi(2), lo(3):hi(3), 1:min(NVAR, NQ)) = swe(lo(1):hi(1), lo(2):hi(2), lo(3):hi(3), 1:min(NVAR, NQ))
-    !
-
-!return
 
     do k = lo(3), hi(3)
         do j = lo(2), hi(2)
             do i = lo(1), hi(1)
-                !comp(i,j,k,1:NVAR) = swe(i,j,k,1:NVAR)
                 q_comp(1:NQ) = q_swe(i,j,k,1:NQ)
                 U_comp(1:NVAR) = 0.0d0
-
-                ! q_comp(QRHO) = q_swe(i,j,k,QRHO)
-                ! q_comp(QU:QV) = q_swe(i,j,k,QU:QV)
                 q_comp(QW) = 0.d0
                 q_comp(QPRES) = 0.5d0 * g * q_swe(i,j,k,QRHO)**2
+
+                q_comp(QRHO) = 2.0d0 * q_swe(i,j,k,QRHO)
 
                 !kineng = 0.5d0 * q_comp(i,j,k,QRHO) * (q_comp(i,j,k,QU)**2 + q_comp(i,j,k,QV)**2 + q_comp(i,j,k,QW)**2)
 
@@ -458,8 +441,8 @@ subroutine swe_to_comp(swe, slo, shi, comp, clo, chi, lo, hi)
 
                 call comp_cons_state(q_comp, U_comp)
 
-                U_comp(UTEMP) = swe(i,j,k,UTEMP)
-                U_comp(UFS:UFS-1+nspec) =  U_comp(URHO) / nspec
+                !U_comp(UTEMP) = swe(i,j,k,UTEMP)
+                !U_comp(UFS:UFS-1+nspec) =  U_comp(URHO) / nspec
 
                 !   write(*,*) "q = ", q_swe(i,j,k,:)
                 !   write(*,*) "U = ",  U_comp
@@ -467,17 +450,15 @@ subroutine swe_to_comp(swe, slo, shi, comp, clo, chi, lo, hi)
                 !  do n = 1, NVAR
                 !      comp(i,j,k,n) = U_comp(n)
                 !  enddo
-                comp(i,j,k,:) = U_comp
-                !write(*,*) "NVAR, URHO, UFS-1+nspec, UEINT, UEDEN, UTEMP ", NVAR, URHO, UFS-1+nspec, UEINT, UEDEN, UTEMP
+                !comp(i,j,k,:) = U_comp
                 comp(i,j,k,URHO) = U_comp(URHO)
                 comp(i,j,k,UMX) = U_comp(UMX)
-                ! WHY DOES THIS LINE NOT WORK????!!
                 comp(i,j,k,UMY) = U_comp(UMY)
-                !comp(i,j,k,UMY) = 0.0d0!U_comp(UMX)
                 comp(i,j,k,UMZ) = U_comp(UMZ)
                 comp(i,j,k,UEINT) = U_comp(UEINT)
                 comp(i,j,k,UEDEN) = U_comp(UEDEN)
                 comp(i,j,k,UTEMP) = U_comp(UTEMP)
+                comp(i,j,k,UFA) = U_comp(UFA)
                 comp(i,j,k,UFS:UFS-1+nspec) = U_comp(UFS:UFS-1+nspec)
             enddo
         enddo
@@ -489,7 +470,7 @@ end subroutine swe_to_comp
 
 subroutine comp_to_swe(swe, slo, shi, comp, clo, chi, lo, hi)
     use meth_params_module, only: QVAR, QRHO, QU, QV, QW, &
-         NVAR, URHO, UMX, UMY, UMZ, QTEMP, UTEMP, UFS, UEDEN, UEINT
+         NVAR, URHO, UMX, UMY, UMZ, QTEMP, UTEMP, UFS, UEDEN, UEINT, UFA
     use probdata_module, only : g
     use advection_util_module, only: compctoprim
     use network, only : nspec
@@ -510,16 +491,6 @@ subroutine comp_to_swe(swe, slo, shi, comp, clo, chi, lo, hi)
 
     ! NOTE: DON'T DO THIS IS CAUSES ALL OF COMP TO BE SET TO ZERO AS WELL
     !swe(:,:,:,:) = 0.0d0
-    !
-    ! write(*,*) "lo, hi  ", lo, hi
-    ! write(*,*) "clo, chi", clo, chi
-    ! do k = lo(3), hi(3)
-    !     do j = lo(2), hi(2)
-    !         do i = lo(1), hi(1)
-    !             write(*,*) comp(i,j,k,:)
-    !         enddo
-    !     enddo
-    ! enddo
 
     call compctoprim(lo, hi, comp, clo, chi, q_comp, clo, chi, qaux, clo, chi)
 
@@ -534,25 +505,25 @@ subroutine comp_to_swe(swe, slo, shi, comp, clo, chi, lo, hi)
                 !
                 ! q_swe(i,j,k,QRHO) = q_comp(i,j,k,QRHO)
                 ! q_swe(i,j,k,QU:QV) = q_comp(i,j,k,QU:QV)
+                q_swe(QRHO) = 0.5d0 * q_comp(i,j,k,QRHO)
                 q_swe(QW) = 0.d0
 
                 call swe_cons_state(q_swe, U_swe)
 
-                U_swe(UTEMP) = comp(i,j,k,UTEMP)
+                !U_swe(UTEMP) = comp(i,j,k,UTEMP)
 
-                U_swe(UFS:UFS-1+nspec) = U_swe(URHO) / nspec
+                !U_swe(UFS:UFS-1+nspec) = U_swe(URHO) / nspec
 
-                swe(i,j,k,1:NVAR) = 0.0d0
+                swe(i,j,k,:) = U_swe
 
                 swe(i,j,k,URHO) = U_swe(URHO)
                 swe(i,j,k,UMX) = U_swe(UMX)
-                ! WHY DOES THIS LINE NOT WORK????!!
                 swe(i,j,k,UMY) = U_swe(UMY)
-                !comp(i,j,k,UMY) = 0.0d0!U_comp(UMX)
                 swe(i,j,k,UMZ) = U_swe(UMZ)
                 swe(i,j,k,UEINT) = U_swe(UEINT)
                 swe(i,j,k,UEDEN) = U_swe(UEDEN)
                 swe(i,j,k,UTEMP) = U_swe(UTEMP)
+                swe(i,j,k,UFA) = U_swe(UFA)
                 swe(i,j,k,UFS:UFS-1+nspec) = U_swe(UFS:UFS-1+nspec)
 
             enddo

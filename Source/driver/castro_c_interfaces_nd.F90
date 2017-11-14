@@ -119,7 +119,7 @@ end subroutine ca_reset_internal_e
     ! write(*,*) "hi, shi = ", hi, shi
 
     if (sum(swe(lo(1)+1:hi(1),lo(2):hi(2),lo(3):hi(3),URHO)) == 0.0d0) then
-        write(*,*) "ca_swe_to_comp_self, sum of rhos is zero :("
+        !write(*,*) "ca_swe_to_comp_self, sum of rhos is zero :("
         return
     else
         ! write(*,*) "ca_swe_to_comp_self", sum(swe(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),URHO))
@@ -168,7 +168,7 @@ end subroutine ca_swe_to_comp_self
     ! write(*,*) "calling ca_comp_to_swe_self"
 
     if (sum(comp(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),URHO)) == 0.0d0) then
-        write(*,*) "ca_comp_to_swe_self, sum of rhos is zero :("
+        !write(*,*) "ca_comp_to_swe_self, sum of rhos is zero :("
         return
     else
         call comp_to_swe(swe, clo, chi, comp, clo, chi, lo, hi)
@@ -176,7 +176,7 @@ end subroutine ca_swe_to_comp_self
         comp(clo(1):chi(1), clo(2):chi(2), clo(3):chi(3), 1:NVAR) = swe(clo(1):chi(1), clo(2):chi(2), clo(3):chi(3), 1:NVAR)
     endif
 
-end subroutine ca_comp_to_swe_self
+  end subroutine ca_comp_to_swe_self
 
 
   subroutine ca_enforce_minimum_density(uin, uin_lo, uin_hi, &

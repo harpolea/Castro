@@ -861,6 +861,7 @@ Castro::plotFileOutput(const std::string& dir,
     const int nGrow = 0;
     MultiFab  plotMF(grids,dmap,n_data_items,nGrow);
     MultiFab* this_dat = 0;
+
     //
     // Cull data from state variables -- use no ghost cells.
     //
@@ -886,10 +887,37 @@ Castro::plotFileOutput(const std::string& dir,
     	}
     }
 
+    int swe_to_comp_level;
+    ca_get_swe_to_comp_level(&swe_to_comp_level);
+
+    // convert to compressible
+    // NOTE: this appears to be working???
+    if ((level <= swe_to_comp_level) && (plot_var_map[i].first == 0)) {
+        for (MFIter mfi(plotMF,true); mfi.isValid(); ++mfi)
+        {
+            const Box& bx = mfi.tilebox();//mfi.growntilebox(plotMF.nGrow());
+            // do some conversion stuff
+            ca_swe_to_comp_self(BL_TO_FORTRAN_3D(plotMF[mfi]),
+                ARLIM_3D(bx.loVect()), ARLIM_3D(bx.hiVect()));
+        }
+    }
+
     //
     // Use the Full pathname when naming the MultiFab.
     //
     std::string TheFullPath = FullPath;
     TheFullPath += BaseName;
     VisMF::Write(plotMF,TheFullPath,how,true);
+
+    // convert back
+    // NOTE: not sure if need this
+    if ((level <= swe_to_comp_level) && (plot_var_map[i].first == 0)) {
+        for (MFIter mfi(plotMF,true); mfi.isValid(); ++mfi)
+        {
+            const Box& bx = mfi.growntilebox(plotMF.nGrow());
+            // do some conversion stuff
+            ca_comp_to_swe_self(BL_TO_FORTRAN_3D(plotMF[mfi]),
+                ARLIM_3D(bx.loVect()), ARLIM_3D(bx.hiVect()));
+        }
+    }
 }

@@ -384,7 +384,7 @@ Castro::initMFs()
 
 #if (BL_SPACEDIM <= 2)
     if (!Geometry::IsCartesian())
-	P_radial.define(getEdgeBoxArray(0), dmap, 1, 0);
+	   P_radial.define(getEdgeBoxArray(0), dmap, 1, 0);
 #endif
 
     if (do_reflux && level > 0) {
@@ -643,7 +643,6 @@ Castro::init (AmrLevel &old)
     	MultiFab& state_MF = get_new_data(s);
     	FillPatch(old, state_MF, state_MF.nGrow(), cur_time, s, 0, state_MF.nComp());
     }
-
 }
 
 //
@@ -1380,7 +1379,6 @@ Castro::enforce_min_density (MultiFab& S_old, MultiFab& S_new)
     }
 
     return dens_change;
-
 }
 
 void
@@ -1390,6 +1388,8 @@ Castro::avgDown (int state_indx)
     BL_PROFILE("Castro::avgDown(state_indx)");
 
     if (level == parent->finestLevel()) return;
+
+    std::cout << "avgDown'ing state_indx " << state_indx << '\n';
 
     Castro& fine_lev = getLevel(level+1);
 
@@ -1404,34 +1404,41 @@ Castro::avgDown (int state_indx)
     int swe_to_comp_level;
     ca_get_swe_to_comp_level(&swe_to_comp_level);
 
-    // NOTE: this one is ok
-    if (level == swe_to_comp_level) {
-
+    if ((level == swe_to_comp_level) && (state_indx == 0)) {
         for (MFIter mfi(S_fine,true); mfi.isValid(); ++mfi)
         {
-            const Box& bx = mfi.growntilebox(S_fine.nGrow());
+            const Box& bx = mfi.tilebox();//growntilebox(S_fine.nGrow());
             // do some conversion stuff
             ca_comp_to_swe_self(BL_TO_FORTRAN_3D(S_fine[mfi]),
                 ARLIM_3D(bx.loVect()), ARLIM_3D(bx.hiVect()));
         }
+    }
 
-        amrex::average_down(S_fine, S_crse,
-    			 fgeom, cgeom,
-    			 0, S_fine.nComp(), fine_ratio);
+    amrex::average_down(S_fine, S_crse,
+			 fgeom, cgeom,
+			 0, S_fine.nComp(), fine_ratio);
 
+    if ((level == swe_to_comp_level) && (state_indx == 0)) {
          for (MFIter mfi(S_fine,true); mfi.isValid(); ++mfi)
          {
-             const Box& bx = mfi.growntilebox(S_fine.nGrow());
+             const Box& bx = mfi.tilebox();//growntilebox(S_fine.nGrow());
              // do some conversion stuff
              ca_swe_to_comp_self(BL_TO_FORTRAN_3D(S_fine[mfi]),
                  ARLIM_3D(bx.loVect()), ARLIM_3D(bx.hiVect()));
          }
-    } else {
-
-        amrex::average_down(S_fine, S_crse,
-    			 fgeom, cgeom,
-    			 0, S_fine.nComp(), fine_ratio);
     }
+
+    // !!!! I think this is wrong as it will convert *all* the stuff on the grid, not just the stuff that has been averaged down to.
+    // if (level == swe_to_comp_level) {
+    //
+    //      for (MFIter mfi(S_crse,true); mfi.isValid(); ++mfi)
+    //      {
+    //          const Box& bx = mfi.tilebox();//S_crse.nGrow());
+    //          // do some conversion stuff
+    //          ca_comp_to_swe_self(BL_TO_FORTRAN_3D(S_crse[mfi]),
+    //              ARLIM_3D(bx.loVect()), ARLIM_3D(bx.hiVect()));
+    //      }
+    // }
 }
 
 void
@@ -1547,7 +1554,6 @@ Castro::apply_problem_tags (TagBoxArray& tags,
             tagfab.tags_and_untags(itags, tilebx);
 	}
     }
-
 }
 
 
@@ -1637,7 +1643,6 @@ Castro::derive (const std::string& name,
                 MultiFab&      mf,
                 int            dcomp)
 {
-
     AmrLevel::derive(name,time,mf,dcomp);
 }
 
@@ -1682,7 +1687,7 @@ Castro::reset_internal_energy(MultiFab& S_new)
 
     if (print_update_diagnostics)
     {
-	old_state.define(S_new.boxArray(), S_new.DistributionMap(), S_new.nComp(), 0);
+    	old_state.define(S_new.boxArray(), S_new.DistributionMap(), S_new.nComp(), 0);
         MultiFab::Copy(old_state, S_new, 0, 0, S_new.nComp(), 0);
     }
 
@@ -1709,16 +1714,16 @@ Castro::reset_internal_energy(MultiFab& S_new)
 
     if (print_update_diagnostics)
     {
-	// Evaluate what the effective reset source was.
+    	// Evaluate what the effective reset source was.
 
-	MultiFab reset_source(S_new.boxArray(), S_new.DistributionMap(), S_new.nComp(), 0);
+    	MultiFab reset_source(S_new.boxArray(), S_new.DistributionMap(), S_new.nComp(), 0);
 
-	MultiFab::Copy(reset_source, S_new, 0, 0, S_new.nComp(), 0);
+    	MultiFab::Copy(reset_source, S_new, 0, 0, S_new.nComp(), 0);
 
-	MultiFab::Subtract(reset_source, old_state, 0, 0, old_state.nComp(), 0);
+    	MultiFab::Subtract(reset_source, old_state, 0, 0, old_state.nComp(), 0);
 
-	bool local = true;
-	Array<Real> reset_update = evaluate_source_change(reset_source, 1.0, local);
+    	bool local = true;
+    	Array<Real> reset_update = evaluate_source_change(reset_source, 1.0, local);
 
 #ifdef BL_LAZY
         Lazy::QueueReduction( [=] () mutable {
@@ -1726,11 +1731,11 @@ Castro::reset_internal_energy(MultiFab& S_new)
 	    ParallelDescriptor::ReduceRealSum(reset_update.dataPtr(), reset_update.size(), ParallelDescriptor::IOProcessorNumber());
 
 	    if (ParallelDescriptor::IOProcessor()) {
-		if (std::abs(reset_update[Eint]) != 0.0) {
-		    std::cout << std::endl << "  Contributions to the state from negative energy resets:" << std::endl;
+    		if (std::abs(reset_update[Eint]) != 0.0) {
+    		    std::cout << std::endl << "  Contributions to the state from negative energy resets:" << std::endl;
 
-		    print_source_change(reset_update);
-		}
+    		    print_source_change(reset_update);
+    		}
 	    }
 
 #ifdef BL_LAZY
@@ -1750,8 +1755,8 @@ Castro::computeTemp(MultiFab& State)
         const Box& bx = mfi.growntilebox();
 
         const int idx = mfi.tileIndex();
-	       ca_compute_temp(ARLIM_3D(bx.loVect()), ARLIM_3D(bx.hiVect()),
-                           BL_TO_FORTRAN_3D(State[mfi]), &idx);
+        ca_compute_temp(ARLIM_3D(bx.loVect()), ARLIM_3D(bx.hiVect()),
+                       BL_TO_FORTRAN_3D(State[mfi]), &idx);
   }
 }
 
@@ -1858,7 +1863,6 @@ Castro::expand_state(MultiFab& S, Real time, int ng)
     AmrLevel::FillPatch(*this,S,ng,time,State_Type,0,NUM_STATE);
 
     //clean_state(S);
-
 }
 
 
@@ -1892,7 +1896,6 @@ Real
 Castro::clean_state(MultiFab& state) {
 
     // Enforce a minimum density.
-
     MultiFab temp_state(state.boxArray(), state.DistributionMap(), state.nComp(), state.nGrow());
 
     MultiFab::Copy(temp_state, state, 0, 0, state.nComp(), state.nGrow());
@@ -1900,14 +1903,11 @@ Castro::clean_state(MultiFab& state) {
     Real frac_change = 1.0;
 
     // Ensure all species are normalized.
-
     normalize_species(state);
 
     // Compute the temperature (note that this will also reset
     // the internal energy for consistency with the total energy).
-
     return frac_change;
-
 }
 
 
@@ -1916,16 +1916,12 @@ Real
 Castro::clean_state(MultiFab& state, MultiFab& state_old) {
 
     // Enforce a minimum density.
-
     Real frac_change = 1.0;
 
     // Ensure all species are normalized.
-
     normalize_species(state);
 
     // Compute the temperature (note that this will also reset
     // the internal energy for consistency with the total energy).
-
     return frac_change;
-
 }

@@ -56,7 +56,7 @@ contains
     ! calculates the conserved state from the primitive variables
     use meth_params_module, only: NQ, QRHO, QU, QV, QW, QTEMP, &
          NVAR, URHO, UMX, UMY, UMZ, UEDEN, UEINT, UTEMP, QREINT, &
-         npassive, upass_map, qpass_map, UFS
+         npassive, upass_map, qpass_map, UFS, UFA
     use network, only : nspec
 
     real(rt)        , intent(in)  :: q(NQ)
@@ -65,8 +65,6 @@ contains
     !integer  :: ipassive, n, nq
 
     U(1:NVAR) = 0.0d0
-
-    !U(:UMZ) = q(:UMZ)
 
     U(URHO) = q(QRHO)
 
@@ -82,8 +80,8 @@ contains
     ! we don't care about T here, but initialize it to make NaN
     ! checking happy
     U(UTEMP) = q(QTEMP)
-
-    U(UFS:UFS-1+nspec) = U(URHO) / nspec
+    U(UFA) = 0.0d0
+    U(UFS:UFS-1+nspec) = U(URHO) !/ nspec
 
   end subroutine swe_cons_state
 
@@ -91,7 +89,7 @@ contains
     ! calculates the conserved state from the primitive variables
     use meth_params_module, only: NQ, QRHO, QU, QV, QW, QTEMP, &
          NVAR, URHO, UMX, UMY, UMZ, UEDEN, UEINT, UTEMP, QREINT, &
-         npassive, upass_map, qpass_map, small_dens, small_temp, UFS
+         npassive, upass_map, qpass_map, small_dens, small_temp, UFS, UFA
     use network, only : nspec
 
     real(rt)        , intent(in)  :: q(NQ)
@@ -115,10 +113,8 @@ contains
     ! we don't care about T here, but initialize it to make NaN
     ! checking happy
     U(UTEMP) = q(QTEMP)
-
-    U(UFS:UFS-1+nspec) = U(URHO) / nspec
-
-    !write(*,*) "UMZ, QW, q(QW), U(UMZ), UEDEN, UEINT", UMZ, QW, q(QW), U(UMZ), UEDEN, UEINT
+    U(UFA) = 0.0d0
+    U(UFS:UFS-1+nspec) = U(URHO) !/ nspec
 
   end subroutine comp_cons_state
 
@@ -126,8 +122,9 @@ contains
   subroutine swe_compute_flux(idir, bnd_fac, U, F)
     ! returns the GR flux in direction idir
     use meth_params_module, only: NVAR, URHO, UMX, UMY, UMZ, &
-         npassive, upass_map, UEDEN, UEINT, UTEMP
+         npassive, upass_map, UEDEN, UEINT, UTEMP, UFS, UFA
     use probdata_module, only: g
+    use network, only : nspec
 
     integer, intent(in) :: idir, bnd_fac
     real(rt)        , intent(in) :: U(NVAR)
@@ -162,14 +159,17 @@ contains
     F(UEDEN) = (U(UEDEN) + 0.5d0 * g * U(URHO)**2) * u_flx
 
     F(UTEMP) = 0.0d0
+    F(UFA) = U(UFA) * u_flx
+    F(UFS:UFS-1+nspec) = U(UFS:UFS-1+nspec) * u_flx
 
   end subroutine swe_compute_flux
 
   subroutine comp_compute_flux(idir, bnd_fac, U, F, p)
     ! returns the GR flux in direction idir
     use meth_params_module, only: NVAR, URHO, UMX, UMY, UMZ, UTEMP, &
-         UEDEN, UEINT, npassive, upass_map
+         UEDEN, UEINT, npassive, upass_map, UFS, UFA
     use probdata_module, only: g
+    use network, only : nspec
 
     integer, intent(in) :: idir, bnd_fac
     real(rt)        , intent(in) :: U(NVAR)
@@ -204,7 +204,9 @@ contains
     F(UEDEN) = (U(UEDEN) + p) * u_flx
 
     F(UTEMP) = 0.0d0
+    F(UFA) = U(UFA) * u_flx
+    F(UFS:UFS-1+nspec) = U(UFS:UFS-1+nspec) * u_flx
 
-end subroutine comp_compute_flux
+  end subroutine comp_compute_flux
 
 end module riemann_util_module

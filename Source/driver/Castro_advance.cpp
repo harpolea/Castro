@@ -54,7 +54,7 @@ Castro::advance (Real time,
         dt_new = std::min(dt_new, retry_advance(time, dt, amr_iteration, amr_ncycle));
 
     if (use_post_step_regrid)
-	check_for_post_regrid(time + dt);
+	   check_for_post_regrid(time + dt);
 
 #ifdef AUX_UPDATE
     advance_aux(time, dt);
@@ -132,7 +132,6 @@ Castro::do_advance (Real time,
 
       // define the temperature now
       //clean_state(S_new);
-
     }
 
     finalize_do_advance(time, dt, amr_iteration, amr_ncycle);
@@ -283,13 +282,9 @@ Castro::initialize_advance(Real time, Real dt, int amr_iteration, int amr_ncycle
                               << " to avoid timestep constraint violations after a post-timestep regrid."
                               << std::endl << std::endl;
                 }
-
                 do_subcycle = true;
-
             }
-
         }
-
     }
 
     // Pass some information about the state of the simulation to a Fortran module.
@@ -391,15 +386,14 @@ Castro::initialize_advance(Real time, Real dt, int amr_iteration, int amr_ncycle
     mass_fluxes.resize(3);
 
     for (int dir = 0; dir < BL_SPACEDIM; ++dir) {
-	mass_fluxes[dir].reset(new MultiFab(getEdgeBoxArray(dir), dmap, 1, 0));
+	    mass_fluxes[dir].reset(new MultiFab(getEdgeBoxArray(dir), dmap, 1, 0));
         mass_fluxes[dir]->setVal(0.0);
     }
 
     for (int dir = BL_SPACEDIM; dir < 3; ++dir) {
-	mass_fluxes[dir].reset(new MultiFab(get_new_data(State_Type).boxArray(), dmap, 1, 0));
+    	mass_fluxes[dir].reset(new MultiFab(get_new_data(State_Type).boxArray(), dmap, 1, 0));
         mass_fluxes[dir]->setVal(0.0);
     }
-
 }
 
 
@@ -473,8 +467,8 @@ Castro::retry_advance(Real time, Real dt, int amr_iteration, int amr_ncycle)
     if (retry_neg_dens_factor > 0.0) {
 
         // Negative density criterion
-	// Reset so that the desired maximum fractional change in density
-	// is not larger than retry_neg_dens_factor.
+    	// Reset so that the desired maximum fractional change in density
+    	// is not larger than retry_neg_dens_factor.
 
         ParallelDescriptor::ReduceRealMin(frac_change);
 
@@ -492,25 +486,23 @@ Castro::retry_advance(Real time, Real dt, int amr_iteration, int amr_ncycle)
 
         dt_subcycle = dt_sub;
 
-	if (verbose && ParallelDescriptor::IOProcessor()) {
-	  std::cout << std::endl;
-	  std::cout << "  Timestep " << dt << " rejected at level " << level << "." << std::endl;
-	  std::cout << "  Performing a retry, with subcycled timesteps of maximum length dt = " << dt_subcycle << std::endl;
-	  std::cout << std::endl;
-	}
+    	if (verbose && ParallelDescriptor::IOProcessor()) {
+    	  std::cout << std::endl;
+    	  std::cout << "  Timestep " << dt << " rejected at level " << level << "." << std::endl;
+    	  std::cout << "  Performing a retry, with subcycled timesteps of maximum length dt = " << dt_subcycle << std::endl;
+    	  std::cout << std::endl;
+    	}
 
-	// Restore the original values of the state data.
+    	// Restore the original values of the state data.
 
-	for (int k = 0; k < num_state_type; k++) {
+    	for (int k = 0; k < num_state_type; k++) {
 
-	  if (prev_state[k]->hasOldData())
-	      state[k].copyOld(*prev_state[k]);
+    	  if (prev_state[k]->hasOldData())
+    	      state[k].copyOld(*prev_state[k]);
 
-	  state[k].setTimeLevel(time + dt, dt, 0.0);
-	}
-
+    	  state[k].setTimeLevel(time + dt, dt, 0.0);
+    	}
 	}
 
     return dt_new;
-
 }

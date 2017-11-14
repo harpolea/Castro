@@ -194,6 +194,10 @@ subroutine ca_initdata(level,time,lo,hi,nscal, &
                     state(i,j,k,URHO) = h_out
                 end if
 
+                if (level > swe_to_comp_level) then
+                    state(i,j,k,URHO) = 2.0d0 * state(i,j,k,URHO)
+                endif
+
                 !eos_state % e = e_zone
                 eos_state % rho = state(i,j,k,URHO)
                 eos_state % xn(:) = xn_zone(:)
@@ -215,7 +219,7 @@ subroutine ca_initdata(level,time,lo,hi,nscal, &
           ! end if
 
            state(i,j,k,UFA)  = dye
-           state(i,j,k,UFS:UFS-1+nspec) = state(i,j,k,URHO) / nspec
+           state(i,j,k,UFS:UFS-1+nspec) = state(i,j,k,URHO)! / nspec
 
         enddo
      enddo

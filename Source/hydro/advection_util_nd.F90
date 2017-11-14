@@ -410,7 +410,7 @@ contains
                                    QRHO, QU, QV, QW, QTEMP, UTEMP, &
                                    NQ, QC, QCSML, QGAMC, QDPDR, QDPDE, NQAUX, QPRES, QREINT, UEINT, &
                                    npassive, upass_map, qpass_map, dual_energy_eta1, &
-                                   small_dens
+                                   small_dens, QFA
     use bl_constants_module, only: ZERO, HALF, ONE
     use castro_util_module, only: position
     use probdata_module, only : g
@@ -433,8 +433,6 @@ contains
 
     integer          :: i, j, k, ii, jj, kk
     integer          :: n, iq, ipassive
-
-    !q(:,:,:,:) = 0.0d0
 
     do k = lo(3), hi(3)
        do j = lo(2), hi(2)
@@ -478,7 +476,7 @@ contains
           end do
 
           do i = lo(1), hi(1)
-              !q(i,j,k,1:NQ) = 0.0d0
+              q(i,j,k,1:NQ) = 0.0d0
 
               !q(i,j,k,:QW) = uin(i,j,k,:QW)
               if (uin(i,j,k,URHO) .le. ZERO) then
@@ -514,6 +512,8 @@ contains
          enddo
       enddo
 
+      q(i,j,k,QFA) = 0.0d0
+
 end subroutine swectoprim
 
 subroutine compctoprim(lo, hi, &
@@ -529,7 +529,7 @@ subroutine compctoprim(lo, hi, &
                                  QRHO, QU, QV, QW, QREINT, QTEMP, &
                                  NQ, QC, QCSML, QGAMC, QDPDR, QDPDE, NQAUX, QFS, QFX, QGAME, QPRES, UTEMP, &
                                  npassive, upass_map, qpass_map, dual_energy_eta1, &
-                                 small_dens
+                                 small_dens, UFA, QFA
   use bl_constants_module, only: ZERO, HALF, ONE
   use castro_util_module, only: position
   use probdata_module, only : g
@@ -614,6 +614,8 @@ subroutine compctoprim(lo, hi, &
           enddo
        enddo
     enddo
+
+    q(i,j,k,QFA) = 0.0d0
 
     ! get gamc, p, T, c, csml using q state
     do k = lo(3), hi(3)
