@@ -448,21 +448,21 @@ Castro::setPlotVariables ()
               //
     	  for (int i = 0; i < NumSpec; i++)
           {
-                  int len = 20;
-                  Array<int> int_spec_names(len);
-                  //
-                  // This call return the actual length of each string in "len"
-                  //
-                  ca_get_spec_names(int_spec_names.dataPtr(),&i,&len);
-                  char* spec_name = new char[len+1];
-                  for (int j = 0; j < len; j++)
-                      spec_name[j] = int_spec_names[j];
-                  spec_name[len] = '\0';
-    	          string spec_string = "X(";
-                  spec_string += spec_name;
-                  spec_string += ')';
-    	          parent->addDerivePlotVar(spec_string);
-                  delete [] spec_name;
+              int len = 20;
+              Array<int> int_spec_names(len);
+              //
+              // This call return the actual length of each string in "len"
+              //
+              ca_get_spec_names(int_spec_names.dataPtr(),&i,&len);
+              char* spec_name = new char[len+1];
+              for (int j = 0; j < len; j++)
+                  spec_name[j] = int_spec_names[j];
+              spec_name[len] = '\0';
+	          string spec_string = "X(";
+              spec_string += spec_name;
+              spec_string += ')';
+	          parent->addDerivePlotVar(spec_string);
+              delete [] spec_name;
     	  }
       }
   }
@@ -892,7 +892,8 @@ Castro::plotFileOutput(const std::string& dir,
 
     // convert to compressible
     // NOTE: this appears to be working???
-    if (level <= swe_to_comp_level) {
+
+    if ((level <= swe_to_comp_level) && (State_Type == 0)) {
         for (MFIter mfi(plotMF,true); mfi.isValid(); ++mfi)
         {
             const Box& bx = mfi.tilebox();//mfi.growntilebox(plotMF.nGrow());
@@ -911,13 +912,13 @@ Castro::plotFileOutput(const std::string& dir,
 
     // convert back
     // NOTE: not sure if need this
-    if (level <= swe_to_comp_level) {
-        for (MFIter mfi(plotMF,true); mfi.isValid(); ++mfi)
-        {
-            const Box& bx = mfi.growntilebox(plotMF.nGrow());
-            // do some conversion stuff
-            ca_comp_to_swe_self(BL_TO_FORTRAN_3D(plotMF[mfi]),
-                ARLIM_3D(bx.loVect()), ARLIM_3D(bx.hiVect()));
-        }
-    }
+    // if ((level <= swe_to_comp_level) && (State_Type == 0)) {
+    //     for (MFIter mfi(plotMF,true); mfi.isValid(); ++mfi)
+    //     {
+    //         const Box& bx = mfi.tilebox();//plotMF.nGrow());
+    //         // do some conversion stuff
+    //         ca_comp_to_swe_self(BL_TO_FORTRAN_3D(plotMF[mfi]),
+    //             ARLIM_3D(bx.loVect()), ARLIM_3D(bx.hiVect()));
+    //     }
+    // }
 }

@@ -495,6 +495,8 @@ contains
               q(i,j,k,QREINT) = uin(i,j,k,UEINT)
               q(i,j,k,QTEMP) = uin(i,j,k,UTEMP)
 
+              q(i,j,k,QFA) = 0.0d0
+
           enddo
        enddo
     enddo
@@ -511,8 +513,6 @@ contains
             enddo
          enddo
       enddo
-
-      q(i,j,k,QFA) = 0.0d0
 
 end subroutine swectoprim
 
@@ -598,6 +598,8 @@ subroutine compctoprim(lo, hi, &
 
             q(i,j,k,QTEMP) = uin(i,j,k,UTEMP)
 
+            q(i,j,k,QFA) = 0.0d0
+
         enddo
      enddo
   enddo
@@ -614,8 +616,6 @@ subroutine compctoprim(lo, hi, &
           enddo
        enddo
     enddo
-
-    q(i,j,k,QFA) = 0.0d0
 
     ! get gamc, p, T, c, csml using q state
     do k = lo(3), hi(3)

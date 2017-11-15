@@ -627,6 +627,7 @@ void
 Castro::init (AmrLevel &old)
 {
     BL_PROFILE("Castro::init(old)");
+    std::cout << "Castro::init (AmrLevel &old)\n";
 
     Castro* oldlev = (Castro*) &old;
 
@@ -639,9 +640,30 @@ Castro::init (AmrLevel &old)
     Real dt_old    = cur_time - prev_time;
     setTimeLevel(cur_time,dt_old,dt_new);
 
+    const Geometry&         cgeom   = oldlev->geom;
+
+    int swe_to_comp_level;
+    ca_get_swe_to_comp_level(&swe_to_comp_level);
+
     for (int s = 0; s < num_state_type; ++s) {
     	MultiFab& state_MF = get_new_data(s);
-    	FillPatch(old, state_MF, state_MF.nGrow(), cur_time, s, 0, state_MF.nComp());
+
+        // This does nothing
+        // int swe_to_comp_level;
+        // ca_get_swe_to_comp_level(&swe_to_comp_level);
+        //
+    	// for (MFIter mfi(state_MF); mfi.isValid(); ++mfi)
+    	// {
+    	//     const Box& dbx = mfi.growntilebox(state_MF.nGrow());
+        //
+    	//     if ((level == swe_to_comp_level)) {
+        //         ca_swe_to_comp_self(BL_TO_FORTRAN_3D(state_MF[mfi]),
+        //         ARLIM_3D(dbx.loVect()), ARLIM_3D(dbx.hiVect()));
+        //     }
+        // }
+
+    	FillPatch(old, state_MF, state_MF.nGrow(), cur_time, s, 0, state_MF.nComp(), 0, true, level, parent->maxLevel());
+
     }
 }
 
@@ -1107,6 +1129,21 @@ Castro::post_regrid (int lbase,
                      int new_finest)
 {
     fine_mask.clear();
+    //
+    // MultiFab& S_new = get_new_data(State_Type);
+    //
+    // int swe_to_comp_level;
+    // ca_get_swe_to_comp_level(&swe_to_comp_level);
+    //
+    // if ((lbase == swe_to_comp_level)) {
+    //     for (MFIter mfi(S_new,true); mfi.isValid(); ++mfi)
+    //     {
+    //         const Box& bx = mfi.tilebox();//mfi.growntilebox(plotMF.nGrow());
+    //         // do some conversion stuff
+    //         ca_swe_to_comp_self(BL_TO_FORTRAN_3D(S_new[mfi]),
+    //             ARLIM_3D(bx.loVect()), ARLIM_3D(bx.hiVect()));
+    //     }
+    // }
 }
 
 void
@@ -1404,11 +1441,11 @@ Castro::avgDown (int state_indx)
     int swe_to_comp_level;
     ca_get_swe_to_comp_level(&swe_to_comp_level);
 
-    if ((level == swe_to_comp_level) && (state_indx == 0)) {
+    if ((level == swe_to_comp_level)){//} && (state_indx == 0)) {
         for (MFIter mfi(S_fine,true); mfi.isValid(); ++mfi)
-        {
+        { //it breaks without this
             const Box& bx = mfi.tilebox();//growntilebox(S_fine.nGrow());
-            // do some conversion stuff
+
             ca_comp_to_swe_self(BL_TO_FORTRAN_3D(S_fine[mfi]),
                 ARLIM_3D(bx.loVect()), ARLIM_3D(bx.hiVect()));
         }
@@ -1418,11 +1455,11 @@ Castro::avgDown (int state_indx)
 			 fgeom, cgeom,
 			 0, S_fine.nComp(), fine_ratio);
 
-    if ((level == swe_to_comp_level) && (state_indx == 0)) {
+    if ((level == swe_to_comp_level)){//} && (state_indx == 0)) {
          for (MFIter mfi(S_fine,true); mfi.isValid(); ++mfi)
          {
              const Box& bx = mfi.tilebox();//growntilebox(S_fine.nGrow());
-             // do some conversion stuff
+
              ca_swe_to_comp_self(BL_TO_FORTRAN_3D(S_fine[mfi]),
                  ARLIM_3D(bx.loVect()), ARLIM_3D(bx.hiVect()));
          }

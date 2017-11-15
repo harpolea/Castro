@@ -221,7 +221,7 @@ contains
           uflx(i,j,k,1:NVAR) = F_state(1:NVAR)
        enddo
     enddo
-enddo
+  enddo
 
   end subroutine comp_HLL
 
@@ -503,8 +503,8 @@ subroutine comp_to_swe(swe, slo, shi, comp, clo, chi, lo, hi)
 
                 q_swe(1:NQ) = q_comp(i,j,k,1:NQ)
                 !
-                ! q_swe(i,j,k,QRHO) = q_comp(i,j,k,QRHO)
-                ! q_swe(i,j,k,QU:QV) = q_comp(i,j,k,QU:QV)
+                ! q_swe(QRHO) = q_comp(i,j,k,QRHO)
+                ! q_swe(QU:QV) = q_comp(i,j,k,QU:QV)
                 q_swe(QRHO) = 0.5d0 * q_comp(i,j,k,QRHO)
                 q_swe(QW) = 0.d0
 
