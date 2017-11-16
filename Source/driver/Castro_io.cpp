@@ -898,8 +898,9 @@ Castro::plotFileOutput(const std::string& dir,
         {
             const Box& bx = mfi.tilebox();//mfi.growntilebox(plotMF.nGrow());
             // do some conversion stuff
+            bool ignore_errors = false;
             ca_swe_to_comp_self(BL_TO_FORTRAN_3D(plotMF[mfi]),
-                ARLIM_3D(bx.loVect()), ARLIM_3D(bx.hiVect()));
+                ARLIM_3D(bx.loVect()), ARLIM_3D(bx.hiVect()), &ignore_errors);
         }
     }
 

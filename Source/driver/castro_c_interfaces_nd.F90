@@ -101,7 +101,7 @@ end subroutine ca_reset_internal_e
 
   end subroutine ca_swe_to_comp
 
-  subroutine ca_swe_to_comp_self(swe, slo, shi, lo, hi) &
+  subroutine ca_swe_to_comp_self(swe, slo, shi, lo, hi, ignore_errors) &
        bind(C, name="ca_swe_to_comp_self")
 
     use actual_riemann_module, only: swe_to_comp
@@ -111,6 +111,7 @@ end subroutine ca_reset_internal_e
 
     integer, intent(in)   :: slo(3), shi(3), lo(3), hi(3)
     real(rt), intent(inout)  :: swe(slo(1):shi(1), slo(2):shi(2), slo(3):shi(3), NVAR)
+    logical, intent(in) :: ignore_errors
 
     real(rt) :: comp(slo(1):shi(1), slo(2):shi(2), slo(3):shi(3), NVAR)
 
@@ -123,7 +124,7 @@ end subroutine ca_reset_internal_e
         return
     else
         ! write(*,*) "ca_swe_to_comp_self", sum(swe(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),URHO))
-        call swe_to_comp(swe, slo, shi, comp, slo, shi, lo, hi)
+        call swe_to_comp(swe, slo, shi, comp, slo, shi, lo, hi, ignore_errors)
 
         swe(slo(1):shi(1), slo(2):shi(2), slo(3):shi(3), 1:NVAR) = comp(slo(1):shi(1), slo(2):shi(2), slo(3):shi(3), 1:NVAR)
     endif
@@ -152,7 +153,7 @@ end subroutine ca_swe_to_comp_self
 
   end subroutine ca_comp_to_swe
 
-  subroutine ca_comp_to_swe_self(comp, clo, chi, lo, hi) &
+  subroutine ca_comp_to_swe_self(comp, clo, chi, lo, hi, ignore_errors) &
        bind(C, name="ca_comp_to_swe_self")
 
     use actual_riemann_module, only: comp_to_swe
@@ -162,6 +163,7 @@ end subroutine ca_swe_to_comp_self
 
     integer, intent(in)   :: clo(3), chi(3), lo(3), hi(3)
     real(rt), intent(inout) :: comp(clo(1):chi(1), clo(2):chi(2), clo(3):chi(3), NVAR)
+    logical, intent(in) :: ignore_errors
 
     real(rt) :: swe(clo(1):chi(1), clo(2):chi(2), clo(3):chi(3), NVAR)
 
@@ -171,7 +173,7 @@ end subroutine ca_swe_to_comp_self
         !write(*,*) "ca_comp_to_swe_self, sum of rhos is zero :("
         return
     else
-        call comp_to_swe(swe, clo, chi, comp, clo, chi, lo, hi)
+        call comp_to_swe(swe, clo, chi, comp, clo, chi, lo, hi, ignore_errors)
 
         comp(clo(1):chi(1), clo(2):chi(2), clo(3):chi(3), 1:NVAR) = swe(clo(1):chi(1), clo(2):chi(2), clo(3):chi(3), 1:NVAR)
     endif

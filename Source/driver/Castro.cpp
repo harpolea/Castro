@@ -554,13 +554,13 @@ Castro::initData ()
     const Real SMALL = 1.e-13;
     if (fabs(dx[0] - dx[1]) > SMALL*dx[0])
       {
-	         amrex::Abort("We don't support dx != dy");
+         amrex::Abort("We don't support dx != dy");
       }
 #elif (BL_SPACEDIM == 3)
     const Real SMALL = 1.e-13;
     if ( (fabs(dx[0] - dx[1]) > SMALL*dx[0]) || (fabs(dx[0] - dx[2]) > SMALL*dx[0]) )
       {
-	         amrex::Abort("We don't support dx != dy != dz");
+         amrex::Abort("We don't support dx != dy != dz");
       }
 #endif
 
@@ -586,17 +586,17 @@ Castro::initData ()
 
 #ifdef DIMENSION_AGNOSTIC
           BL_FORT_PROC_CALL(CA_INITDATA,ca_initdata)
-          (level, cur_time, ARLIM_3D(lo), ARLIM_3D(hi), ns,
-      	   BL_TO_FORTRAN_3D(S_new[mfi]), ZFILL(dx),
-      	   ZFILL(gridloc.lo()), ZFILL(gridloc.hi()));
+              (level, cur_time, ARLIM_3D(lo), ARLIM_3D(hi), ns,
+          	   BL_TO_FORTRAN_3D(S_new[mfi]), ZFILL(dx),
+          	   ZFILL(gridloc.lo()), ZFILL(gridloc.hi()));
 #else
           BL_FORT_PROC_CALL(CA_INITDATA,ca_initdata)
-      	  (level, cur_time, lo, hi, ns,
-      	   BL_TO_FORTRAN(S_new[mfi]), dx,
-      	   gridloc.lo(), gridloc.hi());
+          	  (level, cur_time, lo, hi, ns,
+          	   BL_TO_FORTRAN(S_new[mfi]), dx,
+          	   gridloc.lo(), gridloc.hi());
 #endif
 
-              // Verify that the sum of (rho X)_i = rho at every cell
+          // Verify that the sum of (rho X)_i = rho at every cell
     	  const int idx = mfi.tileIndex();
 
            //ca_check_initial_species(ARLIM_3D(lo), ARLIM_3D(hi),
@@ -627,7 +627,6 @@ void
 Castro::init (AmrLevel &old)
 {
     BL_PROFILE("Castro::init(old)");
-    std::cout << "Castro::init (AmrLevel &old)\n";
 
     Castro* oldlev = (Castro*) &old;
 
@@ -642,28 +641,10 @@ Castro::init (AmrLevel &old)
 
     const Geometry&         cgeom   = oldlev->geom;
 
-    int swe_to_comp_level;
-    ca_get_swe_to_comp_level(&swe_to_comp_level);
-
     for (int s = 0; s < num_state_type; ++s) {
     	MultiFab& state_MF = get_new_data(s);
 
-        // This does nothing
-        // int swe_to_comp_level;
-        // ca_get_swe_to_comp_level(&swe_to_comp_level);
-        //
-    	// for (MFIter mfi(state_MF); mfi.isValid(); ++mfi)
-    	// {
-    	//     const Box& dbx = mfi.growntilebox(state_MF.nGrow());
-        //
-    	//     if ((level == swe_to_comp_level)) {
-        //         ca_swe_to_comp_self(BL_TO_FORTRAN_3D(state_MF[mfi]),
-        //         ARLIM_3D(dbx.loVect()), ARLIM_3D(dbx.hiVect()));
-        //     }
-        // }
-
     	FillPatch(old, state_MF, state_MF.nGrow(), cur_time, s, 0, state_MF.nComp(), 0, true, level, parent->maxLevel());
-
     }
 }
 
@@ -742,10 +723,7 @@ Castro::estTimeStep (Real dt_old)
     Real estdt_hydro = max_dt / cfl;
     if (do_hydro)
     {
-
     	  // Compute hydro-limited timestep.
-    	if (do_hydro)
-    	  {
 
 #ifdef _OPENMP
 #pragma omp parallel reduction(min:estdt_hydro)
@@ -769,7 +747,7 @@ Castro::estTimeStep (Real dt_old)
 		      estdt_hydro = std::min(estdt_hydro,dt);
 	      }
 	    }
-	  }
+
 
        ParallelDescriptor::ReduceRealMin(estdt_hydro);
        estdt_hydro *= cfl;
@@ -844,7 +822,6 @@ Castro::computeNewDt (int                   finest_level,
 
               lastDtPlotLimited = 0;
               lastDtBeforePlotLimiting = 0.0;
-
           }
           else {
 
@@ -863,7 +840,6 @@ Castro::computeNewDt (int                   finest_level,
                       }
                   dt_min[i] = std::min(dt_min[i],change_max*dt_level[i]);
               }
-
           }
        }
     }
@@ -913,9 +889,7 @@ Castro::computeNewDt (int                   finest_level,
                 dt_0 = std::max(epsDt, newPlotDt);
                 amrex::Print() << " ... limiting dt to " << dt_0 << " to hit the next plot interval.\n";
             }
-
         }
-
     }
 
     if (small_plot_per_is_exact) {
@@ -944,9 +918,7 @@ Castro::computeNewDt (int                   finest_level,
                 dt_0 = std::max(epsDt, newSmallPlotDt);
                 amrex::Print() << " ... limiting dt to " << dt_0 << " to hit the next smallplot interval.\n";
             }
-
         }
-
     }
 
     //
@@ -1021,7 +993,6 @@ Castro::post_timestep (int iteration)
     BL_PROFILE("Castro::post_timestep()");
 
     // Pass some information about the state of the simulation to a Fortran module.
-
     ca_set_amr_info(level, iteration, -1, -1.0, -1.0);
 
     //
@@ -1065,7 +1036,6 @@ Castro::post_timestep (int iteration)
 
     	  if (nstep%sum_interval == 0)
     	    sum_int_test = true;
-
     	}
 
     	bool sum_per_test = false;
@@ -1077,7 +1047,6 @@ Castro::post_timestep (int iteration)
 
     	    if (num_per_old != num_per_new)
     	    sum_per_test = true;
-
     	}
 
         if (sum_int_test || sum_per_test)
@@ -1129,21 +1098,6 @@ Castro::post_regrid (int lbase,
                      int new_finest)
 {
     fine_mask.clear();
-    //
-    // MultiFab& S_new = get_new_data(State_Type);
-    //
-    // int swe_to_comp_level;
-    // ca_get_swe_to_comp_level(&swe_to_comp_level);
-    //
-    // if ((lbase == swe_to_comp_level)) {
-    //     for (MFIter mfi(S_new,true); mfi.isValid(); ++mfi)
-    //     {
-    //         const Box& bx = mfi.tilebox();//mfi.growntilebox(plotMF.nGrow());
-    //         // do some conversion stuff
-    //         ca_swe_to_comp_self(BL_TO_FORTRAN_3D(S_new[mfi]),
-    //             ARLIM_3D(bx.loVect()), ARLIM_3D(bx.hiVect()));
-    //     }
-    // }
 }
 
 void
@@ -1181,7 +1135,6 @@ Castro::post_init (Real stop_time)
 
 	  if (nstep%sum_interval == 0)
 	    sum_int_test = true;
-
 	}
 
 	bool sum_per_test = false;
@@ -1193,7 +1146,6 @@ Castro::post_init (Real stop_time)
 
 	  if (num_per_old != num_per_new)
 	    sum_per_test = true;
-
 	}
 
         if (sum_int_test || sum_per_test)
@@ -1357,13 +1309,11 @@ Castro::enforce_min_density (MultiFab& S_old, MultiFab& S_new)
 
     if (print_update_diagnostics)
     {
-
     	// Before we do anything, make a copy of the state.
 
     	reset_source.define(S_new.boxArray(), S_new.DistributionMap(), S_new.nComp(), 0);
 
     	MultiFab::Copy(reset_source, S_new, 0, 0, S_new.nComp(), 0);
-
     }
 
 #ifdef _OPENMP
@@ -1383,7 +1333,6 @@ Castro::enforce_min_density (MultiFab& S_old, MultiFab& S_new)
 				   vol.dataPtr(), ARLIM_3D(vol.loVect()), ARLIM_3D(vol.hiVect()),
 				   ARLIM_3D(bx.loVect()), ARLIM_3D(bx.hiVect()),
 				   &dens_change, &verbose, &idx);
-
     }
 
     if (print_update_diagnostics)
@@ -1402,11 +1351,11 @@ Castro::enforce_min_density (MultiFab& S_old, MultiFab& S_new)
 	    ParallelDescriptor::ReduceRealSum(reset_update.dataPtr(), reset_update.size(), ParallelDescriptor::IOProcessorNumber());
 
 	    if (ParallelDescriptor::IOProcessor()) {
-		if (std::abs(reset_update[0]) != 0.0) {
-		    std::cout << std::endl << "  Contributions to the state from negative density resets:" << std::endl;
+    		if (std::abs(reset_update[0]) != 0.0) {
+    		    std::cout << std::endl << "  Contributions to the state from negative density resets:" << std::endl;
 
-		    print_source_change(reset_update);
-		}
+    		    print_source_change(reset_update);
+    		}
 	    }
 
 #ifdef BL_LAZY
@@ -1426,8 +1375,6 @@ Castro::avgDown (int state_indx)
 
     if (level == parent->finestLevel()) return;
 
-    std::cout << "avgDown'ing state_indx " << state_indx << '\n';
-
     Castro& fine_lev = getLevel(level+1);
 
     const Geometry& fgeom = fine_lev.geom;
@@ -1441,13 +1388,14 @@ Castro::avgDown (int state_indx)
     int swe_to_comp_level;
     ca_get_swe_to_comp_level(&swe_to_comp_level);
 
-    if ((level == swe_to_comp_level)){//} && (state_indx == 0)) {
+    if ((level == swe_to_comp_level)){
         for (MFIter mfi(S_fine,true); mfi.isValid(); ++mfi)
         { //it breaks without this
             const Box& bx = mfi.tilebox();//growntilebox(S_fine.nGrow());
+            bool f = false;
 
             ca_comp_to_swe_self(BL_TO_FORTRAN_3D(S_fine[mfi]),
-                ARLIM_3D(bx.loVect()), ARLIM_3D(bx.hiVect()));
+                ARLIM_3D(bx.loVect()), ARLIM_3D(bx.hiVect()), &f);
         }
     }
 
@@ -1455,27 +1403,16 @@ Castro::avgDown (int state_indx)
 			 fgeom, cgeom,
 			 0, S_fine.nComp(), fine_ratio);
 
-    if ((level == swe_to_comp_level)){//} && (state_indx == 0)) {
+    if ((level == swe_to_comp_level)){
          for (MFIter mfi(S_fine,true); mfi.isValid(); ++mfi)
          {
              const Box& bx = mfi.tilebox();//growntilebox(S_fine.nGrow());
+             bool f = false;
 
              ca_swe_to_comp_self(BL_TO_FORTRAN_3D(S_fine[mfi]),
-                 ARLIM_3D(bx.loVect()), ARLIM_3D(bx.hiVect()));
+                 ARLIM_3D(bx.loVect()), ARLIM_3D(bx.hiVect()), &f);
          }
     }
-
-    // !!!! I think this is wrong as it will convert *all* the stuff on the grid, not just the stuff that has been averaged down to.
-    // if (level == swe_to_comp_level) {
-    //
-    //      for (MFIter mfi(S_crse,true); mfi.isValid(); ++mfi)
-    //      {
-    //          const Box& bx = mfi.tilebox();//S_crse.nGrow());
-    //          // do some conversion stuff
-    //          ca_comp_to_swe_self(BL_TO_FORTRAN_3D(S_crse[mfi]),
-    //              ARLIM_3D(bx.loVect()), ARLIM_3D(bx.hiVect()));
-    //      }
-    // }
 }
 
 void
@@ -1534,7 +1471,6 @@ Castro::errorEst (TagBoxArray& tags,
 }
 
 
-
 void
 Castro::apply_problem_tags (TagBoxArray& tags,
                             int          clearval,
@@ -1589,7 +1525,7 @@ Castro::apply_problem_tags (TagBoxArray& tags,
 	    // Now update the tags in the TagBox.
 	    //
             tagfab.tags_and_untags(itags, tilebx);
-	}
+    	}
     }
 }
 
@@ -1613,54 +1549,53 @@ Castro::apply_tagging_func(TagBoxArray& tags, int clearval, int tagval, Real tim
 #ifdef _OPENMP
 #pragma omp parallel
 #endif
-	{
-	    Array<int>  itags;
+    	{
+    	    Array<int>  itags;
 
-	    for (MFIter mfi(*mf,true); mfi.isValid(); ++mfi)
-	    {
-		// FABs
-		FArrayBox&  datfab  = (*mf)[mfi];
-		TagBox&     tagfab  = tags[mfi];
+    	    for (MFIter mfi(*mf,true); mfi.isValid(); ++mfi)
+    	    {
+        		// FABs
+        		FArrayBox&  datfab  = (*mf)[mfi];
+        		TagBox&     tagfab  = tags[mfi];
 
-		// tile box
-		const Box&  tilebx  = mfi.tilebox();
+        		// tile box
+        		const Box&  tilebx  = mfi.tilebox();
 
-		// physical tile box
-		const RealBox& pbx  = RealBox(tilebx,geom.CellSize(),geom.ProbLo());
+        		// physical tile box
+        		const RealBox& pbx  = RealBox(tilebx,geom.CellSize(),geom.ProbLo());
 
-		//fab box
-		const Box&  datbox  = datfab.box();
+        		//fab box
+        		const Box&  datbox  = datfab.box();
 
-		// We cannot pass tagfab to Fortran becuase it is BaseFab<char>.
-		// So we are going to get a temporary integer array.
-		tagfab.get_itags(itags, tilebx);
+        		// We cannot pass tagfab to Fortran becuase it is BaseFab<char>.
+        		// So we are going to get a temporary integer array.
+        		tagfab.get_itags(itags, tilebx);
 
-		// data pointer and index space
-		int*        tptr    = itags.dataPtr();
-		const int*  tlo     = tilebx.loVect();
-		const int*  thi     = tilebx.hiVect();
-		//
-		const int*  lo      = tlo;
-		const int*  hi      = thi;
-		//
-		const Real* xlo     = pbx.lo();
-		//
-		Real*       dat     = datfab.dataPtr();
-		const int*  dlo     = datbox.loVect();
-		const int*  dhi     = datbox.hiVect();
-		const int   ncomp   = datfab.nComp();
+        		// data pointer and index space
+        		int*        tptr    = itags.dataPtr();
+        		const int*  tlo     = tilebx.loVect();
+        		const int*  thi     = tilebx.hiVect();
+        		//
+        		const int*  lo      = tlo;
+        		const int*  hi      = thi;
+        		//
+        		const Real* xlo     = pbx.lo();
+        		//
+        		Real*       dat     = datfab.dataPtr();
+        		const int*  dlo     = datbox.loVect();
+        		const int*  dhi     = datbox.hiVect();
+        		const int   ncomp   = datfab.nComp();
 
-		err_list[j].errFunc()(tptr, tlo, thi, &tagval,
-				      &clearval, dat, dlo, dhi,
-				      lo,hi, &ncomp, domain_lo, domain_hi,
-				      dx, xlo, prob_lo, &time, &level);
-		//
-		// Now update the tags in the TagBox.
-		//
+        		err_list[j].errFunc()(tptr, tlo, thi, &tagval,
+        				      &clearval, dat, dlo, dhi,
+        				      lo,hi, &ncomp, domain_lo, domain_hi,
+        				      dx, xlo, prob_lo, &time, &level);
+        		//
+        		// Now update the tags in the TagBox.
+        		//
                 tagfab.tags_and_untags(itags, tilebx);
-	    }
-	}
-
+    	    }
+    	}
     }
 }
 

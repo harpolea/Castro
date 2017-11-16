@@ -392,7 +392,7 @@ end subroutine swe_HLL
 
 
 
-subroutine swe_to_comp(swe, slo, shi, comp, clo, chi, lo, hi)
+subroutine swe_to_comp(swe, slo, shi, comp, clo, chi, lo, hi, ignore_errors)
     use meth_params_module, only: NQ, QVAR, QRHO, QU, QV, QW, &
          NVAR, URHO, UMX, UMY, UMZ, NQAUX, QTEMP, UTEMP, UEDEN, UEINT, &
          dual_energy_eta1, QPRES, UFS, UFA
@@ -405,6 +405,7 @@ subroutine swe_to_comp(swe, slo, shi, comp, clo, chi, lo, hi)
     integer, intent(in)   :: slo(3), shi(3), clo(3), chi(3), lo(3), hi(3)
     real(rt), intent(in)  :: swe(slo(1):shi(1), slo(2):shi(2), slo(3):shi(3), NVAR)
     real(rt), intent(out) :: comp(clo(1):chi(1), clo(2):chi(2), clo(3):chi(3), NVAR)
+    logical, optional, intent(in) :: ignore_errors
 
     real(rt) :: q_swe(slo(1):shi(1), slo(2):shi(2), slo(3):shi(3), NQ)
     real(rt) :: q_comp(NQ), U_comp(NVAR)
@@ -412,11 +413,18 @@ subroutine swe_to_comp(swe, slo, shi, comp, clo, chi, lo, hi)
     type (eos_t)     :: eos_state
 
     integer i, j, k, n
+    logical ignore_errs
+
+    if (present(ignore_errors)) then
+        ignore_errs = ignore_errors
+    else
+        ignore_errs = .false.
+    endif
 
     !comp(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3), 1:NVAR) = swe(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3), 1:NVAR)
 
     ! phi = gh
-    call swectoprim(lo, hi, swe, slo, shi, q_swe, slo, shi, qaux, slo, shi)
+    call swectoprim(lo, hi, swe, slo, shi, q_swe, slo, shi, qaux, slo, shi, ignore_errors)
 
     do k = lo(3), hi(3)
         do j = lo(2), hi(2)
@@ -468,7 +476,7 @@ end subroutine swe_to_comp
 
 
 
-subroutine comp_to_swe(swe, slo, shi, comp, clo, chi, lo, hi)
+subroutine comp_to_swe(swe, slo, shi, comp, clo, chi, lo, hi, ignore_errors)
     use meth_params_module, only: QVAR, QRHO, QU, QV, QW, &
          NVAR, URHO, UMX, UMY, UMZ, QTEMP, UTEMP, UFS, UEDEN, UEINT, UFA
     use probdata_module, only : g
@@ -480,19 +488,27 @@ subroutine comp_to_swe(swe, slo, shi, comp, clo, chi, lo, hi)
     integer, intent(in)   :: slo(3), shi(3), clo(3), chi(3), lo(3), hi(3)
     real(rt), intent(inout)  :: swe(slo(1):shi(1), slo(2):shi(2), slo(3):shi(3), NVAR)
     real(rt), intent(in) :: comp(clo(1):chi(1), clo(2):chi(2), clo(3):chi(3), NVAR)
+    logical, optional, intent(in) :: ignore_errors
 
     real(rt) :: q_swe(NQ), U_swe(NVAR)
     real(rt) :: q_comp(clo(1):chi(1), clo(2):chi(2), clo(3):chi(3), NQ)
     real(rt) :: qaux(clo(1):chi(1), clo(2):chi(2), clo(3):chi(3), NQAUX)
 
     integer i, j, k
+    logical ignore_errs
+
+    if (present(ignore_errors)) then
+        ignore_errs = ignore_errors
+    else
+        ignore_errs = .false.
+    endif
 
     ! phi = gh
 
     ! NOTE: DON'T DO THIS IS CAUSES ALL OF COMP TO BE SET TO ZERO AS WELL
     !swe(:,:,:,:) = 0.0d0
 
-    call compctoprim(lo, hi, comp, clo, chi, q_comp, clo, chi, qaux, clo, chi)
+    call compctoprim(lo, hi, comp, clo, chi, q_comp, clo, chi, qaux, clo, chi, ignore_errs)
 
     do k = lo(3), hi(3)
         do j = lo(2), hi(2)

@@ -402,7 +402,7 @@ contains
   subroutine swectoprim(lo, hi, &
                      uin, uin_lo, uin_hi, &
                      q,     q_lo,   q_hi, &
-                     qaux, qa_lo,  qa_hi)
+                     qaux, qa_lo,  qa_hi, ignore_errors)
 
     use mempool_module, only : bl_allocate, bl_deallocate
     use actual_network, only : nspec, naux
@@ -429,6 +429,8 @@ contains
     real(rt)        , intent(inout) :: q(q_lo(1):q_hi(1),q_lo(2):q_hi(2),q_lo(3):q_hi(3),NQ)
     real(rt)        , intent(inout) :: qaux(qa_lo(1):qa_hi(1),qa_lo(2):qa_hi(2),qa_lo(3):qa_hi(3),NQAUX)
 
+    logical, optional, intent(in) :: ignore_errors
+
     real(rt)        , parameter :: small = 1.d-8
 
     integer          :: i, j, k, ii, jj, kk
@@ -438,40 +440,42 @@ contains
        do j = lo(2), hi(2)
 
           do i = lo(1), hi(1)
-             if (uin(i,j,k,URHO) .le. ZERO) then
-            !      do kk = lo(3), hi(3)
-            !         do jj = lo(2), hi(2)
-               !
-            !            do ii = lo(1), hi(1)
-            !                print *, uin(ii,jj,kk,1:NVAR)
-            !            enddo
-            !        enddo
-            !    enddo
-                print *,'   '
-                print *,'>>> Error: advection_util_nd.F90::swectoprim ',i, j, k
-                print *,'>>> ... negative density '!, uin(i,j,k,URHO)
-                !uin(i,j,k,:) = 0.0d0
-                !uin(i,j,k,URHO) = 1.0d0
-                !call bl_error("Error:: advection_util_nd.f90 :: swectoprim")
-             else if (uin(i,j,k,URHO) /= uin(i,j,k,URHO)) then
-                 print *,'   '
-                 print *,'>>> Error: advection_util_nd.F90::swectoprim ',i, j, k
-                 print *,'>>> ... density is nan ', uin(i,j,k,URHO)
-                 write(*,*) uin(:,:,:,URHO)
-                 call bl_error("Error:: advection_util_nd.f90 :: swectoprim")
-             else if (uin(i,j,k,URHO) .lt. small_dens) then
-            !      do kk = lo(3), hi(3)
-            !         do jj = lo(2), hi(2)
-               !
-            !            do ii = lo(1), hi(1)
-            !                print *, uin(ii,jj,kk,1:NVAR)
-            !            enddo
-            !        enddo
-            !    enddo
-                print *,'   '
-                print *,'>>> Error: advection_util_nd.F90::swectoprim ',i, j, k
-                print *,'>>> ... small density '!, uin(i,j,k,URHO)
-                !call bl_error("Error:: advection_util_nd.f90 :: swectoprim")
+              if (present(ignore_errors) .and. (.not. ignore_errors)) then
+                 if (uin(i,j,k,URHO) .le. ZERO) then
+                     do kk = lo(3), hi(3)
+                        do jj = lo(2), hi(2)
+
+                           do ii = lo(1), hi(1)
+                               print *, uin(ii,jj,kk,1:NVAR)
+                           enddo
+                       enddo
+                   enddo
+                    print *,'   '
+                    print *,'>>> Error: advection_util_nd.F90::swectoprim ',i, j, k
+                    print *,'>>> ... negative density ', uin(i,j,k,URHO)
+                    ! uin(i,j,k,:) = 0.0d0
+                    ! uin(i,j,k,URHO) = 1.0d0
+                    call bl_error("Error:: advection_util_nd.f90 :: swectoprim")
+                 else if (uin(i,j,k,URHO) /= uin(i,j,k,URHO)) then
+                     print *,'   '
+                     print *,'>>> Error: advection_util_nd.F90::swectoprim ',i, j, k
+                     print *,'>>> ... density is nan ', uin(i,j,k,URHO)
+                     write(*,*) uin(:,:,:,URHO)
+                     call bl_error("Error:: advection_util_nd.f90 :: swectoprim")
+                 else if (uin(i,j,k,URHO) .lt. small_dens) then
+                     do kk = lo(3), hi(3)
+                        do jj = lo(2), hi(2)
+
+                           do ii = lo(1), hi(1)
+                               print *, uin(ii,jj,kk,1:NVAR)
+                           enddo
+                       enddo
+                   enddo
+                    print *,'   '
+                    print *,'>>> Error: advection_util_nd.F90::swectoprim ',i, j, k
+                    print *,'>>> ... small density ', uin(i,j,k,URHO)
+                    call bl_error("Error:: advection_util_nd.f90 :: swectoprim")
+                 endif
              endif
           end do
 
@@ -519,7 +523,7 @@ end subroutine swectoprim
 subroutine compctoprim(lo, hi, &
                    uin, uin_lo, uin_hi, &
                    q,     q_lo,   q_hi, &
-                   qaux, qa_lo,  qa_hi)
+                   qaux, qa_lo,  qa_hi, ignore_errors)
 
   use mempool_module, only : bl_allocate, bl_deallocate
   use actual_network, only : nspec, naux
@@ -548,6 +552,8 @@ subroutine compctoprim(lo, hi, &
   real(rt)        , intent(inout) :: q(q_lo(1):q_hi(1),q_lo(2):q_hi(2),q_lo(3):q_hi(3),NQ)
   real(rt)        , intent(inout) :: qaux(qa_lo(1):qa_hi(1),qa_lo(2):qa_hi(2),qa_lo(3):qa_hi(3),NQAUX)
 
+  logical, optional, intent(in) :: ignore_errors
+
   real(rt)        , parameter :: small = 1.d-8
 
   integer          :: i, j, k
@@ -560,25 +566,27 @@ subroutine compctoprim(lo, hi, &
   do k = lo(3), hi(3)
      do j = lo(2), hi(2)
 
-        do i = lo(1), hi(1)
-           if (uin(i,j,k,URHO) .le. ZERO) then
-              print *,'   '
-              print *,'>>> Error: advection_util_nd.F90::compctoprim ',i, j, k
-              print *,'>>> ... negative density ', uin(i,j,k,URHO)
-              call bl_error("Error:: advection_util_nd.f90 :: compctoprim")
-           else if (uin(i,j,k,URHO) /= uin(i,j,k,URHO)) then
-               print *,'   '
-               print *,'>>> Error: advection_util_nd.F90::compctoprim ',i, j, k
-               print *,'>>> ... density is nan ', uin(i,j,k,URHO)
-               write(*,*) uin(:,:,:,URHO)
-               call bl_error("Error:: advection_util_nd.f90 :: compctoprim")
-           else if (uin(i,j,k,URHO) .lt. small_dens) then
-              print *,'   '
-              print *,'>>> Error: advection_util_nd.F90::compctoprim ',i, j, k
-              print *,'>>> ... small density ', uin(i,j,k,URHO)
-              call bl_error("Error:: advection_util_nd.f90 :: compctoprim")
-           endif
-        end do
+        if (present(ignore_errors) .and. (.not. ignore_errors)) then
+            do i = lo(1), hi(1)
+               if (uin(i,j,k,URHO) .le. ZERO) then
+                  print *,'   '
+                  print *,'>>> Error: advection_util_nd.F90::compctoprim ',i, j, k
+                  print *,'>>> ... negative density ', uin(i,j,k,URHO)
+                  call bl_error("Error:: advection_util_nd.f90 :: compctoprim")
+               else if (uin(i,j,k,URHO) /= uin(i,j,k,URHO)) then
+                   print *,'   '
+                   print *,'>>> Error: advection_util_nd.F90::compctoprim ',i, j, k
+                   print *,'>>> ... density is nan ', uin(i,j,k,URHO)
+                   write(*,*) uin(:,:,:,URHO)
+                   call bl_error("Error:: advection_util_nd.f90 :: compctoprim")
+               else if (uin(i,j,k,URHO) .lt. small_dens) then
+                  print *,'   '
+                  print *,'>>> Error: advection_util_nd.F90::compctoprim ',i, j, k
+                  print *,'>>> ... small density ', uin(i,j,k,URHO)
+                  call bl_error("Error:: advection_util_nd.f90 :: compctoprim")
+               endif
+            end do
+        endif
 
         do i = lo(1), hi(1)
             q(i,j,k,1:NQ) = 0.0d0
