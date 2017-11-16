@@ -413,7 +413,7 @@ subroutine swe_to_comp(swe, slo, shi, comp, clo, chi, lo, hi)
 
     integer i, j, k, n
 
-    comp(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3), 1:NVAR) = swe(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3), 1:NVAR)
+    !comp(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3), 1:NVAR) = swe(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3), 1:NVAR)
 
     ! phi = gh
     call swectoprim(lo, hi, swe, slo, shi, q_swe, slo, shi, qaux, slo, shi)
