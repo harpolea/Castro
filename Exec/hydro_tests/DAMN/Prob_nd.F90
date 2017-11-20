@@ -219,7 +219,7 @@ subroutine ca_initdata(level,time,lo,hi,nscal, &
           ! end if
 
            state(i,j,k,UFA)  = dye
-           state(i,j,k,UFS:UFS-1+nspec) = state(i,j,k,URHO)! / nspec
+           state(i,j,k,UFS:UFS-1+nspec) = state(i,j,k,URHO) / nspec
 
         enddo
      enddo

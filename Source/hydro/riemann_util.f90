@@ -81,7 +81,7 @@ contains
     ! checking happy
     U(UTEMP) = q(QTEMP)
     U(UFA) = 0.0d0
-    U(UFS:UFS-1+nspec) = U(URHO) !/ nspec
+    U(UFS:UFS-1+nspec) = U(URHO) / nspec
 
   end subroutine swe_cons_state
 
@@ -114,7 +114,7 @@ contains
     ! checking happy
     U(UTEMP) = q(QTEMP)
     U(UFA) = 0.0d0
-    U(UFS:UFS-1+nspec) = U(URHO) !/ nspec
+    U(UFS:UFS-1+nspec) = U(URHO) / nspec
 
   end subroutine comp_cons_state
 

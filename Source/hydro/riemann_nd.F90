@@ -421,8 +421,6 @@ subroutine swe_to_comp(swe, slo, shi, comp, clo, chi, lo, hi, ignore_errors)
         ignore_errs = .false.
     endif
 
-    !comp(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3), 1:NVAR) = swe(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3), 1:NVAR)
-
     ! phi = gh
     call swectoprim(lo, hi, swe, slo, shi, q_swe, slo, shi, qaux, slo, shi, ignore_errors)
 
@@ -450,7 +448,7 @@ subroutine swe_to_comp(swe, slo, shi, comp, clo, chi, lo, hi, ignore_errors)
                 call comp_cons_state(q_comp, U_comp)
 
                 !U_comp(UTEMP) = swe(i,j,k,UTEMP)
-                !U_comp(UFS:UFS-1+nspec) =  U_comp(URHO) / nspec
+                U_comp(UFS:UFS-1+nspec) =  U_comp(URHO) / nspec
 
                 !   write(*,*) "q = ", q_swe(i,j,k,:)
                 !   write(*,*) "U = ",  U_comp
@@ -514,8 +512,6 @@ subroutine comp_to_swe(swe, slo, shi, comp, clo, chi, lo, hi, ignore_errors)
         do j = lo(2), hi(2)
             do i = lo(1), hi(1)
                 U_swe(1:NVAR) = 0.0d0
-                ! copy across some stuff for comp state
-                !swe(i,j,k,1:NVAR) = comp(i,j,k,1:NVAR)
 
                 q_swe(1:NQ) = q_comp(i,j,k,1:NQ)
                 !
@@ -528,7 +524,7 @@ subroutine comp_to_swe(swe, slo, shi, comp, clo, chi, lo, hi, ignore_errors)
 
                 !U_swe(UTEMP) = comp(i,j,k,UTEMP)
 
-                !U_swe(UFS:UFS-1+nspec) = U_swe(URHO) / nspec
+                U_swe(UFS:UFS-1+nspec) = U_swe(URHO) / nspec
 
                 swe(i,j,k,:) = U_swe
 

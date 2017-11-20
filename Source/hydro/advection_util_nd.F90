@@ -438,7 +438,6 @@ contains
 
     do k = lo(3), hi(3)
        do j = lo(2), hi(2)
-
           do i = lo(1), hi(1)
               if (present(ignore_errors) .and. (.not. ignore_errors)) then
                  if (uin(i,j,k,URHO) .le. ZERO) then
@@ -495,10 +494,8 @@ contains
                   q(i,j,k,QW) = uin(i,j,k,UMZ) / uin(i,j,k,URHO)
               endif
               q(i,j,k,QPRES) = 0.5d0 * g * uin(i,j,k,URHO)**2
-
               q(i,j,k,QREINT) = uin(i,j,k,UEINT)
               q(i,j,k,QTEMP) = uin(i,j,k,UTEMP)
-
               q(i,j,k,QFA) = 0.0d0
 
           enddo
@@ -603,11 +600,8 @@ subroutine compctoprim(lo, hi, &
             ! endif
 
             q(i,j,k,QREINT) = uin(i,j,k,UEINT)
-
             q(i,j,k,QTEMP) = uin(i,j,k,UTEMP)
-
             q(i,j,k,QFA) = 0.0d0
-
         enddo
      enddo
   enddo
@@ -642,16 +636,13 @@ subroutine compctoprim(lo, hi, &
 
              q(i,j,k,QTEMP)  = eos_state % T
              q(i,j,k,QREINT) = eos_state % e * q(i,j,k,QRHO)
-             !q(i,j,k,QPRES)  = eos_state % p
+             q(i,j,k,QPRES)  = eos_state % p
              q(i,j,k,QGAME)  = q(i,j,k,QPRES) / q(i,j,k,QREINT) + ONE
 
              qaux(i,j,k,QDPDR)  = eos_state % dpdr_e
              qaux(i,j,k,QDPDE)  = eos_state % dpde
-
-
              qaux(i,j,k,QGAMC)  = eos_state % gam1
              qaux(i,j,k,QC   )  = eos_state % cs
-
              qaux(i,j,k,QCSML)  = max(small, small * qaux(i,j,k,QC))
           enddo
        enddo
