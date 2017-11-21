@@ -1389,7 +1389,7 @@ Castro::avgDown (int state_indx)
     ca_get_swe_to_comp_level(&swe_to_comp_level);
 
     if ((level == swe_to_comp_level)){
-        for (MFIter mfi(S_fine,true); mfi.isValid(); ++mfi)
+        for (MFIter mfi(S_fine); mfi.isValid(); ++mfi)
         { //it breaks without this
             const Box& bx = mfi.tilebox();//growntilebox(S_fine.nGrow());
             bool f = false;
@@ -1404,7 +1404,7 @@ Castro::avgDown (int state_indx)
 			 0, S_fine.nComp(), fine_ratio);
 
     if ((level == swe_to_comp_level)){
-         for (MFIter mfi(S_fine,true); mfi.isValid(); ++mfi)
+         for (MFIter mfi(S_fine); mfi.isValid(); ++mfi)
          {
              const Box& bx = mfi.tilebox();//growntilebox(S_fine.nGrow());
              bool f = false;

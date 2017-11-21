@@ -20,10 +20,8 @@ subroutine ca_mol_single_stage(time, level, &
                                vol, vol_lo, vol_hi, &
                                courno, verbose) bind(C, name="ca_mol_single_stage")
 
-  use mempool_module, only : bl_allocate, bl_deallocate
-  use meth_params_module, only : NQ, QVAR, NVAR, NGDNV, GDPRES, &
-                                 UTEMP, UEINT, USHK, GDU, GDV, GDW, &
-                                 use_flattening, QPRES, NQAUX, &
+  use meth_params_module, only : NQ, QVAR, NVAR, &
+                                 UTEMP, UEINT, QPRES, NQAUX, &
                                  QTEMP, QFS, QFX, QREINT, QRHO, QGAMC
   use advection_util_module, only : compute_cfl
   use reconstruct_module, only : compute_reconstruction_tvd
@@ -31,7 +29,6 @@ subroutine ca_mol_single_stage(time, level, &
   use riemann_module, only: cmpflx
   use amrex_fort_module, only : rt => amrex_real
   use eos_type_module, only : eos_t, eos_input_rt
-  use eos_module, only : eos
   use network, only : nspec, naux
 
   implicit none
@@ -75,8 +72,8 @@ subroutine ca_mol_single_stage(time, level, &
   real(rt)        , allocatable :: sxm(:,:,:), sym(:,:,:), szm(:,:,:)
   real(rt)        , allocatable :: sxp(:,:,:), syp(:,:,:), szp(:,:,:)
 
-  real(rt)        , pointer :: qxm(:,:,:,:), qym(:,:,:,:), qzm(:,:,:,:)
-  real(rt)        , pointer :: qxp(:,:,:,:), qyp(:,:,:,:), qzp(:,:,:,:)
+  real(rt)        , allocatable :: qxm(:,:,:,:), qym(:,:,:,:), qzm(:,:,:,:)
+  real(rt)        , allocatable :: qxp(:,:,:,:), qyp(:,:,:,:), qzp(:,:,:,:)
 
   integer :: i, j, k, n
   integer :: qs_lo(3), qs_hi(3)
@@ -86,14 +83,12 @@ subroutine ca_mol_single_stage(time, level, &
   qs_lo = lo - 1
   qs_hi = hi + 2
 
-  call bl_allocate ( qxm, qs_lo, qs_hi, NQ)
-  call bl_allocate ( qxp, qs_lo, qs_hi, NQ)
-
-  call bl_allocate ( qym, qs_lo, qs_hi, NQ)
-  call bl_allocate ( qyp, qs_lo, qs_hi, NQ)
-
-  call bl_allocate ( qzm, qs_lo, qs_hi, NQ)
-  call bl_allocate ( qzp, qs_lo, qs_hi, NQ)
+  allocate ( qxm(qs_lo(1):qs_hi(1),qs_lo(2):qs_hi(2),qs_lo(3):qs_hi(3),NQ) )
+  allocate ( qxp(qs_lo(1):qs_hi(1),qs_lo(2):qs_hi(2),qs_lo(3):qs_hi(3),NQ) )
+  allocate ( qym(qs_lo(1):qs_hi(1),qs_lo(2):qs_hi(2),qs_lo(3):qs_hi(3),NQ) )
+  allocate ( qyp(qs_lo(1):qs_hi(1),qs_lo(2):qs_hi(2),qs_lo(3):qs_hi(3),NQ) )
+  allocate ( qzm(qs_lo(1):qs_hi(1),qs_lo(2):qs_hi(2),qs_lo(3):qs_hi(3),NQ) )
+  allocate ( qzp(qs_lo(1):qs_hi(1),qs_lo(2):qs_hi(2),qs_lo(3):qs_hi(3),NQ) )
 
   qaux(qa_lo(1):qa_hi(1),qa_lo(2):qa_hi(2),qa_lo(3):qa_hi(3),QGAMC) = eos_state % gam1
 
@@ -122,7 +117,7 @@ subroutine ca_mol_single_stage(time, level, &
   allocate(szm(q_lo(1):q_hi(1), q_lo(2):q_hi(2), q_lo(3):q_hi(3)))
   allocate(szp(q_lo(1):q_hi(1), q_lo(2):q_hi(2), q_lo(3):q_hi(3)))
 
-  do n = 1, NQ
+  do n = 1, QVAR
 
     call compute_reconstruction_tvd(q(:,:,:,n ), q_lo, q_hi, &
                          sxm, sxp, sym, syp, szm, szp, q_lo, q_hi, &
@@ -185,18 +180,7 @@ subroutine ca_mol_single_stage(time, level, &
             qaux, qa_lo, qa_hi, &
             3, lo, hi, domlo, domhi)
 
-    call bl_deallocate(qxm)
-    call bl_deallocate(qxp)
-
-    call bl_deallocate(qym)
-    call bl_deallocate(qyp)
-
-    call bl_deallocate(qzm)
-    call bl_deallocate(qzp)
-
-    flux1(lo(1):hi(1)+1,lo(2):hi(2),lo(3):hi(3),UTEMP) = ZERO
-    flux2(lo(1):hi(1),lo(2):hi(2)+1,lo(3):hi(3),UTEMP) = ZERO
-    flux3(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3)+1,UTEMP) = ZERO
+    deallocate(qxm, qxp, qym, qyp, qzm, qzp)
 
   ! For hydro, we will create an update source term that is
   ! essentially the flux divergence.  This can be added with dt to
@@ -217,6 +201,10 @@ subroutine ca_mol_single_stage(time, level, &
 
               update(i,j,k,n) = update(i,j,k,n) + srcU(i,j,k,n)
 
+              if (update(i,j,k,n) /= update(i,j,k,n)) then
+                  update(i,j,k,n) = 0.0d0
+              endif
+
            enddo
         enddo
      enddo
@@ -229,6 +217,9 @@ subroutine ca_mol_single_stage(time, level, &
         do j = lo(2), hi(2)
            do i = lo(1), hi(1) + 1
               flux1(i,j,k,n) = dt * flux1(i,j,k,n) * area1(i,j,k)
+              if (flux1(i,j,k,n) /= flux1(i,j,k,n)) then
+                  flux1(i,j,k,n) = 0.0d0
+              endif
            enddo
         enddo
      enddo
@@ -239,6 +230,9 @@ subroutine ca_mol_single_stage(time, level, &
         do j = lo(2), hi(2) + 1
            do i = lo(1), hi(1)
               flux2(i,j,k,n) = dt * flux2(i,j,k,n) * area2(i,j,k)
+              if (flux2(i,j,k,n) /= flux2(i,j,k,n)) then
+                  flux2(i,j,k,n) = 0.0d0
+              endif
            enddo
         enddo
      enddo
@@ -249,6 +243,9 @@ subroutine ca_mol_single_stage(time, level, &
         do j = lo(2), hi(2)
            do i = lo(1), hi(1)
               flux3(i,j,k,n) = dt * flux3(i,j,k,n) * area3(i,j,k)
+              if (flux3(i,j,k,n) /= flux3(i,j,k,n)) then
+                  flux3(i,j,k,n) = 0.0d0
+              endif
            enddo
         enddo
      enddo

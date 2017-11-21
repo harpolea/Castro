@@ -894,9 +894,9 @@ Castro::plotFileOutput(const std::string& dir,
     // NOTE: this appears to be working???
 
     if ((level <= swe_to_comp_level) && (State_Type == 0)) {
-        for (MFIter mfi(plotMF,true); mfi.isValid(); ++mfi)
+        for (MFIter mfi(plotMF); mfi.isValid(); ++mfi)
         {
-            const Box& bx = mfi.tilebox();//mfi.growntilebox(plotMF.nGrow());
+            const Box& bx = mfi.tilebox();
             // do some conversion stuff
             bool ignore_errors = false;
             ca_swe_to_comp_self(BL_TO_FORTRAN_3D(plotMF[mfi]),

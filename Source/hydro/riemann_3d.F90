@@ -7,7 +7,6 @@ module riemann_module
                                  QPRES, QGAME, QREINT, QFS, &
                                  QFX, URHO, UMX, UMY, UMZ, UEDEN, UEINT, &
                                  UFS, UFX, &
-                                 NGDNV, GDRHO, GDPRES, GDGAME, &
                                  QC, QCSML, QGAMC
 
   use amrex_fort_module, only : rt => amrex_real
@@ -46,20 +45,9 @@ contains
     integer, intent(in) :: idir
     integer, intent(in) :: domlo(3),domhi(3)
 
-    ! note: qm, qp, q come in as planes (all of x,y
-    ! zones but only 2 elements in the z dir) instead of being
-    ! dimensioned the same as the full box.  We index these with kc
-    ! flux either comes in as planes (like qm, qp, ... above), or
-    ! comes in dimensioned as the full box.  We index the flux with
-    ! kflux -- this will be set correctly for the different cases.
-
     real(rt), intent(inout) :: qm(qpd_lo(1):qpd_hi(1),qpd_lo(2):qpd_hi(2),qpd_lo(3):qpd_hi(3),NQ)
     real(rt), intent(inout) :: qp(qpd_lo(1):qpd_hi(1),qpd_lo(2):qpd_hi(2),qpd_lo(3):qpd_hi(3),NQ)
-
     real(rt), intent(inout) ::    flx(flx_lo(1):flx_hi(1),flx_lo(2):flx_hi(2),flx_lo(3):flx_hi(3),NVAR)
-
-    ! qaux come in dimensioned as the full box, so we use k3d here to
-    ! index it in z
 
     real(rt), intent(in) :: qaux(qa_lo(1):qa_hi(1),qa_lo(2):qa_hi(2),qa_lo(3):qa_hi(3),NQAUX)
 
@@ -73,7 +61,6 @@ contains
     imax(idir) = hi(idir)+1
 
     ! Solve Riemann problem (godunov state passed back, but only (u,p) saved)
-
     if (level <= swe_to_comp_level) then
         call swe_HLL(qm, qp, qpd_lo, qpd_hi, &
                  qaux, qa_lo, qa_hi, &
@@ -87,7 +74,6 @@ contains
                         idir, imin, imax, &
                         domlo, domhi)
     endif
-
 
   end subroutine cmpflx
 

@@ -64,7 +64,6 @@ contains
     endif
 
     ! Solve Riemann problem (godunov state passed back, but only (u,p) saved)
-
     if (level <= swe_to_comp_level) then
         call swe_HLL(qm, qp, qpd_lo, qpd_hi, &
                  qaux, qa_lo, qa_hi, &
@@ -78,7 +77,6 @@ contains
                         idir, imin, imax, &
                         [domlo(1), domlo(2), 0], [domhi(1), domhi(2), 0])
     endif
-
 
   end subroutine cmpflx
 

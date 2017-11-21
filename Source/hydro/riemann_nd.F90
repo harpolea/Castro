@@ -131,97 +131,96 @@ contains
     Smax = max(Smax_r, Smax_l)
 
     do k = ilo(3), ihi(3)
+        do j = ilo(2), ihi(2)
 
-    do j = ilo(2), ihi(2)
+           bnd_fac_y = 1
+           if (idir == 2) then
+              if ( j == domlo(2)   .and. special_bnd_lo .or. &
+                   j == domhi(2)+1 .and. special_bnd_hi ) then
+                 bnd_fac_y = 0
+              end if
+           end if
 
-       bnd_fac_y = 1
-       if (idir == 2) then
-          if ( j == domlo(2)   .and. special_bnd_lo .or. &
-               j == domhi(2)+1 .and. special_bnd_hi ) then
-             bnd_fac_y = 0
-          end if
-       end if
+           !dir$ ivdep
+           do i = ilo(1), ihi(1)
+               F_state(:) = 0.0d0
+               U_state(:) = 0.0d0
 
-       !dir$ ivdep
-       do i = ilo(1), ihi(1)
-           F_state(:) = 0.0d0
-           U_state(:) = 0.0d0
+              rl = max(ql(i,j,k,QRHO), small_dens)
 
-          rl = max(ql(i,j,k,QRHO), small_dens)
+              ! pick left velocities based on direction
+              ul  = ql(i,j,k,iu)
+              v1l = ql(i,j,k,iv1)
+              v2l = ql(i,j,k,iv2)
 
-          ! pick left velocities based on direction
-          ul  = ql(i,j,k,iu)
-          v1l = ql(i,j,k,iv1)
-          v2l = ql(i,j,k,iv2)
+              pl  = max(ql(i,j,k,QPRES ), small_pres)
+              rel = ql(i,j,k,QREINT)
 
-          pl  = max(ql(i,j,k,QPRES ), small_pres)
-          rel = ql(i,j,k,QREINT)
+              rr = max(qr(i,j,k,QRHO), small_dens)
 
-          rr = max(qr(i,j,k,QRHO), small_dens)
+              ! pick right velocities based on direction
+              ur  = qr(i,j,k,iu)
+              v1r = qr(i,j,k,iv1)
+              v2r = qr(i,j,k,iv2)
 
-          ! pick right velocities based on direction
-          ur  = qr(i,j,k,iu)
-          v1r = qr(i,j,k,iv1)
-          v2r = qr(i,j,k,iv2)
+              pr  = max(qr(i,j,k,QPRES), small_pres)
+              rer = qr(i,j,k,QREINT)
 
-          pr  = max(qr(i,j,k,QPRES), small_pres)
-          rer = qr(i,j,k,QREINT)
+              ! find sound speeds
+              csmall = max(qaux(i,j,k,QCSML), qaux(i-sx,j-sy,k-sz,QCSML) )
+              cavg = HALF*(qaux(i,j,k,QC) + qaux(i-sx,j-sy,k-sz,QC))
+              gamcl = qaux(i-sx,j-sy,k-sz,QGAMC)
+              gamcr = qaux(i,j,k,QGAMC)
 
-          ! find sound speeds
-          csmall = max(qaux(i,j,k,QCSML), qaux(i-sx,j-sy,k-sz,QCSML) )
-          cavg = HALF*(qaux(i,j,k,QC) + qaux(i-sx,j-sy,k-sz,QC))
-          gamcl = qaux(i-sx,j-sy,k-sz,QGAMC)
-          gamcr = qaux(i,j,k,QGAMC)
+              cl = sqrt(gamcl * pl / (rl + gamcl * pl / (gamcl - 1.0d0)))
+              cr = sqrt(gamcr * pr / (rr + gamcr * pr / (gamcr - 1.0d0)))
 
-          cl = sqrt(gamcl * pl / (rl + gamcl * pl / (gamcl - 1.0d0)))
-          cr = sqrt(gamcr * pr / (rr + gamcr * pr / (gamcr - 1.0d0)))
+              ! Enforce that the fluxes through a symmetry plane or wall are hard zero.
+              if ( special_bnd_lo_x .and. i== domlo(1) .or. &
+                   special_bnd_hi_x .and. i== domhi(1)+1 ) then
+                 bnd_fac_x = 0
+              else
+                 bnd_fac_x = 1
+              end if
 
-          ! Enforce that the fluxes through a symmetry plane or wall are hard zero.
-          if ( special_bnd_lo_x .and. i== domlo(1) .or. &
-               special_bnd_hi_x .and. i== domhi(1)+1 ) then
-             bnd_fac_x = 0
-          else
-             bnd_fac_x = 1
-          end if
+              bnd_fac = bnd_fac_x*bnd_fac_y*bnd_fac_z
 
-          bnd_fac = bnd_fac_x*bnd_fac_y*bnd_fac_z
+              ! signal speeds
+              S_l = min(-Smax, min(ul - sqrt(gamcl*pl/rl), ur - sqrt(gamcr*pr/rr)))
+              S_r = max(ul + sqrt(gamcl*pl/rl), ur + sqrt(gamcr*pr/rr))
+              if (Smax < S_r) then
+                  write(*,*) "Smax = ", Smax, "S_r = ", S_r, "gamcl = ", gamcl, "gamcr = ", gamcr
+              endif
 
-          ! signal speeds
-          S_l = min(-Smax, min(ul - sqrt(gamcl*pl/rl), ur - sqrt(gamcr*pr/rr)))
-          S_r = max(ul + sqrt(gamcl*pl/rl), ur + sqrt(gamcr*pr/rr))
-          if (Smax < S_r) then
-              write(*,*) "Smax = ", Smax, "S_r = ", S_r, "gamcl = ", gamcl, "gamcr = ", gamcr
-          endif
+               S_r = max(Smax, max(ul + sqrt(gamcl*pl/rl), ur + sqrt(gamcr*pr/rr)))
 
-           S_r = max(Smax, max(ul + sqrt(gamcl*pl/rl), ur + sqrt(gamcr*pr/rr)))
+              if (S_r <= ZERO) then
+                 ! R region
+                 call comp_cons_state(qr(i,j,k,:), U_state)
+                 call comp_compute_flux(idir, bnd_fac, U_state, F_state, pr)
 
-          if (S_r <= ZERO) then
-             ! R region
-             call comp_cons_state(qr(i,j,k,:), U_state)
-             call comp_compute_flux(idir, bnd_fac, U_state, F_state, pr)
+             else if (S_r > ZERO .and. S_l <= ZERO) then
+                 ! * region
+                 call comp_cons_state(ql(i,j,k,:), U_state)
+                 call comp_compute_flux(idir, bnd_fac, U_state, F_state, pl)
 
-         else if (S_r > ZERO .and. S_l <= ZERO) then
-             ! * region
-             call comp_cons_state(ql(i,j,k,:), U_state)
-             call comp_compute_flux(idir, bnd_fac, U_state, F_state, pl)
+                 call comp_cons_state(qr(i,j,k,:), U_hll_state)
+                 call comp_compute_flux(idir, bnd_fac, U_hll_state, Fr_state, pr)
 
-             call comp_cons_state(qr(i,j,k,:), U_hll_state)
-             call comp_compute_flux(idir, bnd_fac, U_hll_state, Fr_state, pr)
+                 ! correct the flux
+                 F_state(:) = (S_r * F_state(:) - S_l * Fr_state(:) + S_r * S_l * (U_hll_state(:) - U_state(:)))/ (S_r - S_l)
 
-             ! correct the flux
-             F_state(:) = (S_r * F_state(:) - S_l * Fr_state(:) + S_r * S_l * (U_hll_state(:) - U_state(:)))/ (S_r - S_l)
+              else
+                 ! L region
+                 call comp_cons_state(ql(i,j,k,:), U_state)
+                 call comp_compute_flux(idir, bnd_fac, U_state, F_state, pl)
 
-          else
-             ! L region
-             call comp_cons_state(ql(i,j,k,:), U_state)
-             call comp_compute_flux(idir, bnd_fac, U_state, F_state, pl)
+              endif
 
-          endif
-
-          uflx(i,j,k,1:NVAR) = F_state(1:NVAR)
-       enddo
+              uflx(i,j,k,1:NVAR) = F_state(1:NVAR)
+           enddo
+        enddo
     enddo
-  enddo
 
   end subroutine comp_HLL
 
@@ -279,7 +278,7 @@ contains
     real(rt) :: U_hll_state(NVAR), U_state(NVAR), F_state(NVAR), Fr_state(NVAR)
     real(rt) :: S_l, S_r, S_c, Smax_l, Smax_r, Smax
 
-    k = ilo(3)
+    ! k = ilo(3)
 
     if (idir == 1) then
        iu = QU
@@ -319,77 +318,79 @@ contains
        special_bnd_hi_x = .false.
     end if
 
-    bnd_fac_z = 1
-    if (idir == 3) then
-       if ( k == domlo(3)   .and. special_bnd_lo .or. &
-            k == domhi(3)+1 .and. special_bnd_hi ) then
-          bnd_fac_z = 0
-       end if
-    end if
-
     Smax_l = maxval(abs(ql(:,:,:,QU-1+idir))) + maxval(sqrt(g * ql(:,:,:,QRHO)))
     Smax_r = maxval(abs(qr(:,:,:,QU-1+idir))) + maxval(sqrt(g * qr(:,:,:,QRHO)))
     Smax = max(Smax_r, Smax_l)
 
-    do j = ilo(2), ihi(2)
+    do k = ilo(3), ihi(3)
 
-       bnd_fac_y = 1
-       if (idir == 2) then
-          if ( j == domlo(2)   .and. special_bnd_lo .or. &
-               j == domhi(2)+1 .and. special_bnd_hi ) then
-             bnd_fac_y = 0
-          end if
-       end if
+        bnd_fac_z = 1
+        if (idir == 3) then
+           if ( k == domlo(3)   .and. special_bnd_lo .or. &
+                k == domhi(3)+1 .and. special_bnd_hi ) then
+              bnd_fac_z = 0
+           end if
+        end if
 
-       !dir$ ivdep
-       do i = ilo(1), ihi(1)
+        do j = ilo(2), ihi(2)
 
-           F_state(:) = 0.0d0
-           U_state(:) = 0.0d0
+           bnd_fac_y = 1
+           if (idir == 2) then
+              if ( j == domlo(2)   .and. special_bnd_lo .or. &
+                   j == domhi(2)+1 .and. special_bnd_hi ) then
+                 bnd_fac_y = 0
+              end if
+           end if
 
-          ! Enforce that the fluxes through a symmetry plane or wall are hard zero.
-          if ( special_bnd_lo_x .and. i== domlo(1) .or. &
-               special_bnd_hi_x .and. i== domhi(1)+1 ) then
-             bnd_fac_x = 0
-          else
-             bnd_fac_x = 1
-          end if
+           !dir$ ivdep
+           do i = ilo(1), ihi(1)
 
-          bnd_fac = bnd_fac_x*bnd_fac_y*bnd_fac_z
+               F_state(:) = 0.0d0
+               U_state(:) = 0.0d0
 
-          ! signal speeds
-          S_l = -Smax
-          S_r = Smax
+              ! Enforce that the fluxes through a symmetry plane or wall are hard zero.
+              if ( special_bnd_lo_x .and. i== domlo(1) .or. &
+                   special_bnd_hi_x .and. i== domhi(1)+1 ) then
+                 bnd_fac_x = 0
+              else
+                 bnd_fac_x = 1
+              end if
 
-          if (S_r <= ZERO) then
-             ! R region
-             call swe_cons_state(qr(i,j,k,:), U_state)
-             call swe_compute_flux(idir, bnd_fac, U_state, F_state)
+              bnd_fac = bnd_fac_x*bnd_fac_y*bnd_fac_z
 
-         else if (S_r > ZERO .and. S_l <= ZERO) then
-             ! * region
-             call swe_cons_state(ql(i,j,k,:), U_state)
-             call swe_compute_flux(idir, bnd_fac, U_state, F_state)
+              ! signal speeds
+              S_l = -Smax
+              S_r = Smax
 
-             call swe_cons_state(qr(i,j,k,:), U_hll_state)
-             call swe_compute_flux(idir, bnd_fac, U_hll_state, Fr_state)
+              if (S_r <= ZERO) then
+                 ! R region
+                 call swe_cons_state(qr(i,j,k,:), U_state)
+                 call swe_compute_flux(idir, bnd_fac, U_state, F_state)
 
-             ! correct the flux
-             F_state(:) = (S_r * F_state(:) - S_l * Fr_state(:) + S_r * S_l * (U_hll_state(:) - U_state(:)))/ (S_r - S_l)
+             else if (S_r > ZERO .and. S_l <= ZERO) then
+                 ! * region
+                 call swe_cons_state(ql(i,j,k,:), U_state)
+                 call swe_compute_flux(idir, bnd_fac, U_state, F_state)
 
-          else
-             ! L region
-             call swe_cons_state(ql(i,j,k,:), U_state)
-             call swe_compute_flux(idir, bnd_fac, U_state, F_state)
+                 call swe_cons_state(qr(i,j,k,:), U_hll_state)
+                 call swe_compute_flux(idir, bnd_fac, U_hll_state, Fr_state)
 
-          endif
+                 ! correct the flux
+                 F_state(:) = (S_r * F_state(:) - S_l * Fr_state(:) + S_r * S_l * (U_hll_state(:) - U_state(:)))/ (S_r - S_l)
 
-          uflx(i,j,k,1:NVAR) = F_state(1:NVAR)
-       enddo
+              else
+                 ! L region
+                 call swe_cons_state(ql(i,j,k,:), U_state)
+                 call swe_compute_flux(idir, bnd_fac, U_state, F_state)
+
+              endif
+
+              uflx(i,j,k,1:NVAR) = F_state(1:NVAR)
+           enddo
+        enddo
     enddo
 
 end subroutine swe_HLL
-
 
 
 subroutine swe_to_comp(swe, slo, shi, comp, clo, chi, lo, hi, ignore_errors)
@@ -422,7 +423,7 @@ subroutine swe_to_comp(swe, slo, shi, comp, clo, chi, lo, hi, ignore_errors)
     endif
 
     ! phi = gh
-    call swectoprim(lo, hi, swe, slo, shi, q_swe, slo, shi, qaux, slo, shi, ignore_errors)
+    call swectoprim(lo, hi, swe, slo, shi, q_swe, slo, shi, qaux, slo, shi, ignore_errs)
 
     do k = lo(3), hi(3)
         do j = lo(2), hi(2)
@@ -464,7 +465,6 @@ subroutine swe_to_comp(swe, slo, shi, comp, clo, chi, lo, hi, ignore_errors)
     enddo
 
 end subroutine swe_to_comp
-
 
 
 subroutine comp_to_swe(swe, slo, shi, comp, clo, chi, lo, hi, ignore_errors)
@@ -530,12 +530,10 @@ subroutine comp_to_swe(swe, slo, shi, comp, clo, chi, lo, hi, ignore_errors)
                 swe(i,j,k,UTEMP) = U_swe(UTEMP)
                 swe(i,j,k,UFA) = U_swe(UFA)
                 swe(i,j,k,UFS:UFS-1+nspec) = U_swe(UFS:UFS-1+nspec)
-
             enddo
         enddo
     enddo
 
 end subroutine comp_to_swe
-
 
 end module actual_riemann_module
