@@ -450,13 +450,6 @@ subroutine swe_to_comp(swe, slo, shi, comp, clo, chi, lo, hi, ignore_errors)
                 !U_comp(UTEMP) = swe(i,j,k,UTEMP)
                 U_comp(UFS:UFS-1+nspec) =  U_comp(URHO) / nspec
 
-                !   write(*,*) "q = ", q_swe(i,j,k,:)
-                !   write(*,*) "U = ",  U_comp
-
-                !  do n = 1, NVAR
-                !      comp(i,j,k,n) = U_comp(n)
-                !  enddo
-                !comp(i,j,k,:) = U_comp
                 comp(i,j,k,URHO) = U_comp(URHO)
                 comp(i,j,k,UMX) = U_comp(UMX)
                 comp(i,j,k,UMY) = U_comp(UMY)
