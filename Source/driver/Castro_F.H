@@ -98,7 +98,7 @@ extern "C"
   void ca_ctoprim(const int* lo, const int* hi,
 	          const amrex::Real* u, const int* u_lo, const int* u_hi,
 		  amrex::Real* q, const int* q_lo, const int* q_hi,
-		  amrex::Real* qaux, const int* qa_lo, const int* qa_hi, const int* idx);
+		  amrex::Real* qaux, const int* qa_lo, const int* qa_hi, const int* idx, const int* level);
 
   void ca_srctoprim(const int* lo,   const int* hi,
 		    const amrex::Real* q,   const int* q_lo,   const int* q_hi,
@@ -114,7 +114,8 @@ extern "C"
            amrex::Real* S_new, const int* s_new_lo, const int* s_new_hi,
      const amrex::Real* vol, const int* vol_lo, const int* vol_hi,
      const int* lo, const int* hi,
-           amrex::Real* frac_change, const int* verbose, const int* idx);
+           amrex::Real* frac_change, const int* verbose, const int* idx,
+       const int* level);
 
   void ca_normalize_species
     (BL_FORT_FAB_ARG_3D(S_new), const int* lo, const int* hi, const int* idx);

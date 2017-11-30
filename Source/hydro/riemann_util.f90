@@ -89,13 +89,16 @@ contains
     ! calculates the conserved state from the primitive variables
     use meth_params_module, only: NQ, QRHO, QU, QV, QW, QTEMP, &
          NVAR, URHO, UMX, UMY, UMZ, UEDEN, UEINT, UTEMP, QREINT, &
-         npassive, upass_map, qpass_map, small_dens, small_temp, UFS, UFA
+         npassive, upass_map, qpass_map, UFS, UFA
     use network, only : nspec
 
     real(rt)        , intent(in)  :: q(NQ)
     real(rt)        , intent(out) :: U(NVAR)
 
     !integer  :: ipassive, n, nq
+
+    call swe_cons_state(q, U)
+    return
 
     U(1:NVAR) = 0.0d0
 
@@ -178,6 +181,9 @@ contains
 
     integer :: ipassive, n
     real(rt)         :: u_flx
+
+    call swe_compute_flux(idir, bnd_fac, U, F)
+    return
 
     if (idir == 1) then
        u_flx = U(UMX) / U(URHO)

@@ -1,7 +1,6 @@
 module timestep_module
 
   use amrex_fort_module, only : rt => amrex_real
-  use c_interface_modules, only : ca_ctoprim
 
   implicit none
 

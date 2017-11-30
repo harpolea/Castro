@@ -184,14 +184,15 @@ end subroutine ca_swe_to_comp_self
   subroutine ca_enforce_minimum_density(uin, uin_lo, uin_hi, &
                                         uout, uout_lo, uout_hi, &
                                         vol, vol_lo, vol_hi, &
-                                        lo, hi, frac_change, verbose, idx) &
+                                        lo, hi, frac_change, verbose, idx, &
+                                        level) &
                                         bind(C, name="ca_enforce_minimum_density")
 
     use advection_util_module, only: enforce_minimum_density
 
     implicit none
 
-    integer, intent(in) :: lo(3), hi(3), verbose
+    integer, intent(in) :: lo(3), hi(3), verbose, level
     integer, intent(in) ::  uin_lo(3),  uin_hi(3)
     integer, intent(in) :: uout_lo(3), uout_hi(3)
     integer, intent(in) ::  vol_lo(3),  vol_hi(3)
@@ -205,7 +206,7 @@ end subroutine ca_swe_to_comp_self
     call enforce_minimum_density(uin, uin_lo, uin_hi, &
                                  uout, uout_lo, uout_hi, &
                                  vol, vol_lo, vol_hi, &
-                                 lo, hi, frac_change, verbose)
+                                 lo, hi, frac_change, verbose, level)
 
   end subroutine ca_enforce_minimum_density
 
@@ -230,9 +231,10 @@ end subroutine ca_swe_to_comp_self
   subroutine ca_ctoprim(lo, hi, &
                         uin, uin_lo, uin_hi, &
                         q,     q_lo,   q_hi, &
-                        qaux, qa_lo,  qa_hi, idx) bind(C, name = "ca_ctoprim")
+                        qaux, qa_lo,  qa_hi, idx, level) bind(C, name = "ca_ctoprim")
 
-    use advection_util_module, only: swectoprim
+    use advection_util_module, only: swectoprim, compctoprim
+    use probdata_module, only: swe_to_comp_level
 
     implicit none
 
@@ -245,12 +247,21 @@ end subroutine ca_swe_to_comp_self
 
     real(rt)        , intent(inout) :: q(q_lo(1):q_hi(1),q_lo(2):q_hi(2),q_lo(3):q_hi(3),NQ)
     real(rt)        , intent(inout) :: qaux(qa_lo(1):qa_hi(1),qa_lo(2):qa_hi(2),qa_lo(3):qa_hi(3),NQAUX)
-    integer, intent(in)     :: idx
+    integer, intent(in)     :: idx, level
 
-    call swectoprim(lo, hi, &
-                 uin, uin_lo, uin_hi, &
-                 q,     q_lo,   q_hi, &
-                 qaux, qa_lo,  qa_hi)
+    !write(*,*) "level = ", level, "swe_to_comp_level", swe_to_comp_level
+
+    if (level <= swe_to_comp_level) then
+        call swectoprim(lo, hi, &
+                     uin, uin_lo, uin_hi, &
+                     q,     q_lo,   q_hi, &
+                     qaux, qa_lo,  qa_hi)
+     else
+         call compctoprim(lo, hi, &
+                      uin, uin_lo, uin_hi, &
+                      q,     q_lo,   q_hi, &
+                      qaux, qa_lo,  qa_hi)
+     endif
 
   end subroutine ca_ctoprim
 

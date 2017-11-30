@@ -172,7 +172,9 @@ subroutine ca_initdata(level,time,lo,hi,nscal, &
             xmin = xlo(1) + delta(1)*dble(i-lo(1))
             xx = xlo(1) + delta(1)*dble(i-lo(1)+HALF)
 
-           r = sqrt((xx - center(1))**2 + (yy - center(2))**2)
+            r = xx
+
+           ! r = sqrt((xx - center(1))**2 + (yy - center(2))**2)
 
         !    if (level <= swe_to_comp_level) then
         !        ! shallow water level
@@ -194,9 +196,9 @@ subroutine ca_initdata(level,time,lo,hi,nscal, &
                     state(i,j,k,URHO) = h_out
                 end if
 
-                if (level > swe_to_comp_level) then
-                    state(i,j,k,URHO) = 2.0d0 * state(i,j,k,URHO)
-                endif
+                ! if (level > swe_to_comp_level) then
+                !     state(i,j,k,URHO) = 2.0d0 * state(i,j,k,URHO)
+                ! endif
 
                 !eos_state % e = e_zone
                 eos_state % rho = state(i,j,k,URHO)

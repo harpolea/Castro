@@ -8,7 +8,7 @@
    exp_energy = 1.0d-5
    dens_ambient = 1.0
    nsub = 10
-   swe_to_comp_level  = 2
+   swe_to_comp_level  = -5
 
 /
 

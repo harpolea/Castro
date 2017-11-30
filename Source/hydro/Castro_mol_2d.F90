@@ -22,12 +22,10 @@ subroutine ca_mol_single_stage(time, level, &
 
   use meth_params_module, only : NQ, QVAR, NVAR, UMX, &
                                  NQAUX, QFS, QFX, QRHO,&
-                                 first_order_hydro, difmag, URHO, QGAMC
+                                 URHO, QGAMC
   use advection_util_module, only : compute_cfl
-  use advection_util_2d_module, only: normalize_species_fluxes
   use reconstruct_module, only : compute_reconstruction_tvd
   use bl_constants_module, only : ZERO, HALF, ONE
-  use prob_params_module, only : coord_type
   use riemann_module, only: cmpflx
   use amrex_fort_module, only : rt => amrex_real
   use network, only : nspec, naux
@@ -76,20 +74,13 @@ subroutine ca_mol_single_stage(time, level, &
   real(rt)        , allocatable:: qxm(:,:,:), qym(:,:,:)
   real(rt)        , allocatable:: qxp(:,:,:), qyp(:,:,:)
 
-  integer ngf
-  real(rt) :: dx, dy
-
   integer :: lo_3D(3), hi_3D(3)
   integer :: qs_lo(3), qs_hi(3)
   real(rt) :: dx_3D(3)
 
-  real(rt) :: div1
-
   integer :: i, j, n
 
   type (eos_t)     :: eos_state
-
-  ngf = 1
 
   lo_3D  = [lo(1), lo(2), 0]
   hi_3D  = [hi(1), hi(2), 0]
@@ -98,9 +89,6 @@ subroutine ca_mol_single_stage(time, level, &
 
   qs_lo = [lo(1)-1, lo(2)-1, 0]
   qs_hi = [hi(1)+2, hi(2)+2, 0]
-
-  dx = delta(1)
-  dy = delta(2)
 
   qaux(qa_lo(1):qa_hi(1),qa_lo(2):qa_hi(2),QGAMC) = eos_state % gam1
 
@@ -145,7 +133,7 @@ subroutine ca_mol_single_stage(time, level, &
 
      call compute_reconstruction_tvd(q(:,:,n), q_lo, q_hi, &
                                     sxm, sxp, sym, syp, sxm, sxp, q_lo, q_hi, & ! extra sxm, sxp are dummy
-                                    lo_3D, hi_3D, [dx, dy, ZERO])
+                                    lo_3D, hi_3D, dx_3D)
 
      ! Construct the interface states -- this is essentially just a
      ! reshuffling of interface states from zone-center indexing to
@@ -179,12 +167,12 @@ subroutine ca_mol_single_stage(time, level, &
   call cmpflx(level, qxm, qxp, qs_lo, qs_hi, &
               flux1, flux1_lo, flux1_hi, &
               qaux, qa_lo, qa_hi, &
-              1, lo(1), hi(1), lo(2), hi(2), domlo, domhi)
+              1, lo, hi, domlo, domhi)
 
   call cmpflx(level, qym, qyp, qs_lo, qs_hi, &
               flux2, flux2_lo, flux2_hi, &
               qaux, qa_lo, qa_hi, &
-              2, lo(1), hi(1), lo(2), hi(2), domlo, domhi)
+              2, lo, hi, domlo, domhi)
 
   deallocate(qxm, qxp, qym, qyp)
 

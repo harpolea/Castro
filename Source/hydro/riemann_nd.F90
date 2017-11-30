@@ -79,6 +79,13 @@ contains
     real(rt) :: rl, ul, v1l, v2l, pl, rel, cl
     real(rt) :: rr, ur, v1r, v2r, pr, rer, cr
     real(rt) :: cavg, csmall, gamcl, gamcr
+    !
+    ! call swe_HLL(ql, qr, qpd_lo, qpd_hi, &
+    !                 qaux, qa_lo, qa_hi, &
+    !                 uflx, uflx_lo, uflx_hi, &
+    !                 idir, ilo, ihi, &
+    !                 domlo, domhi)
+    ! return
 
     if (idir == 1) then
        iu = QU
@@ -118,19 +125,20 @@ contains
        special_bnd_hi_x = .false.
     end if
 
-    bnd_fac_z = 1
-    if (idir == 3) then
-       if ( k == domlo(3)   .and. special_bnd_lo .or. &
-            k == domhi(3)+1 .and. special_bnd_hi ) then
-          bnd_fac_z = 0
-       end if
-    end if
-
     Smax_l = maxval(abs(ql(:,:,:,QU-1+idir))) + maxval(sqrt(g * ql(:,:,:,QRHO)))
     Smax_r = maxval(abs(qr(:,:,:,QU-1+idir))) + maxval(sqrt(g * qr(:,:,:,QRHO)))
     Smax = max(Smax_r, Smax_l)
 
     do k = ilo(3), ihi(3)
+
+        bnd_fac_z = 1
+        if (idir == 3) then
+           if ( k == domlo(3)   .and. special_bnd_lo .or. &
+                k == domhi(3)+1 .and. special_bnd_hi ) then
+              bnd_fac_z = 0
+           end if
+        end if
+
         do j = ilo(2), ihi(2)
 
            bnd_fac_y = 1
@@ -193,6 +201,11 @@ contains
               endif
 
                S_r = max(Smax, max(ul + sqrt(gamcl*pl/rl), ur + sqrt(gamcr*pr/rr)))
+
+               !!!!!!!!!! HACK doesn't help
+               ! signal speeds
+               !S_l = -Smax
+               !S_r = Smax
 
               if (S_r <= ZERO) then
                  ! R region
@@ -433,16 +446,16 @@ subroutine swe_to_comp(swe, slo, shi, comp, clo, chi, lo, hi, ignore_errors)
                 q_comp(QW) = 0.d0
                 q_comp(QPRES) = 0.5d0 * g * q_swe(i,j,k,QRHO)**2
 
-                q_comp(QRHO) = 2.0d0 * q_swe(i,j,k,QRHO)
+                q_comp(QRHO) = q_swe(i,j,k,QRHO)
 
                 !kineng = 0.5d0 * q_comp(i,j,k,QRHO) * (q_comp(i,j,k,QU)**2 + q_comp(i,j,k,QV)**2 + q_comp(i,j,k,QW)**2)
 
-                eos_state % rho = q_comp(QRHO)
-                eos_state % p   = q_comp(QPRES)
+                ! eos_state % rho = q_comp(QRHO)
+                ! eos_state % p   = q_comp(QPRES)
+                !
+                ! call eos(eos_input_rp, eos_state)
 
-                call eos(eos_input_rp, eos_state)
-
-                q_comp(QREINT) = eos_state % e * q_comp(QRHO)
+                q_comp(QREINT) = q_swe(i,j,k,QREINT)!eos_state % e * q_comp(QRHO)
 
                 q_comp(QTEMP) = swe(i,j,k,UTEMP)
 
@@ -510,7 +523,7 @@ subroutine comp_to_swe(swe, slo, shi, comp, clo, chi, lo, hi, ignore_errors)
                 !
                 ! q_swe(QRHO) = q_comp(i,j,k,QRHO)
                 ! q_swe(QU:QV) = q_comp(i,j,k,QU:QV)
-                q_swe(QRHO) = 0.5d0 * q_comp(i,j,k,QRHO)
+                q_swe(QRHO) = q_comp(i,j,k,QRHO)
                 q_swe(QW) = 0.d0
 
                 call swe_cons_state(q_swe, U_swe)

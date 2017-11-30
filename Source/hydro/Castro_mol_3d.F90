@@ -83,14 +83,24 @@ subroutine ca_mol_single_stage(time, level, &
   qs_lo = lo - 1
   qs_hi = hi + 2
 
-  allocate ( qxm(qs_lo(1):qs_hi(1),qs_lo(2):qs_hi(2),qs_lo(3):qs_hi(3),NQ) )
-  allocate ( qxp(qs_lo(1):qs_hi(1),qs_lo(2):qs_hi(2),qs_lo(3):qs_hi(3),NQ) )
-  allocate ( qym(qs_lo(1):qs_hi(1),qs_lo(2):qs_hi(2),qs_lo(3):qs_hi(3),NQ) )
-  allocate ( qyp(qs_lo(1):qs_hi(1),qs_lo(2):qs_hi(2),qs_lo(3):qs_hi(3),NQ) )
-  allocate ( qzm(qs_lo(1):qs_hi(1),qs_lo(2):qs_hi(2),qs_lo(3):qs_hi(3),NQ) )
-  allocate ( qzp(qs_lo(1):qs_hi(1),qs_lo(2):qs_hi(2),qs_lo(3):qs_hi(3),NQ) )
-
   qaux(qa_lo(1):qa_hi(1),qa_lo(2):qa_hi(2),qa_lo(3):qa_hi(3),QGAMC) = eos_state % gam1
+
+  ! nan check
+  do n = 1, NVAR
+      do k = lo(3), hi(3)
+         do j = lo(2), hi(2)
+            do i = lo(1), hi(1)
+                if (q(i,j,k,n) /= q(i,j,k,n)) then
+                    if (n==1) then
+                        q(i,j,k,n) = 1.0d0
+                    else
+                        q(i,j,k,n) = 0.0d0
+                    endif
+                endif
+            enddo
+        enddo
+    enddo
+  enddo
 
   ! Check if we have violated the CFL criterion.
   call compute_cfl(q, q_lo, q_hi, &
@@ -117,9 +127,16 @@ subroutine ca_mol_single_stage(time, level, &
   allocate(szm(q_lo(1):q_hi(1), q_lo(2):q_hi(2), q_lo(3):q_hi(3)))
   allocate(szp(q_lo(1):q_hi(1), q_lo(2):q_hi(2), q_lo(3):q_hi(3)))
 
+  allocate ( qxm(qs_lo(1):qs_hi(1),qs_lo(2):qs_hi(2),qs_lo(3):qs_hi(3),NQ) )
+  allocate ( qxp(qs_lo(1):qs_hi(1),qs_lo(2):qs_hi(2),qs_lo(3):qs_hi(3),NQ) )
+  allocate ( qym(qs_lo(1):qs_hi(1),qs_lo(2):qs_hi(2),qs_lo(3):qs_hi(3),NQ) )
+  allocate ( qyp(qs_lo(1):qs_hi(1),qs_lo(2):qs_hi(2),qs_lo(3):qs_hi(3),NQ) )
+  allocate ( qzm(qs_lo(1):qs_hi(1),qs_lo(2):qs_hi(2),qs_lo(3):qs_hi(3),NQ) )
+  allocate ( qzp(qs_lo(1):qs_hi(1),qs_lo(2):qs_hi(2),qs_lo(3):qs_hi(3),NQ) )
+
   do n = 1, QVAR
 
-    call compute_reconstruction_tvd(q(:,:,:,n ), q_lo, q_hi, &
+    call compute_reconstruction_tvd(q(:,:,:,n), q_lo, q_hi, &
                          sxm, sxp, sym, syp, szm, szp, q_lo, q_hi, &
                          lo, hi, dx)
 

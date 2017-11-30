@@ -12,18 +12,19 @@ contains
   subroutine enforce_minimum_density(uin,uin_lo,uin_hi, &
                                      uout,uout_lo,uout_hi, &
                                      vol,vol_lo,vol_hi, &
-                                     lo,hi,frac_change,verbose)
+                                     lo,hi,frac_change,verbose,level)
 
     use network, only : nspec, naux
     use meth_params_module, only : NVAR, QRHO, QREINT, UEDEN, small_dens, density_reset_method, NQ, NQAUX
     use bl_constants_module, only : ZERO
     use riemann_util_module, only : swe_cons_state
+    use probdata_module, only: swe_to_comp_level
 
     use amrex_fort_module, only : rt => amrex_real
 
     implicit none
 
-    integer, intent(in) :: lo(3), hi(3), verbose
+    integer, intent(in) :: lo(3), hi(3), verbose,level
     integer, intent(in) ::  uin_lo(3),  uin_hi(3)
     integer, intent(in) :: uout_lo(3), uout_hi(3)
     integer, intent(in) ::  vol_lo(3),  vol_hi(3)
@@ -46,20 +47,33 @@ contains
     real(rt)   :: qaux(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),NQAUX)
     real(rt)     :: qout(uout_lo(1):uout_hi(1),uout_lo(2):uout_hi(2),uout_lo(3):uout_hi(3),NQ)
 
-    return
+    !return
 
     max_dens = ZERO
 
     have_reset = .false.
 
-    call swectoprim(lo, hi, &
-                      uin, uin_lo, uin_hi, &
-                      qin,  uin_lo, uin_hi, &
-                      qaux, lo, hi)
-    call swectoprim(lo, hi, &
-                    uout, uout_lo, uout_hi, &
-                    qout,  uout_lo, uout_hi, &
-                    qaux,  lo, hi)
+    ! write(*,*) "level = ", level
+
+    if (level <= swe_to_comp_level) then
+        call swectoprim(lo, hi, &
+                          uin, uin_lo, uin_hi, &
+                          qin,  uin_lo, uin_hi, &
+                          qaux, lo, hi)
+        call swectoprim(lo, hi, &
+                        uout, uout_lo, uout_hi, &
+                        qout,  uout_lo, uout_hi, &
+                        qaux,  lo, hi)
+    else
+        call compctoprim(lo, hi, &
+                          uin, uin_lo, uin_hi, &
+                          qin,  uin_lo, uin_hi, &
+                          qaux, lo, hi)
+        call compctoprim(lo, hi, &
+                        uout, uout_lo, uout_hi, &
+                        qout,  uout_lo, uout_hi, &
+                        qaux,  lo, hi)
+    endif
 
     do k = lo(3),hi(3)
        do j = lo(2),hi(2)
@@ -276,7 +290,6 @@ contains
   end subroutine reset_to_zone_state
 
 
-
   subroutine compute_cfl(q, q_lo, q_hi, &
                          qaux, qa_lo, qa_hi, &
                          lo, hi, dt, dx, courno) &
@@ -424,7 +437,6 @@ contains
     integer, intent(in) :: qa_lo(3), qa_hi(3)
 
     real(rt)        , intent(in) :: uin(uin_lo(1):uin_hi(1),uin_lo(2):uin_hi(2),uin_lo(3):uin_hi(3),NVAR)
-
     real(rt)        , intent(inout) :: q(q_lo(1):q_hi(1),q_lo(2):q_hi(2),q_lo(3):q_hi(3),NQ)
     real(rt)        , intent(inout) :: qaux(qa_lo(1):qa_hi(1),qa_lo(2):qa_hi(2),qa_lo(3):qa_hi(3),NQAUX)
 
@@ -490,7 +502,7 @@ contains
                   q(i,j,k,QV) = uin(i,j,k,UMY) / uin(i,j,k,URHO)
                   q(i,j,k,QW) = uin(i,j,k,UMZ) / uin(i,j,k,URHO)
               endif
-              q(i,j,k,QPRES) = 0.5d0 * g * uin(i,j,k,URHO)**2
+              q(i,j,k,QPRES) = 0.5d0 * g * q(i,j,k,QRHO)**2
               q(i,j,k,QREINT) = uin(i,j,k,UEINT)
               q(i,j,k,QTEMP) = uin(i,j,k,UTEMP)
               q(i,j,k,QFA) = 0.0d0
@@ -541,7 +553,6 @@ subroutine compctoprim(lo, hi, &
   integer, intent(in) :: qa_lo(3), qa_hi(3)
 
   real(rt)        , intent(in ) :: uin(uin_lo(1):uin_hi(1),uin_lo(2):uin_hi(2),uin_lo(3):uin_hi(3),NVAR)
-
   real(rt)        , intent(inout) :: q(q_lo(1):q_hi(1),q_lo(2):q_hi(2),q_lo(3):q_hi(3),NQ)
   real(rt)        , intent(inout) :: qaux(qa_lo(1):qa_hi(1),qa_lo(2):qa_hi(2),qa_lo(3):qa_hi(3),NQAUX)
 
@@ -554,13 +565,16 @@ subroutine compctoprim(lo, hi, &
   real(rt)         :: kineng
   type (eos_t)     :: eos_state
 
-  !q(:,:,:,:) = 0.0d0
+  ! call swectoprim(lo, hi, &
+  !                    uin, uin_lo, uin_hi, &
+  !                    q,     q_lo,   q_hi, &
+  !                    qaux, qa_lo,  qa_hi, ignore_errors)
+  ! return
 
   do k = lo(3), hi(3)
      do j = lo(2), hi(2)
-
-        if (present(ignore_errors) .and. (.not. ignore_errors)) then
-            do i = lo(1), hi(1)
+        do i = lo(1), hi(1)
+           if (present(ignore_errors) .and. (.not. ignore_errors)) then
                if (uin(i,j,k,URHO) .le. ZERO) then
                   print *,'   '
                   print *,'>>> Error: advection_util_nd.F90::compctoprim ',i, j, k
@@ -578,16 +592,25 @@ subroutine compctoprim(lo, hi, &
                   print *,'>>> ... small density ', uin(i,j,k,URHO)
                   call bl_error("Error:: advection_util_nd.f90 :: compctoprim")
                endif
-            end do
-        endif
+           endif
+        end do
 
         do i = lo(1), hi(1)
             q(i,j,k,1:NQ) = 0.0d0
 
-            q(i,j,k,QRHO) = uin(i,j,k,URHO)
-            q(i,j,k,QU:QW) = uin(i,j,k,UMX:UMZ) / uin(i,j,k,URHO)
+            if (uin(i,j,k,URHO) .le. ZERO) then
+                q(i,j,k,QRHO) = 1.0d0
+                q(i,j,k,QU) = 0.1d0 * uin(i,j,k,UMX) !/ uin(i,j,k,URHO)
+                q(i,j,k,QV) = 0.1d0 * uin(i,j,k,UMY) !/ uin(i,j,k,URHO)
+                q(i,j,k,QW) = 0.1d0 * uin(i,j,k,UMZ) !/ uin(i,j,k,URHO)
+            else
+                q(i,j,k,QRHO) = uin(i,j,k,URHO)
+                q(i,j,k,QU) = uin(i,j,k,UMX) / uin(i,j,k,URHO)
+                q(i,j,k,QV) = uin(i,j,k,UMY) / uin(i,j,k,URHO)
+                q(i,j,k,QW) = uin(i,j,k,UMZ) / uin(i,j,k,URHO)
+            endif
 
-            kineng = HALF * q(i,j,k,QRHO) * (q(i,j,k,QU)**2 + q(i,j,k,QV)**2 + q(i,j,k,QW)**2)
+            !kineng = HALF * q(i,j,k,QRHO) * (q(i,j,k,QU)**2 + q(i,j,k,QV)**2 + q(i,j,k,QW)**2)
 
             ! if ( (uin(i,j,k,UEDEN) - kineng) / uin(i,j,k,UEDEN) .gt. dual_energy_eta1) then
             !     q(i,j,k,QREINT) = (uin(i,j,k,UEDEN) - kineng) / uin(i,j,k,URHO)
@@ -622,24 +645,24 @@ subroutine compctoprim(lo, hi, &
 
              eos_state % T   = q(i,j,k,QTEMP )
              eos_state % rho = q(i,j,k,QRHO  )
-             eos_state % e   = q(i,j,k,QREINT)
+             !eos_state % e   = q(i,j,k,QREINT)
              eos_state % xn  = q(i,j,k,QFS:QFS+nspec-1)
              eos_state % aux = q(i,j,k,QFX:QFX+naux-1)
              eos_state % p = 0.5d0 * g * q(i,j,k,QRHO  )**2
              q(i,j,k,QPRES)  = eos_state % p
 
-             call eos(eos_input_rp, eos_state)
-
-             q(i,j,k,QTEMP)  = eos_state % T
-             q(i,j,k,QREINT) = eos_state % e * q(i,j,k,QRHO)
-             q(i,j,k,QPRES)  = eos_state % p
-             q(i,j,k,QGAME)  = q(i,j,k,QPRES) / q(i,j,k,QREINT) + ONE
-
-             qaux(i,j,k,QDPDR)  = eos_state % dpdr_e
-             qaux(i,j,k,QDPDE)  = eos_state % dpde
-             qaux(i,j,k,QGAMC)  = eos_state % gam1
-             qaux(i,j,k,QC   )  = eos_state % cs
-             qaux(i,j,k,QCSML)  = max(small, small * qaux(i,j,k,QC))
+             ! call eos(eos_input_rp, eos_state)
+             !
+             ! q(i,j,k,QTEMP)  = eos_state % T
+             ! q(i,j,k,QREINT) = eos_state % e * q(i,j,k,QRHO)
+             ! q(i,j,k,QPRES)  = eos_state % p
+             ! q(i,j,k,QGAME)  = q(i,j,k,QPRES) / q(i,j,k,QREINT) + ONE
+             !
+             ! qaux(i,j,k,QDPDR)  = eos_state % dpdr_e
+             ! qaux(i,j,k,QDPDE)  = eos_state % dpde
+             ! qaux(i,j,k,QGAMC)  = eos_state % gam1
+             ! qaux(i,j,k,QC   )  = eos_state % cs
+             ! qaux(i,j,k,QCSML)  = max(small, small * qaux(i,j,k,QC))
           enddo
        enddo
    enddo

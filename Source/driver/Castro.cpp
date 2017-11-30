@@ -49,7 +49,7 @@ Real         Castro::frac_change   = 1.e200;
 int          Castro::Density       = -1;
 int          Castro::Eden          = -1;
 int          Castro::Eint          = -1;
-int          Castro::Temp = -1;
+int          Castro::Temp          = -1;
 int          Castro::Xmom          = -1;
 int          Castro::Ymom          = -1;
 int          Castro::Zmom          = -1;
@@ -78,7 +78,6 @@ Array<Real> Castro::c_mol;
 #include <castro_defaults.H>
 
 std::string  Castro::probin_file = "probin";
-
 
 #if BL_SPACEDIM == 1
 IntVect      Castro::hydro_tile_size(1024);
@@ -288,10 +287,10 @@ Castro::Castro (Amr&            papa,
     }
 
 
-   // Initialize source term data to zero.
+    // Initialize source term data to zero.
 
-   MultiFab& dSdt_new = get_new_data(Source_Type);
-   dSdt_new.setVal(0.0);
+    MultiFab& dSdt_new = get_new_data(Source_Type);
+    dSdt_new.setVal(0.0);
 
 
     // initialize the Godunov state array used in hydro -- we wait
@@ -389,14 +388,14 @@ Castro::initMFs()
 
     if (do_reflux && level > 0) {
 
-	flux_reg.define(grids, dmap, crse_ratio, level, NUM_STATE);
-	flux_reg.setVal(0.0);
+    	flux_reg.define(grids, dmap, crse_ratio, level, NUM_STATE);
+    	flux_reg.setVal(0.0);
 
 #if (BL_SPACEDIM < 3)
-	if (!Geometry::IsCartesian()) {
-	    pres_reg.define(grids, dmap, crse_ratio, level, 1);
-	    pres_reg.setVal(0.0);
-	}
+    	if (!Geometry::IsCartesian()) {
+    	    pres_reg.define(grids, dmap, crse_ratio, level, 1);
+    	    pres_reg.setVal(0.0);
+    	}
 #endif
 
     }
@@ -404,7 +403,6 @@ Castro::initMFs()
     // Set the flux register scalings.
 
     if (do_reflux) {
-
     	flux_crse_scale = -1.0;
     	flux_fine_scale = 1.0;
     }
@@ -442,9 +440,7 @@ Castro::initMFs()
     	}
 
     	// This array holds the hydrodynamics update.
-
     	hydro_source.define(grids,dmap,NUM_STATE,0);
-
     }
 
     use_post_step_regrid = 0;
@@ -530,7 +526,6 @@ Castro::setGridInfo ()
 
       ca_set_grid_info(max_level, dx_level, domlo_level, domhi_level,
 		       ref_ratio_to_f, n_error_buf_to_f, blocking_factor_to_f);
-
     }
 }
 
@@ -569,9 +564,9 @@ Castro::initData ()
     if (verbose && ParallelDescriptor::IOProcessor())
        std::cout << "Initializing the data at level " << level << std::endl;
 
-   if (Knapsack_Weight_Type > 0) {
+    if (Knapsack_Weight_Type > 0) {
        get_new_data(Knapsack_Weight_Type).setVal(1.0);
-   }
+    }
 
 #ifdef MAESTRO_INIT
     MAESTRO_init();
@@ -1148,8 +1143,8 @@ Castro::post_init (Real stop_time)
 	    sum_per_test = true;
 	}
 
-        if (sum_int_test || sum_per_test)
-	       sum_integrated_quantities();
+    if (sum_int_test || sum_per_test)
+       sum_integrated_quantities();
 }
 
 void
@@ -1216,11 +1211,11 @@ Castro::FluxRegCrseInit() {
     Castro& fine_level = getLevel(level+1);
 
     for (int i = 0; i < BL_SPACEDIM; ++i)
-	fine_level.flux_reg.CrseInit(*fluxes[i], i, 0, 0, NUM_STATE, flux_crse_scale);
+    	fine_level.flux_reg.CrseInit(*fluxes[i], i, 0, 0, NUM_STATE, flux_crse_scale);
 
 #if (BL_SPACEDIM <= 2)
     if (!Geometry::IsCartesian())
-	fine_level.pres_reg.CrseInit(P_radial, 0, 0, 0, 1, pres_crse_scale);
+    	fine_level.pres_reg.CrseInit(P_radial, 0, 0, 0, 1, pres_crse_scale);
 #endif
 
 }
@@ -1232,11 +1227,11 @@ Castro::FluxRegFineAdd() {
     if (level == 0) return;
 
     for (int i = 0; i < BL_SPACEDIM; ++i)
-	flux_reg.FineAdd(*fluxes[i], i, 0, 0, NUM_STATE, flux_fine_scale);
+    	flux_reg.FineAdd(*fluxes[i], i, 0, 0, NUM_STATE, flux_fine_scale);
 
 #if (BL_SPACEDIM <= 2)
     if (!Geometry::IsCartesian())
-	getLevel(level).pres_reg.FineAdd(P_radial, 0, 0, 0, 1, pres_fine_scale);
+    	getLevel(level).pres_reg.FineAdd(P_radial, 0, 0, 0, 1, pres_fine_scale);
 #endif
 
 }
@@ -1285,7 +1280,7 @@ Castro::enforce_consistent_e (MultiFab& S)
         const int* lo      = box.loVect();
         const int* hi      = box.hiVect();
 
-	const int idx      = mfi.tileIndex();
+    	const int idx      = mfi.tileIndex();
         ca_enforce_consistent_e(ARLIM_3D(lo), ARLIM_3D(hi), BL_TO_FORTRAN_3D(S[mfi]), &idx);
     }
 }
@@ -1319,31 +1314,31 @@ Castro::enforce_min_density (MultiFab& S_old, MultiFab& S_new)
 #ifdef _OPENMP
 #pragma omp parallel reduction(min:dens_change)
 #endif
+
     for (MFIter mfi(S_new, true); mfi.isValid(); ++mfi) {
 
-	const Box& bx = mfi.growntilebox();
+    	const Box& bx = mfi.growntilebox();
 
-	const FArrayBox& stateold = S_old[mfi];
-	FArrayBox& statenew = S_new[mfi];
-	const FArrayBox& vol      = volume[mfi];
-	const int idx = mfi.tileIndex();
+    	const FArrayBox& stateold = S_old[mfi];
+    	FArrayBox& statenew = S_new[mfi];
+    	const FArrayBox& vol      = volume[mfi];
+    	const int idx = mfi.tileIndex();
 
-	ca_enforce_minimum_density(stateold.dataPtr(), ARLIM_3D(stateold.loVect()), ARLIM_3D(stateold.hiVect()),
-				   statenew.dataPtr(), ARLIM_3D(statenew.loVect()), ARLIM_3D(statenew.hiVect()),
-				   vol.dataPtr(), ARLIM_3D(vol.loVect()), ARLIM_3D(vol.hiVect()),
-				   ARLIM_3D(bx.loVect()), ARLIM_3D(bx.hiVect()),
-				   &dens_change, &verbose, &idx);
+    	ca_enforce_minimum_density(stateold.dataPtr(), ARLIM_3D(stateold.loVect()), ARLIM_3D(stateold.hiVect()),
+    				   statenew.dataPtr(), ARLIM_3D(statenew.loVect()), ARLIM_3D(statenew.hiVect()),
+    				   vol.dataPtr(), ARLIM_3D(vol.loVect()), ARLIM_3D(vol.hiVect()),
+    				   ARLIM_3D(bx.loVect()), ARLIM_3D(bx.hiVect()),
+    				   &dens_change, &verbose, &idx, &level);
     }
 
     if (print_update_diagnostics)
     {
+    	// Evaluate what the effective reset source was.
 
-	// Evaluate what the effective reset source was.
+    	MultiFab::Subtract(reset_source, S_new, 0, 0, S_old.nComp(), 0);
 
-	MultiFab::Subtract(reset_source, S_new, 0, 0, S_old.nComp(), 0);
-
-	bool local = true;
-	Array<Real> reset_update = evaluate_source_change(reset_source, 1.0, local);
+    	bool local = true;
+    	Array<Real> reset_update = evaluate_source_change(reset_source, 1.0, local);
 
 #ifdef BL_LAZY
         Lazy::QueueReduction( [=] () mutable {
@@ -1477,7 +1472,6 @@ Castro::apply_problem_tags (TagBoxArray& tags,
                             int          tagval,
                             Real         time)
 {
-
     const int*  domain_lo = geom.Domain().loVect();
     const int*  domain_hi = geom.Domain().hiVect();
     const Real* dx        = geom.CellSize();
@@ -1496,7 +1490,7 @@ Castro::apply_problem_tags (TagBoxArray& tags,
 	    // tile box
 	    const Box&  tilebx  = mfi.tilebox();
 
-            TagBox&     tagfab  = tags[mfi];
+        TagBox&     tagfab  = tags[mfi];
 
 	    // We cannot pass tagfab to Fortran becuase it is BaseFab<char>.
 	    // So we are going to get a temporary integer array.
@@ -1524,8 +1518,8 @@ Castro::apply_problem_tags (TagBoxArray& tags,
 	    //
 	    // Now update the tags in the TagBox.
 	    //
-            tagfab.tags_and_untags(itags, tilebx);
-    	}
+        tagfab.tags_and_untags(itags, tilebx);
+	}
     }
 }
 
@@ -1729,7 +1723,7 @@ Castro::computeTemp(MultiFab& State)
         const int idx = mfi.tileIndex();
         ca_compute_temp(ARLIM_3D(bx.loVect()), ARLIM_3D(bx.hiVect()),
                        BL_TO_FORTRAN_3D(State[mfi]), &idx);
-  }
+    }
 }
 
 
@@ -1881,7 +1875,6 @@ Castro::clean_state(MultiFab& state) {
     // the internal energy for consistency with the total energy).
     return frac_change;
 }
-
 
 
 Real

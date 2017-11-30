@@ -911,15 +911,4 @@ Castro::plotFileOutput(const std::string& dir,
     TheFullPath += BaseName;
     VisMF::Write(plotMF,TheFullPath,how,true);
 
-    // convert back
-    // NOTE: not sure if need this
-    // if ((level <= swe_to_comp_level) && (State_Type == 0)) {
-    //     for (MFIter mfi(plotMF,true); mfi.isValid(); ++mfi)
-    //     {
-    //         const Box& bx = mfi.tilebox();//plotMF.nGrow());
-    //         // do some conversion stuff
-    //         ca_comp_to_swe_self(BL_TO_FORTRAN_3D(plotMF[mfi]),
-    //             ARLIM_3D(bx.loVect()), ARLIM_3D(bx.hiVect()));
-    //     }
-    // }
 }

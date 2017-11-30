@@ -3,11 +3,7 @@ module riemann_module
   use bl_types
   use bl_constants_module
   use riemann_util_module
-  use meth_params_module, only : NQ, NQAUX, NVAR, &
-                                 small_dens, small_pres, small_temp, &
-                                 cg_maxiter, cg_tol, cg_blend, &
-                                 npassive, upass_map, qpass_map, &
-                                 allow_negative_energy
+  use meth_params_module, only : NQ, NQAUX, NVAR
 
   use amrex_fort_module, only : rt => amrex_real
   implicit none
@@ -27,7 +23,7 @@ contains
   subroutine cmpflx(level, qm, qp, qpd_lo, qpd_hi, &
                     flx, flx_lo, flx_hi, &
                     qaux, qa_lo, qa_hi, &
-                    idir, ilo, ihi, jlo, jhi, domlo, domhi)
+                    idir, lo, hi, domlo, domhi)
 
     use actual_riemann_module
     use network, only: nspec, naux
@@ -40,8 +36,9 @@ contains
     integer, intent(in) :: qpd_lo(3), qpd_hi(3)
     integer, intent(in) :: flx_lo(3), flx_hi(3)
     integer, intent(in) :: qa_lo(3), qa_hi(3)
+    integer, intent(in) :: lo(2), hi(2)
 
-    integer, intent(in) :: idir,ilo,ihi,jlo,jhi
+    integer, intent(in) :: idir
     integer, intent(in) :: domlo(2),domhi(2)
 
     real(rt), intent(inout) ::  qm(qpd_lo(1):qpd_hi(1),qpd_lo(2):qpd_hi(2),NQ)
@@ -54,8 +51,8 @@ contains
     ! Riemann problem across
     integer :: imin(3), imax(3)
 
-    imin(:) = [ilo, jlo, 0]
-    imax(:) = [ihi, jhi, 0]
+    imin(:) = [lo(1), lo(2), 0]
+    imax(:) = [hi(1), hi(2), 0]
 
     if (idir == 1) then
        imax(1) = ihi+1
