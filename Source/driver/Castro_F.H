@@ -144,7 +144,7 @@ void ca_comp_to_swe_self
     (const int* lo, const int* hi, BL_FORT_FAB_ARG_3D(state), const int* idx);
 
   void ca_enforce_consistent_e
-    (const int* lo, const int* hi, BL_FORT_FAB_ARG_3D(state), const int* idx);
+    (const int* lo, const int* hi, BL_FORT_FAB_ARG_3D(state), const int* idx, const int* level);
 
   void ca_reset_internal_e
     (const int* lo, const int* hi, BL_FORT_FAB_ARG_3D(S_new),

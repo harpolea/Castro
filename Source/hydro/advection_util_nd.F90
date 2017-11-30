@@ -17,7 +17,7 @@ contains
     use network, only : nspec, naux
     use meth_params_module, only : NVAR, QRHO, QREINT, UEDEN, small_dens, density_reset_method, NQ, NQAUX
     use bl_constants_module, only : ZERO
-    use riemann_util_module, only : swe_cons_state
+    use riemann_util_module, only : swe_cons_state, comp_cons_state
     use probdata_module, only: swe_to_comp_level
 
     use amrex_fort_module, only : rt => amrex_real
@@ -194,7 +194,11 @@ contains
 
                 endif
 
-                call swe_cons_state(qout(i,j,k,:), uout(i,j,k,:))
+                if (level <= swe_to_comp_level) then
+                    call swe_cons_state(qout(i,j,k,:), uout(i,j,k,:))
+                else
+                    call comp_cons_state(qout(i,j,k,:), uout(i,j,k,:))
+                endif
 
              end if
 

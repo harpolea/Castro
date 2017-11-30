@@ -1279,9 +1279,9 @@ Castro::enforce_consistent_e (MultiFab& S)
         const Box& box     = mfi.tilebox();
         const int* lo      = box.loVect();
         const int* hi      = box.hiVect();
-
     	const int idx      = mfi.tileIndex();
-        ca_enforce_consistent_e(ARLIM_3D(lo), ARLIM_3D(hi), BL_TO_FORTRAN_3D(S[mfi]), &idx);
+
+        ca_enforce_consistent_e(ARLIM_3D(lo), ARLIM_3D(hi), BL_TO_FORTRAN_3D(S[mfi]), &idx, &level);
     }
 }
 
@@ -1325,10 +1325,10 @@ Castro::enforce_min_density (MultiFab& S_old, MultiFab& S_new)
     	const int idx = mfi.tileIndex();
 
     	ca_enforce_minimum_density(stateold.dataPtr(), ARLIM_3D(stateold.loVect()), ARLIM_3D(stateold.hiVect()),
-    				   statenew.dataPtr(), ARLIM_3D(statenew.loVect()), ARLIM_3D(statenew.hiVect()),
-    				   vol.dataPtr(), ARLIM_3D(vol.loVect()), ARLIM_3D(vol.hiVect()),
-    				   ARLIM_3D(bx.loVect()), ARLIM_3D(bx.hiVect()),
-    				   &dens_change, &verbose, &idx, &level);
+				   statenew.dataPtr(), ARLIM_3D(statenew.loVect()), ARLIM_3D(statenew.hiVect()),
+				   vol.dataPtr(), ARLIM_3D(vol.loVect()), ARLIM_3D(vol.hiVect()),
+				   ARLIM_3D(bx.loVect()), ARLIM_3D(bx.hiVect()),
+				   &dens_change, &verbose, &idx, &level);
     }
 
     if (print_update_diagnostics)

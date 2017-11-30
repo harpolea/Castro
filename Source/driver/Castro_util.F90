@@ -79,21 +79,37 @@ contains
 
   end function position
 
-  subroutine enforce_consistent_e(lo,hi,state,s_lo,s_hi)
+  subroutine enforce_consistent_e(lo,hi,state,s_lo,s_hi,level)
 
-    use meth_params_module, only: NVAR, URHO, UMX, UMY, UMZ, UEDEN, UEINT
+    use meth_params_module, only: NVAR, QRHO, QU, QV, QW, UEDEN, UEINT, NQ, NQAUX
     use bl_constants_module, only: HALF, ONE
     use amrex_fort_module, only: rt => amrex_real
+    use probdata_module, only: swe_to_comp_level
+    use advection_util_module, only: swectoprim, compctoprim
 
     implicit none
 
-    integer,  intent(in   ) :: lo(3), hi(3)
+    integer,  intent(in   ) :: lo(3), hi(3), level
     integer,  intent(in   ) :: s_lo(3), s_hi(3)
     real(rt), intent(inout) :: state(s_lo(1):s_hi(1),s_lo(2):s_hi(2),s_lo(3):s_hi(3),NVAR)
 
     ! Local variables
     integer  :: i,j,k
     real(rt) :: u, v, w, rhoInv
+    real(rt) :: q(s_lo(1):s_hi(1),s_lo(2):s_hi(2),s_lo(3):s_hi(3),NQ)
+    real(rt) :: qaux(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),NQAUX)
+
+    if (level <= swe_to_comp_level) then
+        call swectoprim(lo, hi, &
+                          state, s_lo, s_hi, &
+                          q,  s_lo, s_hi, &
+                          qaux, lo, hi)
+    else
+        call compctoprim(lo, hi, &
+                          state, s_lo, s_hi, &
+                          q,  s_lo, s_hi, &
+                          qaux, lo, hi)
+    endif
 
     !
     ! Enforces (rho E) = (rho e) + 1/2 rho (u^2 + v^2 + w^2)
@@ -102,13 +118,12 @@ contains
        do j = lo(2), hi(2)
           do i = lo(1), hi(1)
 
-             rhoInv = ONE / state(i,j,k,URHO)
-             u = state(i,j,k,UMX) * rhoInv
-             v = state(i,j,k,UMY) * rhoInv
-             w = state(i,j,k,UMZ) * rhoInv
+             u = q(i,j,k,QU)
+             v = q(i,j,k,QV)
+             w = q(i,j,k,QW)
 
              state(i,j,k,UEDEN) = state(i,j,k,UEINT) + &
-                  HALF * state(i,j,k,URHO) * (u*u + v*v + w*w)
+                  HALF * q(i,j,k,QRHO) * (u*u + v*v + w*w)
 
           end do
        end do

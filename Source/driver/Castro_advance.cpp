@@ -226,12 +226,12 @@ Castro::finalize_do_advance(Real time, Real dt, int amr_iteration, int amr_ncycl
     }
 
     Sborder.clear();
-
-    // NOTE: this helps stop it blowing up
     MultiFab& S_old = get_old_data(State_Type);
     MultiFab& S_new = get_new_data(State_Type);
 
+    // NOTE: this helps stop it blowing up
     enforce_min_density(S_old, S_new);
+    enforce_consistent_e(S_new);
 }
 
 
