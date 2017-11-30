@@ -887,8 +887,6 @@ Castro::plotFileOutput(const std::string& dir,
     	}
     }
 
-    enforce_min_density(plotMF, plotMF);
-
     int swe_to_comp_level;
     ca_get_swe_to_comp_level(&swe_to_comp_level);
 
