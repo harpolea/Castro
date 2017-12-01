@@ -189,13 +189,23 @@ Castro::initialize_do_advance(Real time, Real dt, int amr_iteration, int amr_ncy
     	MultiFab& S_new = get_new_data(State_Type);
 
     	MultiFab::Copy(S_new, Sburn, 0, 0, S_new.nComp(), 0);
-    	for (int i = 0; i < mol_iteration; ++i)
+    	for (int i = 0; i < mol_iteration; ++i) {
     	  MultiFab::Saxpy(S_new, dt*a_mol[mol_iteration][i], *k_mol[i], 0, 0, S_new.nComp(), 0);
+        }
 
     	Sborder.define(grids, dmap, NUM_STATE, NUM_GROW);
     	const Real new_time = state[State_Type].curTime();
     	expand_state(Sborder, new_time, NUM_GROW);
+
+
+        // NOTE: this helps
+        enforce_min_density(S_new, S_new);
+        enforce_consistent_e(S_new);
+
       }
+      // NOTE: this does not
+      // enforce_min_density(Sborder, Sborder);
+      // enforce_consistent_e(Sborder);
 }
 
 
