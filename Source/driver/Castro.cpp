@@ -598,6 +598,7 @@ Castro::initData ()
     			//	   BL_TO_FORTRAN_3D(S_new[mfi]), &idx);
        }
        enforce_consistent_e(S_new);
+       enforce_min_density(S_new, S_new);
 
        // Do a FillPatch so that we can get the ghost zones filled.
 
@@ -1828,6 +1829,11 @@ Castro::expand_state(MultiFab& S, Real time, int ng)
 
     AmrLevel::FillPatch(*this,S,ng,time,State_Type,0,NUM_STATE);
 
+    // NOTE: density seems to screw things up, energy helps?
+    //enforce_min_density(S, S);
+    enforce_consistent_e(S);
+
+    // NOTE: this doesn't work
     //clean_state(S);
 }
 

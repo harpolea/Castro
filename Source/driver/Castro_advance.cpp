@@ -131,7 +131,9 @@ Castro::do_advance (Real time,
       MultiFab::Saxpy(S_new, dt, hydro_source, 0, 0, S_new.nComp(), 0);
 
       // define the temperature now
-      //clean_state(S_new);
+
+      enforce_consistent_e(S_new); // not sure does anything
+      clean_state(S_new);
     }
 
     finalize_do_advance(time, dt, amr_iteration, amr_ncycle);
@@ -146,7 +148,6 @@ Castro::initialize_do_advance(Real time, Real dt, int amr_iteration, int amr_ncy
 {
 
     // Reset the change from density resets
-
     frac_change = 1.e0;
 
     int finest_level = parent->finestLevel();
@@ -166,11 +167,11 @@ Castro::initialize_do_advance(Real time, Real dt, int amr_iteration, int amr_ncy
 
       if (mol_iteration == 0) {
 
-    //   MultiFab& S_old = get_old_data(State_Type);
-    //   std::cout << "nan checking\n";
-    //   // Check for NaN's.
-    //   check_for_nan(S_old);
-    //   std::cout << "checked nans\n";
+        //   MultiFab& S_old = get_old_data(State_Type);
+        //   std::cout << "nan checking\n";
+        //   // Check for NaN's.
+        //   check_for_nan(S_old);
+        //   std::cout << "checked nans\n";
 
     	// first MOL stage
     	Sborder.define(grids, dmap, NUM_STATE, NUM_GROW);
@@ -335,7 +336,9 @@ Castro::initialize_advance(Real time, Real dt, int amr_iteration, int amr_ncycle
     // trusted to respect the consistency between certain state variables
     // (e.g. UEINT and UEDEN) that we demand in every zone.
 
-    //clean_state(get_old_data(State_Type));
+    // NOTE: don't do this
+    //enforce_consistent_e(get_old_data(State_Type));
+    clean_state(get_old_data(State_Type));
 
     // Make a copy of the MultiFabs in the old and new state data in case we may do a retry.
 
@@ -378,16 +381,16 @@ Castro::initialize_advance(Real time, Real dt, int amr_iteration, int amr_ncycle
 
     sources_for_hydro.define(grids,dmap,NUM_STATE,NUM_GROW);
 
-      // if we are not doing CTU advection, then we are doing a method
-      // of lines, and need storage for hte intermediate stages
-      k_mol.resize(MOL_STAGES);
-      for (int n = 0; n < MOL_STAGES; ++n) {
-    	k_mol[n].reset(new MultiFab(grids, dmap, NUM_STATE, 0));
-    	k_mol[n]->setVal(0.0);
-      }
+    // if we are not doing CTU advection, then we are doing a method
+    // of lines, and need storage for hte intermediate stages
+    k_mol.resize(MOL_STAGES);
+    for (int n = 0; n < MOL_STAGES; ++n) {
+        k_mol[n].reset(new MultiFab(grids, dmap, NUM_STATE, 0));
+        k_mol[n]->setVal(0.0);
+    }
 
-      // for the post-burn state
-      Sburn.define(grids, dmap, NUM_STATE, 0);
+    // for the post-burn state
+    Sburn.define(grids, dmap, NUM_STATE, 0);
 
     // Zero out the current fluxes.
 
@@ -448,6 +451,13 @@ Castro::finalize_advance(Real time, Real dt, int amr_iteration, int amr_ncycle)
 
     k_mol.clear();
     Sburn.clear();
+
+    // NOTE: doesn't help
+    // MultiFab& S_old = get_old_data(State_Type);
+    // MultiFab& S_new = get_new_data(State_Type);
+    //
+    // enforce_min_density(S_old, S_new);
+    // enforce_consistent_e(S_new);
 }
 
 

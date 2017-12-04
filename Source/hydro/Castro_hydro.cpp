@@ -17,7 +17,7 @@ Castro::construct_mol_hydro_source(Real time, Real dt)
 
   // we'll add each stage's contribution to -div{F(U)} as we compute them
   if (mol_iteration == 0) {
-    hydro_source.setVal(0.0);
+      hydro_source.setVal(0.0);
   }
 
   // Set up the source terms to go into the hydro -- note: the
