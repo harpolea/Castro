@@ -280,15 +280,14 @@ Castro::restart (Amr&     papa,
 #ifdef DIMENSION_AGNOSTIC
               BL_FORT_PROC_CALL(CA_INITDATA,ca_initdata)
                 (level, cur_time, ARLIM_3D(lo), ARLIM_3D(hi), ns,
-		 BL_TO_FORTRAN_3D(S_new[mfi]), ZFILL(dx),
-		 ZFILL(geom.ProbLo()), ZFILL(geom.ProbHi()));
+        		 BL_TO_FORTRAN_3D(S_new[mfi]), ZFILL(dx),
+        		 ZFILL(geom.ProbLo()), ZFILL(geom.ProbHi()));
 #else
 	      BL_FORT_PROC_CALL(CA_INITDATA,ca_initdata)
-		(level, cur_time, lo, hi, ns,
-		 BL_TO_FORTRAN(S_new[mfi]), dx,
-		 geom.ProbLo(), geom.ProbHi());
+    		(level, cur_time, lo, hi, ns,
+    		 BL_TO_FORTRAN(S_new[mfi]), dx,
+    		 geom.ProbLo(), geom.ProbHi());
 #endif
-
            }
        }
     }
@@ -315,7 +314,6 @@ Castro::restart (Amr&     papa,
             state.setOldTimeLevel(reset_checkpoint_time-dt);
             state.setNewTimeLevel(reset_checkpoint_time   );
         }
-
     }
 
     if (reset_checkpoint_step > -1) {

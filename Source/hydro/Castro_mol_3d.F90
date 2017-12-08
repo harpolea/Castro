@@ -23,7 +23,7 @@ subroutine ca_mol_single_stage(time, level, &
   use meth_params_module, only : NQ, QVAR, NVAR, &
                                  UTEMP, UEINT, QPRES, NQAUX, &
                                  QTEMP, QFS, QFX, QREINT, QRHO, QGAMC
-  use advection_util_module, only : compute_cfl
+  use advection_util_module, only : compute_cfl, enforce_minimum_density, enforce_consistent_e
   use reconstruct_module, only : compute_reconstruction_tvd
   use bl_constants_module, only : ZERO, HALF, ONE, FOURTH
   use riemann_module, only: cmpflx
@@ -75,6 +75,8 @@ subroutine ca_mol_single_stage(time, level, &
   real(rt)        , allocatable :: qxm(:,:,:,:), qym(:,:,:,:), qzm(:,:,:,:)
   real(rt)        , allocatable :: qxp(:,:,:,:), qyp(:,:,:,:), qzp(:,:,:,:)
 
+  real(rt) :: frac_change
+
   integer :: i, j, k, n
   integer :: qs_lo(3), qs_hi(3)
 
@@ -101,6 +103,12 @@ subroutine ca_mol_single_stage(time, level, &
         enddo
     enddo
   enddo
+
+  ! NOTE: don't do this
+  ! call enforce_minimum_density(q, q_lo, q_hi, &
+  !                              q, q_lo, q_hi, &
+  !                              vol, vol_lo, vol_hi, &
+  !                              lo, hi, frac_change, verbose, level)
 
   ! Check if we have violated the CFL criterion.
   call compute_cfl(q, q_lo, q_hi, &

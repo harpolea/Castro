@@ -14,7 +14,7 @@ contains
 subroutine ca_enforce_consistent_e(lo,hi,state,s_lo,s_hi,idx,level) &
        bind(c, name='ca_enforce_consistent_e')
 
-    use castro_util_module, only: enforce_consistent_e
+    use advection_util_module, only: enforce_consistent_e
 
     implicit none
 

@@ -130,8 +130,6 @@ Castro::do_advance (Real time,
       MultiFab::Copy(S_new, Sburn, 0, 0, S_new.nComp(), 0);
       MultiFab::Saxpy(S_new, dt, hydro_source, 0, 0, S_new.nComp(), 0);
 
-      // define the temperature now
-
       enforce_consistent_e(S_new); // not sure does anything
       clean_state(S_new);
     }
@@ -162,10 +160,10 @@ Castro::initialize_do_advance(Real time, Real dt, int amr_iteration, int amr_ncy
     // but the state data does not carry ghost zones. So we use a FillPatch
     // using the state data to give us Sborder, which does have ghost zones.
 
-      // for Method of lines, our initialization of Sborder depends on
-      // which stage in the RK update we are working on
+    // for Method of lines, our initialization of Sborder depends on
+    // which stage in the RK update we are working on
 
-      if (mol_iteration == 0) {
+    if (mol_iteration == 0) {
 
         //   MultiFab& S_old = get_old_data(State_Type);
         //   std::cout << "nan checking\n";
@@ -177,7 +175,7 @@ Castro::initialize_do_advance(Real time, Real dt, int amr_iteration, int amr_ncy
     	Sborder.define(grids, dmap, NUM_STATE, NUM_GROW);
     	const Real prev_time = state[State_Type].prevTime();
     	expand_state(Sborder, prev_time, NUM_GROW);
-      } else {
+    } else {
 
     	// the initial state for the kth stage follows the Butcher
     	// tableau.  We need to create the proper state starting with
@@ -203,10 +201,10 @@ Castro::initialize_do_advance(Real time, Real dt, int amr_iteration, int amr_ncy
         enforce_min_density(S_new, S_new);
         enforce_consistent_e(S_new);
 
-      }
-      // NOTE: this does not
-      // enforce_min_density(Sborder, Sborder);
-      // enforce_consistent_e(Sborder);
+    }
+    // NOTE: this does not
+    // enforce_min_density(Sborder, Sborder);
+    // enforce_consistent_e(Sborder);
 }
 
 
@@ -270,9 +268,9 @@ Castro::initialize_advance(Real time, Real dt, int amr_iteration, int amr_ncycle
             // is no longer valid because the grids have, in general, changed.
             // Zero it out, and add them back using the saved copy of the fluxes.
 
-    if (use_post_step_regrid && level > 0)
-	   if (getLevel(level-1).post_step_regrid && amr_iteration == 1)
-	      getLevel(level-1).FluxRegCrseInit();
+            if (use_post_step_regrid && level > 0)
+        	   if (getLevel(level-1).post_step_regrid && amr_iteration == 1)
+        	      getLevel(level-1).FluxRegCrseInit();
 
             // If we're coming off a new regrid at the end of the last coarse
             // timestep, then we want to subcycle this timestep at the timestep

@@ -1486,41 +1486,41 @@ Castro::apply_problem_tags (TagBoxArray& tags,
     {
         Array<int>  itags;
 
-	for (MFIter mfi(S_new,true); mfi.isValid(); ++mfi)
-	{
-	    // tile box
-	    const Box&  tilebx  = mfi.tilebox();
+    	for (MFIter mfi(S_new,true); mfi.isValid(); ++mfi)
+    	{
+    	    // tile box
+    	    const Box&  tilebx  = mfi.tilebox();
 
-        TagBox&     tagfab  = tags[mfi];
+            TagBox&     tagfab  = tags[mfi];
 
-	    // We cannot pass tagfab to Fortran becuase it is BaseFab<char>.
-	    // So we are going to get a temporary integer array.
-	    tagfab.get_itags(itags, tilebx);
+    	    // We cannot pass tagfab to Fortran becuase it is BaseFab<char>.
+    	    // So we are going to get a temporary integer array.
+    	    tagfab.get_itags(itags, tilebx);
 
-            // data pointer and index space
-	    int*        tptr    = itags.dataPtr();
-	    const int*  tlo     = tilebx.loVect();
-	    const int*  thi     = tilebx.hiVect();
+                // data pointer and index space
+    	    int*        tptr    = itags.dataPtr();
+    	    const int*  tlo     = tilebx.loVect();
+    	    const int*  thi     = tilebx.hiVect();
 
 #ifdef DIMENSION_AGNOSTIC
-	    set_problem_tags(tptr,  ARLIM_3D(tlo), ARLIM_3D(thi),
-			     BL_TO_FORTRAN_3D(S_new[mfi]),
-			     &tagval, &clearval,
-			     ARLIM_3D(tilebx.loVect()), ARLIM_3D(tilebx.hiVect()),
-			     ZFILL(dx), ZFILL(prob_lo), &time, &level);
+    	    set_problem_tags(tptr,  ARLIM_3D(tlo), ARLIM_3D(thi),
+    			     BL_TO_FORTRAN_3D(S_new[mfi]),
+    			     &tagval, &clearval,
+    			     ARLIM_3D(tilebx.loVect()), ARLIM_3D(tilebx.hiVect()),
+    			     ZFILL(dx), ZFILL(prob_lo), &time, &level);
 #else
-	    set_problem_tags(tptr,  ARLIM(tlo), ARLIM(thi),
-			     BL_TO_FORTRAN(S_new[mfi]),
-			     &tagval, &clearval,
-			     tilebx.loVect(), tilebx.hiVect(),
-			     dx, prob_lo, &time, &level);
+    	    set_problem_tags(tptr,  ARLIM(tlo), ARLIM(thi),
+    			     BL_TO_FORTRAN(S_new[mfi]),
+    			     &tagval, &clearval,
+    			     tilebx.loVect(), tilebx.hiVect(),
+    			     dx, prob_lo, &time, &level);
 #endif
 
-	    //
-	    // Now update the tags in the TagBox.
-	    //
-        tagfab.tags_and_untags(itags, tilebx);
-	}
+    	    //
+    	    // Now update the tags in the TagBox.
+    	    //
+            tagfab.tags_and_untags(itags, tilebx);
+    	}
     }
 }
 

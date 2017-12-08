@@ -5,9 +5,60 @@ module advection_util_module
 
   private
 
-  public enforce_minimum_density, compute_cfl, swectoprim, compctoprim
+  public enforce_consistent_e, enforce_minimum_density, compute_cfl, swectoprim, compctoprim
 
 contains
+
+    subroutine enforce_consistent_e(lo,hi,state,s_lo,s_hi,level)
+
+      use meth_params_module, only: NVAR, QRHO, QU, QV, QW, UEDEN, UEINT, NQ, NQAUX
+      use bl_constants_module, only: HALF, ONE
+      use amrex_fort_module, only: rt => amrex_real
+      use probdata_module, only: swe_to_comp_level
+
+      implicit none
+
+      integer,  intent(in   ) :: lo(3), hi(3), level
+      integer,  intent(in   ) :: s_lo(3), s_hi(3)
+      real(rt), intent(inout) :: state(s_lo(1):s_hi(1),s_lo(2):s_hi(2),s_lo(3):s_hi(3),NVAR)
+
+      ! Local variables
+      integer  :: i,j,k
+      real(rt) :: u, v, w, rhoInv
+      real(rt) :: q(s_lo(1):s_hi(1),s_lo(2):s_hi(2),s_lo(3):s_hi(3),NQ)
+      real(rt) :: qaux(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),NQAUX)
+
+      if (level <= swe_to_comp_level) then
+          call swectoprim(lo, hi, &
+                            state, s_lo, s_hi, &
+                            q,  s_lo, s_hi, &
+                            qaux, lo, hi)
+      else
+          call compctoprim(lo, hi, &
+                            state, s_lo, s_hi, &
+                            q,  s_lo, s_hi, &
+                            qaux, lo, hi)
+      endif
+
+      !
+      ! Enforces (rho E) = (rho e) + 1/2 rho (u^2 + v^2 + w^2)
+      !
+      do k = lo(3), hi(3)
+         do j = lo(2), hi(2)
+            do i = lo(1), hi(1)
+
+               u = q(i,j,k,QU)
+               v = q(i,j,k,QV)
+               w = q(i,j,k,QW)
+
+               state(i,j,k,UEDEN) = state(i,j,k,UEINT) + &
+                    HALF * q(i,j,k,QRHO) * (u*u + v*v + w*w)
+
+            end do
+         end do
+      end do
+
+  end subroutine enforce_consistent_e
 
   subroutine enforce_minimum_density(uin,uin_lo,uin_hi, &
                                      uout,uout_lo,uout_hi, &
@@ -338,7 +389,7 @@ contains
        dtdz = ZERO
     endif
 
-    large_number = 1.0d30
+    large_number = 1.0d20
 
     do k = lo(3),hi(3)
        do j = lo(2),hi(2)
@@ -350,14 +401,14 @@ contains
                  print *,'>>> Error: advection_util_nd.F90::compute_cfl ',i, j, k
                  print *,'>>> ... negative density ', q(i,j,k,QRHO)
                  q(i,j,k,QRHO) = 1.0d0
-                 !call bl_error("Error:: advection_util_nd.f90 :: compute_cfl")
+                 call bl_error("Error:: advection_util_nd.f90 :: compute_cfl")
              else if (q(i,j,k,QRHO) > large_number) then
                     !print *, uin(:,:,:,URHO)
                     print *,'   '
                     print *,'>>> Error: advection_util_nd.F90::compute_cfl ',i, j, k
                     print *,'>>> ... density is very large ', q(i,j,k,QRHO)
                     q(i,j,k,QRHO) = 1.0d0
-                    !call bl_error("Error:: advection_util_nd.f90 :: compute_cfl")
+                    call bl_error("Error:: advection_util_nd.f90 :: compute_cfl")
              else if (q(i,j,k,QRHO) /= q(i,j,k,QRHO)) then
                   print *,'   '
                   print *,'>>> Error: advection_util_nd.F90::compute_cfl ',i, j, k

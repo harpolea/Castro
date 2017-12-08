@@ -55,9 +55,9 @@ contains
     imax(:) = [hi(1), hi(2), 0]
 
     if (idir == 1) then
-       imax(1) = ihi+1
+       imax(1) = hi(1)+1
     else
-       imax(2) = jhi+1
+       imax(2) = hi(2)+1
     endif
 
     ! Solve Riemann problem (godunov state passed back, but only (u,p) saved)
