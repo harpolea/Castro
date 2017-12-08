@@ -389,7 +389,7 @@ contains
        dtdz = ZERO
     endif
 
-    large_number = 1.0d20
+    large_number = 1.0d10
 
     do k = lo(3),hi(3)
        do j = lo(2),hi(2)
@@ -449,6 +449,7 @@ contains
                print *,'>>> ... u,v,w, c            ', q(i,j,k,QU), q(i,j,k,QV), q(i,j,k,QW), c
                print *,'>>> ... density             ', q(i,j,k,QRHO)
                print *,'>>> ... courtmp            ', courtmp
+               call bl_error("Warning:: advection_util_nd.F90 :: CFL violation in compute_cfl")
             endif
 
             courno = max(min(1.0d0,courno), min(1.0d0,courtmp))
