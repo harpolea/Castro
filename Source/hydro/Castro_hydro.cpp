@@ -59,7 +59,7 @@ Castro::construct_mol_hydro_source(Real time, Real dt)
     const int*  domain_lo = geom.Domain().loVect();
     const int*  domain_hi = geom.Domain().hiVect();
 
-    fill_boundary(Sborder, geom, true);
+    //fill_boundary(Sborder, geom, true);
 
     for (MFIter mfi(S_new, hydro_tile_size); mfi.isValid(); ++mfi) {
     	const Box& bx  = mfi.tilebox();
@@ -81,7 +81,7 @@ Castro::construct_mol_hydro_source(Real time, Real dt)
 
     	FArrayBox& vol = volume[mfi];
 
-    	q.resize(qbx, QVAR);
+    	q.resize(qbx, NQ);
     	qaux.resize(qbx, NQAUX);
 
     	// convert the conservative state to the primitive variable state.
@@ -89,10 +89,10 @@ Castro::construct_mol_hydro_source(Real time, Real dt)
 
     	const int idx = mfi.tileIndex();
 
-    	ca_ctoprim(ARLIM_3D(qbx.loVect()), ARLIM_3D(qbx.hiVect()),
-    		   statein.dataPtr(), ARLIM_3D(statein.loVect()), ARLIM_3D(statein.hiVect()),
-    		   q.dataPtr(), ARLIM_3D(q.loVect()), ARLIM_3D(q.hiVect()),
-    		   qaux.dataPtr(), ARLIM_3D(qaux.loVect()), ARLIM_3D(qaux.hiVect()), &idx, &level);
+    	// ca_ctoprim(ARLIM_3D(qbx.loVect()), ARLIM_3D(qbx.hiVect()),
+    	// 	   statein.dataPtr(), ARLIM_3D(statein.loVect()), ARLIM_3D(statein.hiVect()),
+    	// 	   q.dataPtr(), ARLIM_3D(q.loVect()), ARLIM_3D(q.hiVect()),
+    	// 	   qaux.dataPtr(), ARLIM_3D(qaux.loVect()), ARLIM_3D(qaux.hiVect()), &idx, &level);
 
     	// Allocate fabs for fluxes
     	for (int i = 0; i < BL_SPACEDIM ; i++)  {

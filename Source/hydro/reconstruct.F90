@@ -33,7 +33,7 @@ contains
 
         integer i,j,k
 
-        real(rt) :: slope_l, slope_r, slope
+        real(rt) :: slope_l, slope_r, slope, r
 
         !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         ! x-direction
@@ -44,7 +44,7 @@ contains
         slope_l = 0.0d0
         slope_r = 0.0d0
 #if (BL_SPACEDIM <= 2)
-        k = lo(3)
+        k = 0!lo(3)
 #else
         do k=lo(3)-dg(3),hi(3)+dg(3)
 #endif
@@ -69,11 +69,17 @@ contains
                     if (slope_l * slope_r < 0.0d0) then
                         slope = 0.0d0
                     else
-                        slope = sign( min( 2.0d0 * abs(slope_l), &
-                                   2.0d0 * abs(slope_r), &
-                                  0.5d0 * (abs(slope_l) + abs(slope_r))), &
-                               slope_l + slope_r)
+                        r = slope_r / slope_l
+                        slope = 0.5d0 * (slope_l + slope_r) * min(2.0d0 * r/(1.0d0 + r), 2.0d0 / (1.0d0 + r))
+                        ! slope = sign( min( 2.0d0 * abs(slope_l), &
+                        !            2.0d0 * abs(slope_r), &
+                        !           0.5d0 * (abs(slope_l) + abs(slope_r))), &
+                        !        slope_l + slope_r)
                     end if
+
+                    if (slope /= slope) then
+                        slope = 0.0d0
+                    endif
 
                     sxm(i,j,k) = s(i,j,k) - 0.5d0 * slope
                     sxp(i,j,k) = s(i,j,k) + 0.5d0 * slope
@@ -107,11 +113,17 @@ contains
                 if (slope_l * slope_r < 0.0d0) then
                     slope = 0.0d0
                 else
-                    slope = sign( min( 2.0d0 * abs(slope_l), &
-                               2.0d0 * abs(slope_r), &
-                              0.5d0 * (abs(slope_l) + abs(slope_r))), &
-                           slope_l + slope_r)
+                    r = slope_r / slope_l
+                    slope = 0.5d0 * (slope_l + slope_r) * min(2.0d0 * r/(1.0d0 + r), 2.0d0 / (1.0d0 + r))
+                    ! slope = sign( min( 2.0d0 * abs(slope_l), &
+                    !            2.0d0 * abs(slope_r), &
+                    !           0.5d0 * (abs(slope_l) + abs(slope_r))), &
+                    !        slope_l + slope_r)
                 end if
+
+                if (slope /= slope) then
+                    slope = 0.0d0
+                endif
 
                 sym(i,j,k) = s(i,j,k) - 0.5d0 * slope
                 syp(i,j,k) = s(i,j,k) + 0.5d0 * slope

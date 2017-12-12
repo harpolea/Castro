@@ -328,6 +328,10 @@ contains
     Smax_r = maxval(abs(qr(:,:,:,QU-1+idir))) + maxval(sqrt(g * qr(:,:,:,QRHO)))
     Smax = max(Smax_r, Smax_l)
 
+    if (Smax /= Smax .or. (Smax+1 .eq. Smax)) then
+        Smax = 1.0d0
+    endif
+
     do k = ilo(3), ihi(3)
 
         bnd_fac_z = 1

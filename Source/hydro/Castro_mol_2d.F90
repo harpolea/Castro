@@ -23,13 +23,14 @@ subroutine ca_mol_single_stage(time, level, &
   use meth_params_module, only : NQ, QVAR, NVAR, UMX, &
                                  NQAUX, QFS, QFX, QRHO,&
                                  URHO, QGAMC
-  use advection_util_module, only : compute_cfl
+  use advection_util_module, only : compute_cfl, swectoprim, compctoprim
   use reconstruct_module, only : compute_reconstruction_tvd
   use bl_constants_module, only : ZERO, HALF, ONE
   use riemann_module, only: cmpflx
   use amrex_fort_module, only : rt => amrex_real
   use network, only : nspec, naux
   use eos_type_module, only : eos_t
+  use probdata_module, only: swe_to_comp_level
 
   implicit none
 
@@ -92,11 +93,25 @@ subroutine ca_mol_single_stage(time, level, &
 
   qaux(qa_lo(1):qa_hi(1),qa_lo(2):qa_hi(2),QGAMC) = eos_state % gam1
 
+  if (level <= swe_to_comp_level) then
+      call swectoprim(q_lo, q_hi, &
+                   uin, uin_lo, uin_hi, &
+                   q,     q_lo,   q_hi, &
+                   qaux, qa_lo,  qa_hi)
+   else
+       call compctoprim(q_lo, q_hi, &
+                    uin, uin_lo, uin_hi, &
+                    q,     q_lo,   q_hi, &
+                    qaux, qa_lo,  qa_hi)
+   endif
+   !write(*,*) "NQ, QVAR, NVAR", QVAR, QVAR, NVAR
+
   ! nan check
   do n = 1, NVAR
-     do j = lo(2)-2, hi(2)+2
-        do i = lo(1)-2, hi(1)+2
+     do j = q_lo(2), q_hi(2)
+        do i = q_lo(1), q_hi(1)
             if (q(i,j,n) /= q(i,j,n)) then
+                !write(*,*) "i,j,n", i, j, n, "q", q(i,j,n)
                 if (n==1) then
                     q(i,j,n) = 1.0d0
                 else
@@ -130,8 +145,10 @@ subroutine ca_mol_single_stage(time, level, &
 
   !write(*,*) "lo, qlo", lo, q_lo
 
+  !write(*,*) "NQ, QVAR, NVAR", QVAR, NVAR, NQ
+
   ! Do reconstruction
-  do n = 1, QVAR
+  do n = 1, NVAR
 
      call compute_reconstruction_tvd(q(:,:,n), q_lo, q_hi, &
                                     sxm, sxp, sym, syp, sxm, sxp, q_lo, q_hi, & ! extra sxm, sxp are dummy

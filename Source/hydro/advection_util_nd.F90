@@ -712,7 +712,7 @@ subroutine compctoprim(lo, hi, &
              qaux(i,j,k,QDPDE)  = eos_state % dpde
              qaux(i,j,k,QGAMC)  = eos_state % gam1
              qaux(i,j,k,QC   )  = eos_state % cs
-             qaux(i,j,k,QCSML)  = max(small, small * qaux(i,j,k,QC))
+             ! qaux(i,j,k,QCSML)  = max(small, small * qaux(i,j,k,QC))
           enddo
        enddo
    enddo

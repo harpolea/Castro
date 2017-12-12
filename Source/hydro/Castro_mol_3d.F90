@@ -23,13 +23,14 @@ subroutine ca_mol_single_stage(time, level, &
   use meth_params_module, only : NQ, QVAR, NVAR, &
                                  UTEMP, UEINT, QPRES, NQAUX, &
                                  QTEMP, QFS, QFX, QREINT, QRHO, QGAMC
-  use advection_util_module, only : compute_cfl, enforce_minimum_density, enforce_consistent_e
+  use advection_util_module
   use reconstruct_module, only : compute_reconstruction_tvd
   use bl_constants_module, only : ZERO, HALF, ONE, FOURTH
   use riemann_module, only: cmpflx
   use amrex_fort_module, only : rt => amrex_real
   use eos_type_module, only : eos_t, eos_input_rt
   use network, only : nspec, naux
+  use probdata_module, only: swe_to_comp_level
 
   implicit none
 
@@ -87,11 +88,23 @@ subroutine ca_mol_single_stage(time, level, &
 
   qaux(qa_lo(1):qa_hi(1),qa_lo(2):qa_hi(2),qa_lo(3):qa_hi(3),QGAMC) = eos_state % gam1
 
+  if (level <= swe_to_comp_level) then
+      call swectoprim(q_lo, q_hi, &
+                   uin, uin_lo, uin_hi, &
+                   q,     q_lo,   q_hi, &
+                   qaux, qa_lo,  qa_hi)
+   else
+       call compctoprim(q_lo, q_hi, &
+                    uin, uin_lo, uin_hi, &
+                    q,     q_lo,   q_hi, &
+                    qaux, qa_lo,  qa_hi)
+   endif
+
   ! nan check
-  do n = 1, NVAR
-      do k = lo(3), hi(3)
-         do j = lo(2), hi(2)
-            do i = lo(1), hi(1)
+  do n = 1, NQ
+      do k = q_lo(3), q_hi(3)
+         do j = q_lo(2), q_hi(2)
+            do i = q_lo(1), q_hi(1)
                 if (q(i,j,k,n) /= q(i,j,k,n)) then
                     if (n==1) then
                         q(i,j,k,n) = 1.0d0
@@ -142,7 +155,7 @@ subroutine ca_mol_single_stage(time, level, &
   allocate ( qzm(qs_lo(1):qs_hi(1),qs_lo(2):qs_hi(2),qs_lo(3):qs_hi(3),NQ) )
   allocate ( qzp(qs_lo(1):qs_hi(1),qs_lo(2):qs_hi(2),qs_lo(3):qs_hi(3),NQ) )
 
-  do n = 1, QVAR
+  do n = 1, NQ
 
     call compute_reconstruction_tvd(q(:,:,:,n), q_lo, q_hi, &
                          sxm, sxp, sym, syp, szm, szp, q_lo, q_hi, &

@@ -190,11 +190,11 @@ subroutine ca_initdata(level,time,lo,hi,nscal, &
            !
         !    else ! compressible level
 
-                ! if (r < damn_rad) then
-                    state(i,j,k,URHO) = h_in + 0.5d0 * (1.0d0 + tanh((r - damn_rad) / 0.03))
-                ! else
-                !     state(i,j,k,URHO) = h_out
-                ! end if
+                if (r < damn_rad) then
+                    state(i,j,k,URHO) = h_in! + 0.5d0 * (1.0d0 + tanh((r - damn_rad) / 0.03))
+                else
+                    state(i,j,k,URHO) = h_out
+                end if
 
                 ! if (level > swe_to_comp_level) then
                 !     state(i,j,k,URHO) = 2.0d0 * state(i,j,k,URHO)
