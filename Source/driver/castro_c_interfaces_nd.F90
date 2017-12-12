@@ -251,6 +251,9 @@ end subroutine ca_swe_to_comp_self
 
     !write(*,*) "level = ", level, "swe_to_comp_level", swe_to_comp_level
 
+    ! write(*,*) "ulo, qlo, lo", uin_lo, q_lo, lo
+    ! write(*,*) "uhi, qhi, hi", uin_hi, q_hi, hi
+
     if (level <= swe_to_comp_level) then
         call swectoprim(lo, hi, &
                      uin, uin_lo, uin_hi, &

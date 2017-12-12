@@ -6,7 +6,7 @@ module castro_sums_module
   public
 
 contains
-   
+
   subroutine ca_summass(lo,hi,rho,r_lo,r_hi,dx,&
                         vol,v_lo,v_hi,mass) bind(C, name="ca_summass")
 
@@ -68,7 +68,7 @@ contains
 
   end subroutine ca_sumsquared
 
-  
+
 
   subroutine ca_sumlocmass(lo,hi,rho,r_lo,r_hi,dx,&
                            vol,v_lo,v_hi,mass,idir) bind(C, name="ca_sumlocmass")
@@ -191,7 +191,7 @@ contains
           endif
           x = x + symlo1 + symhi1
           if (idir2 .eq. 0) then
-             do k = lo(5), hi(3)
+             do k = lo(3), hi(3)
                 do j = lo(2), hi(2)
                    mass = mass + rho(i,j,k) * vol(i,j,k) * x * x
                 enddo
@@ -265,7 +265,7 @@ contains
                 if (physbc_hi(3) .eq. Symmetry) then
                    symhi2 = z - probhi(3)
                 endif
-                z = z + symlo2 + symhi2                   
+                z = z + symlo2 + symhi2
                 do i = lo(1), hi(1)
                    mass = mass + rho(i,j,k) * vol(i,j,k) * y * z
                 enddo
@@ -379,7 +379,7 @@ contains
   end subroutine ca_sumlocsquaredmass
 
 
-  
+
   subroutine ca_sumproduct(lo,hi,f1,f1_lo,f1_hi,f2,f2_lo,f2_hi,dx,&
                            vol,v_lo,v_hi,product) bind(C, name="ca_sumproduct")
 

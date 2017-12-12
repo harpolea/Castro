@@ -621,12 +621,6 @@ subroutine compctoprim(lo, hi, &
   real(rt)         :: kineng
   type (eos_t)     :: eos_state
 
-  ! call swectoprim(lo, hi, &
-  !                    uin, uin_lo, uin_hi, &
-  !                    q,     q_lo,   q_hi, &
-  !                    qaux, qa_lo,  qa_hi, ignore_errors)
-  ! return
-
   do k = lo(3), hi(3)
      do j = lo(2), hi(2)
         do i = lo(1), hi(1)
@@ -701,24 +695,24 @@ subroutine compctoprim(lo, hi, &
 
              eos_state % T   = q(i,j,k,QTEMP )
              eos_state % rho = q(i,j,k,QRHO  )
-             !eos_state % e   = q(i,j,k,QREINT)
+             eos_state % e   = q(i,j,k,QREINT)
              eos_state % xn  = q(i,j,k,QFS:QFS+nspec-1)
              eos_state % aux = q(i,j,k,QFX:QFX+naux-1)
              eos_state % p = 0.5d0 * g * q(i,j,k,QRHO  )**2
              q(i,j,k,QPRES)  = eos_state % p
 
-             ! call eos(eos_input_rp, eos_state)
-             !
-             ! q(i,j,k,QTEMP)  = eos_state % T
-             ! q(i,j,k,QREINT) = eos_state % e * q(i,j,k,QRHO)
-             ! q(i,j,k,QPRES)  = eos_state % p
-             ! q(i,j,k,QGAME)  = q(i,j,k,QPRES) / q(i,j,k,QREINT) + ONE
-             !
-             ! qaux(i,j,k,QDPDR)  = eos_state % dpdr_e
-             ! qaux(i,j,k,QDPDE)  = eos_state % dpde
-             ! qaux(i,j,k,QGAMC)  = eos_state % gam1
-             ! qaux(i,j,k,QC   )  = eos_state % cs
-             ! qaux(i,j,k,QCSML)  = max(small, small * qaux(i,j,k,QC))
+             call eos(eos_input_rp, eos_state)
+
+             ! q(i,j,k,QTEMP)  = eos_state % T // NOTE: this breaks it
+             q(i,j,k,QREINT) = eos_state % e * q(i,j,k,QRHO)
+             q(i,j,k,QPRES)  = eos_state % p
+             q(i,j,k,QGAME)  = q(i,j,k,QPRES) / q(i,j,k,QREINT) + ONE
+
+             qaux(i,j,k,QDPDR)  = eos_state % dpdr_e
+             qaux(i,j,k,QDPDE)  = eos_state % dpde
+             qaux(i,j,k,QGAMC)  = eos_state % gam1
+             qaux(i,j,k,QC   )  = eos_state % cs
+             qaux(i,j,k,QCSML)  = max(small, small * qaux(i,j,k,QC))
           enddo
        enddo
    enddo

@@ -59,12 +59,16 @@ Castro::construct_mol_hydro_source(Real time, Real dt)
     const int*  domain_lo = geom.Domain().loVect();
     const int*  domain_hi = geom.Domain().hiVect();
 
+    fill_boundary(Sborder, geom, true);
+
     for (MFIter mfi(S_new, hydro_tile_size); mfi.isValid(); ++mfi) {
     	const Box& bx  = mfi.tilebox();
     	const Box& qbx = amrex::grow(bx, NUM_GROW);
 
     	const int* lo = bx.loVect();
     	const int* hi = bx.hiVect();
+
+        // std::cout << "lo = " << lo[0] << ' ' << lo[1] << ' ' << lo[2] << '\n';
 
     	FArrayBox &statein  = Sborder[mfi];
     	FArrayBox &stateout = S_new[mfi];

@@ -1867,6 +1867,8 @@ Castro::check_for_nan(MultiFab& state, int check_ghost)
 Real
 Castro::clean_state(MultiFab& state) {
 
+    return 0.0;
+
     // Enforce a minimum density.
     MultiFab temp_state(state.boxArray(), state.DistributionMap(), state.nComp(), state.nGrow());
 
@@ -1885,6 +1887,8 @@ Castro::clean_state(MultiFab& state) {
 
 Real
 Castro::clean_state(MultiFab& state, MultiFab& state_old) {
+
+    return 0.0;
 
     // Enforce a minimum density.
     Real frac_change = 1.0;

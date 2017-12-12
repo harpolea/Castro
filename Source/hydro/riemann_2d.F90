@@ -54,11 +54,7 @@ contains
     imin(:) = [lo(1), lo(2), 0]
     imax(:) = [hi(1), hi(2), 0]
 
-    if (idir == 1) then
-       imax(1) = hi(1)+1
-    else
-       imax(2) = hi(2)+1
-    endif
+    imax(idir) = hi(idir)+1
 
     ! Solve Riemann problem (godunov state passed back, but only (u,p) saved)
     if (level <= swe_to_comp_level) then

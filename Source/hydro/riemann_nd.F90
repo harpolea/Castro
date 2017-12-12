@@ -79,13 +79,6 @@ contains
     real(rt) :: rl, ul, v1l, v2l, pl, rel, cl
     real(rt) :: rr, ur, v1r, v2r, pr, rer, cr
     real(rt) :: cavg, csmall, gamcl, gamcr
-    !
-    ! call swe_HLL(ql, qr, qpd_lo, qpd_hi, &
-    !                 qaux, qa_lo, qa_hi, &
-    !                 uflx, uflx_lo, uflx_hi, &
-    !                 idir, ilo, ihi, &
-    !                 domlo, domhi)
-    ! return
 
     if (idir == 1) then
        iu = QU
@@ -450,18 +443,16 @@ subroutine swe_to_comp(swe, slo, shi, comp, clo, chi, lo, hi, ignore_errors)
 
                 !kineng = 0.5d0 * q_comp(i,j,k,QRHO) * (q_comp(i,j,k,QU)**2 + q_comp(i,j,k,QV)**2 + q_comp(i,j,k,QW)**2)
 
-                ! eos_state % rho = q_comp(QRHO)
-                ! eos_state % p   = q_comp(QPRES)
-                !
-                ! call eos(eos_input_rp, eos_state)
+                eos_state % rho = q_comp(QRHO)
+                eos_state % p   = q_comp(QPRES)
 
-                q_comp(QREINT) = q_swe(i,j,k,QREINT)!eos_state % e * q_comp(QRHO)
+                call eos(eos_input_rp, eos_state)
 
+                q_comp(QREINT) = eos_state % e * q_comp(QRHO)
                 q_comp(QTEMP) = swe(i,j,k,UTEMP)
 
                 call comp_cons_state(q_comp, U_comp)
 
-                !U_comp(UTEMP) = swe(i,j,k,UTEMP)
                 U_comp(UFS:UFS-1+nspec) =  U_comp(URHO) / nspec
 
                 comp(i,j,k,URHO) = U_comp(URHO)
@@ -520,15 +511,10 @@ subroutine comp_to_swe(swe, slo, shi, comp, clo, chi, lo, hi, ignore_errors)
                 U_swe(1:NVAR) = 0.0d0
 
                 q_swe(1:NQ) = q_comp(i,j,k,1:NQ)
-                !
-                ! q_swe(QRHO) = q_comp(i,j,k,QRHO)
-                ! q_swe(QU:QV) = q_comp(i,j,k,QU:QV)
                 q_swe(QRHO) = q_comp(i,j,k,QRHO)
                 q_swe(QW) = 0.d0
 
                 call swe_cons_state(q_swe, U_swe)
-
-                !U_swe(UTEMP) = comp(i,j,k,UTEMP)
 
                 U_swe(UFS:UFS-1+nspec) = U_swe(URHO) / nspec
 

@@ -43,15 +43,28 @@ contains
 
         slope_l = 0.0d0
         slope_r = 0.0d0
-
+#if (BL_SPACEDIM <= 2)
+        k = lo(3)
+#else
         do k=lo(3)-dg(3),hi(3)+dg(3)
+#endif
             do j=lo(2)-dg(2),hi(2)+dg(2)
                 do i=lo(1)-2,hi(1)+1
+
+                    !write(*,*) "i, j, s(i-1, j)", i, j, s(i-1, j, k)
 
                     slope_l = s(i,j,k) - s(i-1,j,k)
                     slope_r = s(i+1,j,k) - s(i,j,k)
 
+                    ! if (slope_l /= slope_l .or. slope_l-1 .eq. slope_l) then
+                    !     slope_l = 0.0d0
+                    ! endif
+                    ! if (slope_r /= slope_r .or. slope_r-1 .eq. slope_r) then
+                    !     slope_r = 0.0d0
+                    ! endif
+
                     !!$    Use Van Leer MC limiter
+                    !write(*,*) "slope_l, slope_r", slope_l, slope_r
 
                     if (slope_l * slope_r < 0.0d0) then
                         slope = 0.0d0
@@ -82,6 +95,13 @@ contains
                 slope_l = s(i,j,k) - s(i,j-1,k)
                 slope_r = s(i,j+1,k) - s(i,j,k)
 
+                ! if (slope_l /= slope_l .or. slope_l-1 .eq. slope_l) then
+                !     slope_l = 0.0d0
+                ! endif
+                ! if (slope_r /= slope_r .or. slope_r-1 .eq. slope_r) then
+                !     slope_r = 0.0d0
+                ! endif
+
                 !!$    Use Van Leer MC limiter
 
                 if (slope_l * slope_r < 0.0d0) then
@@ -98,9 +118,9 @@ contains
             end do
         end do
 #endif
+#if (BL_SPACEDIM == 3)
     end do
 
-#if (BL_SPACEDIM == 3)
         !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         ! z-direction
         !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -114,6 +134,13 @@ contains
 
                     slope_l = s(i,j,k) - s(i,j,k-1)
                     slope_r = s(i,j,k+1) - s(i,j,k)
+
+                    ! if (slope_l /= slope_l .or. slope_l-1 .eq. slope_l) then
+                    !     slope_l = 0.0d0
+                    ! endif
+                    ! if (slope_r /= slope_r .or. slope_r-1 .eq. slope_r) then
+                    !     slope_r = 0.0d0
+                    ! endif
 
                     !!$    Use Van Leer MC limiter
 

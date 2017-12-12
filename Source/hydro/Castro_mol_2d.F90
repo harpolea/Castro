@@ -94,8 +94,8 @@ subroutine ca_mol_single_stage(time, level, &
 
   ! nan check
   do n = 1, NVAR
-     do j = lo(2), hi(2)
-        do i = lo(1), hi(1)
+     do j = lo(2)-2, hi(2)+2
+        do i = lo(1)-2, hi(1)+2
             if (q(i,j,n) /= q(i,j,n)) then
                 if (n==1) then
                     q(i,j,n) = 1.0d0
@@ -127,6 +127,8 @@ subroutine ca_mol_single_stage(time, level, &
   allocate ( qxp(qs_lo(1):qs_hi(1),qs_lo(2):qs_hi(2),NQ) )
   allocate ( qym(qs_lo(1):qs_hi(1),qs_lo(2):qs_hi(2),NQ) )
   allocate ( qyp(qs_lo(1):qs_hi(1),qs_lo(2):qs_hi(2),NQ) )
+
+  !write(*,*) "lo, qlo", lo, q_lo
 
   ! Do reconstruction
   do n = 1, QVAR

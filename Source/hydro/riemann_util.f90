@@ -96,10 +96,6 @@ contains
     real(rt)        , intent(out) :: U(NVAR)
 
     !integer  :: ipassive, n, nq
-
-    call swe_cons_state(q, U)
-    return
-
     U(1:NVAR) = 0.0d0
 
     U(URHO) = q(QRHO)
@@ -181,9 +177,6 @@ contains
 
     integer :: ipassive, n
     real(rt)         :: u_flx
-
-    call swe_compute_flux(idir, bnd_fac, U, F)
-    return
 
     if (idir == 1) then
        u_flx = U(UMX) / U(URHO)
