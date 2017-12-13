@@ -46,6 +46,13 @@ Castro::advance (Real time,
     	dt_new = do_advance(time, dt, amr_iteration, amr_ncycle);
       }
 
+      if (cfl_violation && hard_cfl_limit)
+        amrex::Abort("CFL is too high at this level -- go back to a checkpoint and restart with lower cfl number");
+
+        // If we didn't kill the job, reset the violation counter.
+
+    cfl_violation = 0;
+
     // Check to see if this advance violated certain stability criteria.
     // If so, get a new timestep and do subcycled advances until we reach
     // t = time + dt.
@@ -112,6 +119,13 @@ Castro::do_advance (Real time,
       // store the result of the burn and old-time sources in Sburn for later stages
       MultiFab::Copy(Sburn, S_new, 0, 0, NUM_STATE, S_new.nGrow());
     }
+
+    cons_to_prim(time);
+
+    check_for_cfl_violation(dt);
+
+    if (cfl_violation)
+        return dt;
 
     // Do the hydro update.  We build directly off of Sborder, which
     // is the state that has already seen the burn
@@ -259,6 +273,8 @@ Castro::initialize_advance(Real time, Real dt, int amr_iteration, int amr_ncycle
     sub_ncycle = 0;
     dt_subcycle = 1.e200;
 
+    cfl_violation = 0;
+
     if (use_post_step_regrid && level > 0) {
 
 	if (getLevel(level-1).post_step_regrid && amr_iteration == 1) {
@@ -379,6 +395,12 @@ Castro::initialize_advance(Real time, Real dt, int amr_iteration, int amr_ncycle
 
     sources_for_hydro.define(grids,dmap,NUM_STATE,NUM_GROW);
 
+    q.define(grids, dmap, QVAR, NUM_GROW);
+
+    qaux.define(grids, dmap, NQAUX, NUM_GROW);
+
+    src_q.define(grids, dmap, QVAR, NUM_GROW);
+
     // if we are not doing CTU advection, then we are doing a method
     // of lines, and need storage for hte intermediate stages
     k_mol.resize(MOL_STAGES);
@@ -444,6 +466,9 @@ Castro::finalize_advance(Real time, Real dt, int amr_iteration, int amr_ncycle)
     }
 
     sources_for_hydro.clear();
+    q.clear();
+    qaux.clear();
+    src_q.clear();
 
     amrex::FillNull(prev_state);
 

@@ -5,7 +5,7 @@ module advection_util_module
 
   private
 
-  public enforce_consistent_e, enforce_minimum_density, compute_cfl, swectoprim, compctoprim
+  public enforce_consistent_e, enforce_minimum_density, ca_compute_cfl, swectoprim, compctoprim
 
 contains
 
@@ -345,10 +345,10 @@ contains
   end subroutine reset_to_zone_state
 
 
-  subroutine compute_cfl(q, q_lo, q_hi, &
+  subroutine ca_compute_cfl(lo, hi, q, q_lo, q_hi, &
                          qaux, qa_lo, qa_hi, &
-                         lo, hi, dt, dx, courno) &
-                         bind(C, name = "compute_cfl")
+                         dt, dx, courno) &
+                         bind(C, name = "ca_compute_cfl")
 
     use bl_constants_module, only: ZERO, ONE
     use meth_params_module, only: NQ, QRHO, QU, QV, QW, QC, NQAUX
@@ -466,7 +466,7 @@ contains
        enddo
     enddo
 
-  end subroutine compute_cfl
+end subroutine ca_compute_cfl
 
   subroutine swectoprim(lo, hi, &
                      uin, uin_lo, uin_hi, &

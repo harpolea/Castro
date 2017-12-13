@@ -23,7 +23,7 @@ subroutine ca_mol_single_stage(time, level, &
   use meth_params_module, only : NQ, QVAR, NVAR, UMX, &
                                  NQAUX, QFS, QFX, QRHO,&
                                  URHO, QGAMC
-  use advection_util_module, only : compute_cfl, swectoprim, compctoprim
+  use advection_util_module, only : swectoprim, compctoprim
   use reconstruct_module, only : compute_reconstruction_tvd
   use bl_constants_module, only : ZERO, HALF, ONE
   use riemann_module, only: cmpflx
@@ -123,9 +123,9 @@ subroutine ca_mol_single_stage(time, level, &
   enddo
 
   ! Check if we have violated the CFL criterion.
-  call compute_cfl(q, q_lo, q_hi, &
-                   qaux, qa_lo, qa_hi, &
-                   lo_3D, hi_3D, dt, dx_3D, courno)
+  ! call compute_cfl(q, q_lo, q_hi, &
+  !                  qaux, qa_lo, qa_hi, &
+  !                  lo_3D, hi_3D, dt, dx_3D, courno)
 
   ! sm and sp are the minus and plus parts of the parabola -- they are
   ! defined for a single zone, so for zone i, sm is the left value of
@@ -151,7 +151,7 @@ subroutine ca_mol_single_stage(time, level, &
   do n = 1, NVAR
 
      call compute_reconstruction_tvd(q(:,:,n), q_lo, q_hi, &
-                                    sxm, sxp, sym, syp, sxm, sxp, q_lo, q_hi, & ! extra sxm, sxp are dummy
+                                    sxm, sxp, sym, syp, q_lo, q_hi, & ! extra sxm, sxp are dummy
                                     lo_3D, hi_3D, dx_3D)
 
      ! Construct the interface states -- this is essentially just a

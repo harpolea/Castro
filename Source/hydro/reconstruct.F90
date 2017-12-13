@@ -9,7 +9,14 @@ module reconstruct_module
 contains
 
     subroutine compute_reconstruction_tvd(s, s_lo, s_hi, &
-                                   sxm, sxp, sym, syp, szm, szp, sd_lo, sd_hi, &
+                                   sxm, sxp, &
+#if BL_SPACEDIM >=2
+                                   sym, syp, &
+#endif
+#if BL_SPACEDIM == 3
+                                   szm, szp, &
+#endif
+                                   sd_lo, sd_hi, &
                                    lo, hi, dx)!, k3d, kc, km)
 
         use mempool_module, only : bl_allocate, bl_deallocate
@@ -25,10 +32,14 @@ contains
         real(rt)        , intent(in) ::     s( s_lo(1): s_hi(1), s_lo(2): s_hi(2), s_lo(3): s_hi(3))
         real(rt)        , intent(inout) :: sxm( sd_lo(1): sd_hi(1), sd_lo(2): sd_hi(2), sd_lo(3): sd_hi(3))
         real(rt)        , intent(inout) :: sxp( sd_lo(1): sd_hi(1), sd_lo(2): sd_hi(2), sd_lo(3): sd_hi(3))
+#if BL_SPACEDIM >=2
         real(rt)        , intent(inout) :: sym( sd_lo(1): sd_hi(1), sd_lo(2): sd_hi(2), sd_lo(3): sd_hi(3))
         real(rt)        , intent(inout) :: syp( sd_lo(1): sd_hi(1), sd_lo(2): sd_hi(2), sd_lo(3): sd_hi(3))
+#endif
+#if BL_SPACEDIM == 3
         real(rt)        , intent(inout) :: szm( sd_lo(1): sd_hi(1), sd_lo(2): sd_hi(2), sd_lo(3): sd_hi(3))
         real(rt)        , intent(inout) :: szp( sd_lo(1): sd_hi(1), sd_lo(2): sd_hi(2), sd_lo(3): sd_hi(3))
+#endif
         real(rt)        , intent(in) :: dx(3)
 
         integer i,j,k

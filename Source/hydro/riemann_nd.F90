@@ -440,7 +440,7 @@ subroutine swe_to_comp(swe, slo, shi, comp, clo, chi, lo, hi, ignore_errors)
             do i = lo(1), hi(1)
                 q_comp(1:NQ) = q_swe(i,j,k,1:NQ)
                 U_comp(1:NVAR) = 0.0d0
-                q_comp(QW) = 0.d0
+                !q_comp(QW) = 0.d0
                 q_comp(QPRES) = 0.5d0 * g * q_swe(i,j,k,QRHO)**2
 
                 q_comp(QRHO) = q_swe(i,j,k,QRHO)
@@ -516,7 +516,7 @@ subroutine comp_to_swe(swe, slo, shi, comp, clo, chi, lo, hi, ignore_errors)
 
                 q_swe(1:NQ) = q_comp(i,j,k,1:NQ)
                 q_swe(QRHO) = q_comp(i,j,k,QRHO)
-                q_swe(QW) = 0.d0
+                !q_swe(QW) = 0.d0
 
                 call swe_cons_state(q_swe, U_swe)
 

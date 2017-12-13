@@ -106,6 +106,12 @@ extern "C"
 		    const amrex::Real* src, const int* src_lo, const int* src_hi,
 		          amrex::Real* srQ, const int* srQ_lo, const int* srQ_hi, const int* idx);
 
+  void ca_compute_cfl(const int* lo, const int* hi,
+                      const BL_FORT_FAB_ARG_ANYD(q),
+                      const BL_FORT_FAB_ARG_ANYD(qaux),
+                      const amrex::Real* dt, const amrex::Real* dx,
+                      amrex::Real* courno);
+
   void ca_check_initial_species
     (const int* lo, const int* hi, const BL_FORT_FAB_ARG_3D(state), const int* idx);
 
