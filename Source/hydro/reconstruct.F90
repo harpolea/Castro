@@ -70,7 +70,16 @@ contains
                         slope = 0.0d0
                     else
                         r = slope_r / slope_l
+                        if (r /= r) then
+                            r = 0.0d0
+                        endif
+                        ! minmod
+                        ! slope = 0.5d0 * (slope_l + slope_r) * min(1.0d0, 4.0d0 / (1.0d0 + r))
+
+                        ! van leer
                         slope = 0.5d0 * (slope_l + slope_r) * min(2.0d0 * r/(1.0d0 + r), 2.0d0 / (1.0d0 + r))
+
+
                         ! slope = sign( min( 2.0d0 * abs(slope_l), &
                         !            2.0d0 * abs(slope_r), &
                         !           0.5d0 * (abs(slope_l) + abs(slope_r))), &
@@ -114,7 +123,16 @@ contains
                     slope = 0.0d0
                 else
                     r = slope_r / slope_l
+                    if (r /= r) then
+                        r = 0.0d0
+                    endif
+                    ! minmod
+                    ! slope = 0.5d0 * (slope_l + slope_r) * min(1.0d0, 4.0d0 / (1.0d0 + r))
+
+                    ! van leer
                     slope = 0.5d0 * (slope_l + slope_r) * min(2.0d0 * r/(1.0d0 + r), 2.0d0 / (1.0d0 + r))
+
+
                     ! slope = sign( min( 2.0d0 * abs(slope_l), &
                     !            2.0d0 * abs(slope_r), &
                     !           0.5d0 * (abs(slope_l) + abs(slope_r))), &
@@ -159,10 +177,21 @@ contains
                     if (slope_l * slope_r < 0.0d0) then
                         slope = 0.0d0
                     else
-                        slope = sign( min( 2.0d0 * abs(slope_l), &
-                                   2.0d0 * abs(slope_r), &
-                                  0.5d0 * (abs(slope_l) + abs(slope_r))), &
-                               slope_l + slope_r)
+                        r = slope_r / slope_l
+                        if (r /= r) then
+                            r = 0.0d0
+                        endif
+                        ! minmod
+                        ! slope = 0.5d0 * (slope_l + slope_r) * min(1.0d0, 4.0d0 / (1.0d0 + r))
+
+                        ! van leer
+                        slope = 0.5d0 * (slope_l + slope_r) * min(2.0d0 * r/(1.0d0 + r), 2.0d0 / (1.0d0 + r))
+
+
+                        ! slope = sign( min( 2.0d0 * abs(slope_l), &
+                        !            2.0d0 * abs(slope_r), &
+                        !           0.5d0 * (abs(slope_l) + abs(slope_r))), &
+                        !        slope_l + slope_r)
                     end if
 
                     szm(i,j,k) = s(i,j,k) - 0.5d0 * slope
