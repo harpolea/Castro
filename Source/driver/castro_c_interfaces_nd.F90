@@ -79,7 +79,7 @@ end subroutine ca_reset_internal_e
   subroutine ca_swe_to_comp(swe, slo, shi, comp, clo, chi, lo, hi) &
        bind(C, name="ca_swe_to_comp")
 
-    use actual_riemann_module, only: swe_to_comp
+    use riemann_module, only: swe_to_comp
     use meth_params_module, only: NVAR, URHO
 
     implicit none
@@ -104,7 +104,7 @@ end subroutine ca_reset_internal_e
   subroutine ca_swe_to_comp_self(swe, slo, shi, lo, hi, ignore_errors) &
        bind(C, name="ca_swe_to_comp_self")
 
-    use actual_riemann_module, only: swe_to_comp
+    use riemann_module, only: swe_to_comp
     use meth_params_module, only: NVAR, URHO
 
     implicit none
@@ -134,7 +134,7 @@ end subroutine ca_swe_to_comp_self
   subroutine ca_comp_to_swe(swe, slo, shi, comp, clo, chi, lo, hi) &
        bind(C, name="ca_comp_to_swe")
 
-    use actual_riemann_module, only: comp_to_swe
+    use riemann_module, only: comp_to_swe
     use meth_params_module, only: NVAR, URHO
 
     implicit none
@@ -156,7 +156,7 @@ end subroutine ca_swe_to_comp_self
   subroutine ca_comp_to_swe_self(comp, clo, chi, lo, hi, ignore_errors) &
        bind(C, name="ca_comp_to_swe_self")
 
-    use actual_riemann_module, only: comp_to_swe
+    use riemann_module, only: comp_to_swe
     use meth_params_module, only: NVAR, URHO
 
     implicit none

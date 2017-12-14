@@ -1,4 +1,4 @@
-module actual_riemann_module
+module riemann_module
 
   use amrex_fort_module, only : rt => amrex_real
   use bl_constants_module
@@ -16,12 +16,70 @@ module actual_riemann_module
 
   private
 
-  public :: swe_hll, comp_hll, swe_to_comp, comp_to_swe
+  public :: swe_hll, comp_hll, swe_to_comp, comp_to_swe, cmpflx
 
   real(rt), parameter :: smallu = 1.e-12_rt
   real(rt), parameter :: small = 1.e-8_rt
 
 contains
+
+
+  subroutine cmpflx(level, qm, qp, qpd_lo, qpd_hi, &
+                    flx, flx_lo, flx_hi, &
+                    qaux, qa_lo, qa_hi, &
+                    idir, lo, hi, domlo, domhi)
+
+    use network, only: nspec, naux
+    use probdata_module, only: swe_to_comp_level
+    use amrex_fort_module, only : rt => amrex_real
+
+    implicit none
+
+    integer, intent(in) :: level
+    integer, intent(in) :: qpd_lo(3), qpd_hi(3)
+    integer, intent(in) :: flx_lo(3), flx_hi(3)
+    integer, intent(in) :: qa_lo(3), qa_hi(3)
+    integer, intent(in) :: lo(3), hi(3)
+
+    integer, intent(in) :: idir
+    integer, intent(in) :: domlo(3),domhi(3)
+
+    real(rt), intent(inout) :: qm(qpd_lo(1):qpd_hi(1),qpd_lo(2):qpd_hi(2),qpd_lo(3):qpd_hi(3),NQ)
+    real(rt), intent(inout) :: qp(qpd_lo(1):qpd_hi(1),qpd_lo(2):qpd_hi(2),qpd_lo(3):qpd_hi(3),NQ)
+    real(rt), intent(inout) ::    flx(flx_lo(1):flx_hi(1),flx_lo(2):flx_hi(2),flx_lo(3):flx_hi(3),NVAR)
+
+    real(rt), intent(in) :: qaux(qa_lo(1):qa_hi(1),qa_lo(2):qa_hi(2),qa_lo(3):qa_hi(3),NQAUX)
+
+    ! local variables
+
+    integer :: imin(3), imax(3)
+
+    imin(:) = lo(:)
+    imax(:) = hi(:)
+
+    imax(idir) = hi(idir)+1
+
+#if BL_SPACEDIM <= 2
+    imin(3) = 0
+    imax(3) = 0
+#endif
+
+    ! Solve Riemann problem (godunov state passed back, but only (u,p) saved)
+    if (level <= swe_to_comp_level) then
+        call swe_HLL(qm, qp, qpd_lo, qpd_hi, &
+                 qaux, qa_lo, qa_hi, &
+                 flx, flx_lo, flx_hi, &
+                 idir, imin, imax, &
+                 domlo, domhi)
+    else
+        call comp_HLL(qm, qp, qpd_lo, qpd_hi, &
+                        qaux, qa_lo, qa_hi, &
+                        flx, flx_lo, flx_hi, &
+                        idir, imin, imax, &
+                        domlo, domhi)
+    endif
+
+  end subroutine cmpflx
 
   subroutine comp_HLL(ql, qr, qpd_lo, qpd_hi, &
                   qaux, qa_lo, qa_hi, &
@@ -539,4 +597,4 @@ subroutine comp_to_swe(swe, slo, shi, comp, clo, chi, lo, hi, ignore_errors)
 
 end subroutine comp_to_swe
 
-end module actual_riemann_module
+end module riemann_module
