@@ -33,8 +33,7 @@ subroutine ca_mol_single_stage(time, level, &
                                courno, verbose) bind(C, name="ca_mol_single_stage")
 
   use meth_params_module, only : NQ, QVAR, NVAR, &
-                                 UTEMP, UEINT, QPRES, NQAUX, &
-                                 QTEMP, QFS, QFX, QREINT, QRHO, QGAMC
+                                 NQAUX, QFS, QFX, QREINT, QRHO, QGAMC
   use advection_util_module
   use reconstruct_module, only : compute_reconstruction_tvd
   use bl_constants_module, only : ZERO, HALF, ONE, FOURTH
@@ -43,6 +42,7 @@ subroutine ca_mol_single_stage(time, level, &
   use eos_type_module, only : eos_t, eos_input_rt
   use network, only : nspec, naux
   use probdata_module, only: swe_to_comp_level
+  use prob_params_module, only : dg
 
   implicit none
 
@@ -111,15 +111,25 @@ subroutine ca_mol_single_stage(time, level, &
   real(rt) :: frac_change
 
   integer :: i, j, k, n
-  integer :: qs_lo(3), qs_hi(3)
+  integer :: st_lo(3), st_hi(3)
   integer :: It_lo(3), It_hi(3)
 
   type (eos_t) :: eos_state
 
-  qs_lo = lo - 1
-  qs_hi = hi + 2
-  It_lo = [lo(1)-1, lo(2) - dg(2), lo(3)-dg(3)]
-  It_hi = [hi(1)+2, hi(2) + 2*dg(2), hi(3) + 2*dg(3)]
+  It_lo = [lo(1)-1, lo(2) - dg(2), lo(3) - dg(3)]
+  It_hi = [hi(1)+1, hi(2) + dg(2), hi(3) + 2*dg(3)]
+
+  st_lo = [lo(1)-2, lo(2) - 2*dg(2), lo(3)-2*dg(3)]
+  st_hi = [hi(1)+2, hi(2) + 2*dg(2), hi(3) + 2*dg(3)]
+
+#if BL_SPACEDIM <= 2
+  It_lo(3) = 0
+  It_hi(3) = 0
+  st_lo(3) = 0
+  st_hi(3) = 0
+#endif
+
+  ! write(*,*) lo(3), hi(3), It_lo(3), It_hi(3)
 
   qaux(qa_lo(1):qa_hi(1),qa_lo(2):qa_hi(2),qa_lo(3):qa_hi(3),QGAMC) = eos_state % gam1
 
@@ -137,7 +147,11 @@ subroutine ca_mol_single_stage(time, level, &
 
   ! nan check
   do n = 1, NQ
-      do k = q_lo(3), q_hi(3)
+#if (BL_SPACEDIM <= 2)
+      k = 0!lo(3)
+#else
+      do k=q_lo(3), q_hi(3)
+#endif
          do j = q_lo(2), q_hi(2)
             do i = q_lo(1), q_hi(1)
                 if (q(i,j,k,n) /= q(i,j,k,n)) then
@@ -149,7 +163,9 @@ subroutine ca_mol_single_stage(time, level, &
                 endif
             enddo
         enddo
+#if (BL_SPACEDIM == 3)
     enddo
+#endif
   enddo
 
   ! NOTE: don't do this
@@ -175,21 +191,21 @@ subroutine ca_mol_single_stage(time, level, &
   !
   ! With each loop in the k direction, we will overwrite the old
   ! data in the planar arrays.
-  allocate(sxm(q_lo(1):q_hi(1), q_lo(2):q_hi(2), q_lo(3):q_hi(3)))
-  allocate(sxp(q_lo(1):q_hi(1), q_lo(2):q_hi(2), q_lo(3):q_hi(3)))
-  allocate ( qxm(qs_lo(1):qs_hi(1),qs_lo(2):qs_hi(2),qs_lo(3):qs_hi(3),NQ) )
-  allocate ( qxp(qs_lo(1):qs_hi(1),qs_lo(2):qs_hi(2),qs_lo(3):qs_hi(3),NQ) )
+  allocate(sxm(st_lo(1):st_hi(1),st_lo(2):st_hi(2),st_lo(3):st_hi(3)))
+  allocate(sxp(st_lo(1):st_hi(1),st_lo(2):st_hi(2),st_lo(3):st_hi(3)))
+  allocate ( qxm(It_lo(1):It_hi(1),It_lo(2):It_hi(2),It_lo(3):It_hi(3),NQ) )
+  allocate ( qxp(It_lo(1):It_hi(1),It_lo(2):It_hi(2),It_lo(3):It_hi(3),NQ) )
 #if BL_SPACEDIM >= 2
-  allocate(sym(q_lo(1):q_hi(1), q_lo(2):q_hi(2), q_lo(3):q_hi(3)))
-  allocate(syp(q_lo(1):q_hi(1), q_lo(2):q_hi(2), q_lo(3):q_hi(3)))
-  allocate ( qym(qs_lo(1):qs_hi(1),qs_lo(2):qs_hi(2),qs_lo(3):qs_hi(3),NQ) )
-  allocate ( qyp(qs_lo(1):qs_hi(1),qs_lo(2):qs_hi(2),qs_lo(3):qs_hi(3),NQ) )
+  allocate(sym(st_lo(1):st_hi(1),st_lo(2):st_hi(2),st_lo(3):st_hi(3)))
+  allocate(syp(st_lo(1):st_hi(1),st_lo(2):st_hi(2),st_lo(3):st_hi(3)))
+  allocate ( qym(It_lo(1):It_hi(1),It_lo(2):It_hi(2),It_lo(3):It_hi(3),NQ) )
+  allocate ( qyp(It_lo(1):It_hi(1),It_lo(2):It_hi(2),It_lo(3):It_hi(3),NQ) )
 #endif
 #if BL_SPACEDIM == 3
-  allocate(szm(q_lo(1):q_hi(1), q_lo(2):q_hi(2), q_lo(3):q_hi(3)))
-  allocate(szp(q_lo(1):q_hi(1), q_lo(2):q_hi(2), q_lo(3):q_hi(3)))
-  allocate ( qzm(qs_lo(1):qs_hi(1),qs_lo(2):qs_hi(2),qs_lo(3):qs_hi(3),NQ) )
-  allocate ( qzp(qs_lo(1):qs_hi(1),qs_lo(2):qs_hi(2),qs_lo(3):qs_hi(3),NQ) )
+  allocate(szm(st_lo(1):st_hi(1),st_lo(2):st_hi(2),st_lo(3):st_hi(3)))
+  allocate(szp(st_lo(1):st_hi(1),st_lo(2):st_hi(2),st_lo(3):st_hi(3)))
+  allocate ( qzm(It_lo(1):It_hi(1),It_lo(2):It_hi(2),It_lo(3):It_hi(3),NQ) )
+  allocate ( qzp(It_lo(1):It_hi(1),It_lo(2):It_hi(2),It_lo(3):It_hi(3),NQ) )
 #endif
 
   do n = 1, NQ
@@ -202,14 +218,17 @@ subroutine ca_mol_single_stage(time, level, &
 #if BL_SPACEDIM == 3
                          szm, szp, &
 #endif
-                         q_lo, q_hi, &
+                         st_lo, st_hi, &
                          lo, hi, dx)
 
     ! Construct the interface states -- this is essentially just a
     ! reshuffling of interface states from zone-center indexing to
     ! edge-centered indexing
-
+#if BL_SPACEDIM <= 2
+    k = 0
+#else
     do k = lo(3)-dg(3), hi(3)+dg(3)
+#endif
         do j = lo(2)-dg(2), hi(2)+dg(2)
            do i = lo(1)-1, hi(1)+1
 
@@ -241,23 +260,25 @@ subroutine ca_mol_single_stage(time, level, &
            enddo
         enddo
       enddo
+#if BL_SPACEDIM == 3
     enddo
+#endif
 
     ! Compute F^x
-    call cmpflx(level, qxm, qxp, qs_lo, qs_hi, &
+    call cmpflx(level, qxm, qxp, It_lo, It_hi, &
                flux1, flux1_lo, flux1_hi, &
                qaux, qa_lo, qa_hi, &
                1, lo, hi, domlo, domhi)
 #if BL_SPACEDIM >= 2
     ! Compute F^y
-    call cmpflx(level, qym, qyp, qs_lo, qs_hi, &
+    call cmpflx(level, qym, qyp, It_lo, It_hi, &
                flux2, flux2_lo, flux2_hi, &
                qaux, qa_lo, qa_hi, &
                2, lo, hi, domlo, domhi)
 #endif
 #if BL_SPACEDIM == 3
     ! Compute F^z
-    call cmpflx(level, qzm, qzp, qs_lo, qs_hi, &
+    call cmpflx(level, qzm, qzp, It_lo, It_hi, &
             flux3, flux3_lo, flux3_hi, &
             qaux, qa_lo, qa_hi, &
             3, lo, hi, domlo, domhi)
@@ -275,7 +296,11 @@ subroutine ca_mol_single_stage(time, level, &
   ! essentially the flux divergence.  This can be added with dt to
   ! get the update
   do n = 1, NVAR
+#if BL_SPACEDIM <=2
+     k = 0
+#else
      do k = lo(3), hi(3)
+#endif
         do j = lo(2), hi(2)
            do i = lo(1), hi(1)
 #if BL_SPACEDIM == 1
@@ -304,12 +329,18 @@ subroutine ca_mol_single_stage(time, level, &
            enddo
         enddo
      enddo
+#if BL_SPACEDIM == 3
   enddo
+#endif
 
   ! Scale the fluxes for the form we expect later in refluxing.
 
   do n = 1, NVAR
+#if BL_SPACEDIM <=2
+     k = 0
+#else
      do k = lo(3), hi(3)
+#endif
         do j = lo(2), hi(2)
            do i = lo(1), hi(1) + 1
               flux1(i,j,k,n) = dt * flux1(i,j,k,n) * area1(i,j,k)
@@ -319,11 +350,17 @@ subroutine ca_mol_single_stage(time, level, &
            enddo
         enddo
      enddo
+#if BL_SPACEDIM == 3
   enddo
+#endif
 
 #if BL_SPACEDIM >= 2
   do n = 1, NVAR
+#if BL_SPACEDIM == 2
+     k = 0
+#else
      do k = lo(3), hi(3)
+#endif
         do j = lo(2), hi(2) + 1
            do i = lo(1), hi(1)
               flux2(i,j,k,n) = dt * flux2(i,j,k,n) * area2(i,j,k)
@@ -333,7 +370,9 @@ subroutine ca_mol_single_stage(time, level, &
            enddo
         enddo
      enddo
+#if BL_SPACEDIM == 3
   enddo
+#endif
 #endif
 
 #if BL_SPACEDIM == 3
