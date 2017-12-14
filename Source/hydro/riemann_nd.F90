@@ -247,9 +247,9 @@ contains
               ! signal speeds
               S_l = min(-Smax, min(ul - sqrt(gamcl*pl/rl), ur - sqrt(gamcr*pr/rr)))
               S_r = max(ul + sqrt(gamcl*pl/rl), ur + sqrt(gamcr*pr/rr))
-              if (Smax < S_r) then
-                  write(*,*) "Smax = ", Smax, "S_r = ", S_r, "gamcl = ", gamcl, "gamcr = ", gamcr
-              endif
+              ! if (Smax < S_r) then
+              !     write(*,*) "Smax = ", Smax, "S_r = ", S_r, "gamcl = ", gamcl, "gamcr = ", gamcr
+              ! endif
 
                S_r = max(Smax, max(ul + sqrt(gamcl*pl/rl), ur + sqrt(gamcr*pr/rr)))
 
@@ -461,7 +461,7 @@ contains
 end subroutine swe_HLL
 
 
-subroutine swe_to_comp(swe, slo, shi, comp, clo, chi, lo, hi, ignore_errors)
+subroutine swe_to_comp(swe, slo, shi, comp, clo, chi, lo, hi, dx, xlo, ignore_errors)
     use meth_params_module, only: NQ, QVAR, QRHO, QU, QV, QW, &
          NVAR, URHO, UMX, UMY, UMZ, NQAUX, QTEMP, UTEMP, UEDEN, UEINT, &
          dual_energy_eta1, QPRES, UFS, UFA
@@ -474,6 +474,7 @@ subroutine swe_to_comp(swe, slo, shi, comp, clo, chi, lo, hi, ignore_errors)
     integer, intent(in)   :: slo(3), shi(3), clo(3), chi(3), lo(3), hi(3)
     real(rt), intent(in)  :: swe(slo(1):shi(1), slo(2):shi(2), slo(3):shi(3), NVAR)
     real(rt), intent(out) :: comp(clo(1):chi(1), clo(2):chi(2), clo(3):chi(3), NVAR)
+    real(rt), intent(in) :: dx(3), xlo(3)
     logical, optional, intent(in) :: ignore_errors
 
     real(rt) :: q_swe(slo(1):shi(1), slo(2):shi(2), slo(3):shi(3), NQ)
@@ -483,6 +484,7 @@ subroutine swe_to_comp(swe, slo, shi, comp, clo, chi, lo, hi, ignore_errors)
 
     integer i, j, k, n
     logical ignore_errs
+    real(rt) :: basep, xx
 
     if (present(ignore_errors)) then
         ignore_errs = ignore_errors
@@ -495,13 +497,17 @@ subroutine swe_to_comp(swe, slo, shi, comp, clo, chi, lo, hi, ignore_errors)
 
     do k = lo(3), hi(3)
         do j = lo(2), hi(2)
+            xx = xlo(1) + dx(1)*dble(i-lo(1)+HALF)
+            basep = q_swe(lo(1),j,k,QPRES)
+            q_comp(QRHO) = basep / (g * q_swe(lo(1),j,k,QRHO))
             do i = lo(1), hi(1)
                 q_comp(1:NQ) = q_swe(i,j,k,1:NQ)
                 U_comp(1:NVAR) = 0.0d0
                 !q_comp(QW) = 0.d0
-                q_comp(QPRES) = 0.5d0 * g * q_swe(i,j,k,QRHO)**2
+                !q_comp(QPRES) = 0.5d0 * g * q_swe(i,j,k,QRHO)**2
+                q_comp(QPRES) = q_comp(QRHO) * g * (q_swe(lo(1),j,k,QRHO) - xx)
 
-                q_comp(QRHO) = q_swe(i,j,k,QRHO)
+                !q_comp(QRHO) = q_swe(i,j,k,QRHO)
 
                 !kineng = 0.5d0 * q_comp(i,j,k,QRHO) * (q_comp(i,j,k,QU)**2 + q_comp(i,j,k,QV)**2 + q_comp(i,j,k,QW)**2)
 
@@ -569,16 +575,26 @@ subroutine comp_to_swe(swe, slo, shi, comp, clo, chi, lo, hi, ignore_errors)
 
     do k = lo(3), hi(3)
         do j = lo(2), hi(2)
+            U_swe(1:NVAR) = 0.0d0
+            ! look at pressure at bottom and invert to get height
+            ! using p = 0.5 * g * h**2
+            q_swe(1:NQ) = q_comp(lo(1),j,k,1:NQ)
+            q_swe(QPRES) = q_comp(lo(1),j,k,QPRES)
+            q_swe(QRHO) = sqrt(2.0d0 * q_swe(QPRES) / g)
+
+            call swe_cons_state(q_swe, U_swe)
+
+            U_swe(UFS:UFS-1+nspec) = U_swe(URHO) / nspec
+
             do i = lo(1), hi(1)
-                U_swe(1:NVAR) = 0.0d0
-
-                q_swe(1:NQ) = q_comp(i,j,k,1:NQ)
-                q_swe(QRHO) = q_comp(i,j,k,QRHO)
-                !q_swe(QW) = 0.d0
-
-                call swe_cons_state(q_swe, U_swe)
-
-                U_swe(UFS:UFS-1+nspec) = U_swe(URHO) / nspec
+                ! U_swe(1:NVAR) = 0.0d0
+                !
+                ! q_swe(1:NQ) = q_comp(i,j,k,1:NQ)
+                ! q_swe(QRHO) = q_comp(i,j,k,QRHO)
+                !
+                ! call swe_cons_state(q_swe, U_swe)
+                !
+                ! U_swe(UFS:UFS-1+nspec) = U_swe(URHO) / nspec
 
                 swe(i,j,k,:) = U_swe
 

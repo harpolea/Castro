@@ -567,7 +567,7 @@ end subroutine ca_compute_cfl
        enddo
     enddo
 
-    !Load passively advected quatities into q
+    !Load passively advected quantities into q
       do ipassive = 1, npassive
          n  = upass_map(ipassive)
          iq = qpass_map(ipassive)
@@ -589,7 +589,7 @@ subroutine compctoprim(lo, hi, &
 
   use actual_network, only : nspec, naux
   use eos_module, only : eos
-  use eos_type_module, only : eos_t, eos_input_rp
+  use eos_type_module, only : eos_t, eos_input_rp, eos_input_re
   use meth_params_module, only : NVAR, URHO, UMX, UMY, UMZ, UEDEN, UEINT,&
                                  QRHO, QU, QV, QW, QREINT, QTEMP, &
                                  NQ, QC, QCSML, QGAMC, QDPDR, QDPDE, NQAUX, QFS, QFX, QGAME, QPRES, UTEMP, &
@@ -698,10 +698,10 @@ subroutine compctoprim(lo, hi, &
              eos_state % e   = q(i,j,k,QREINT)
              eos_state % xn  = q(i,j,k,QFS:QFS+nspec-1)
              eos_state % aux = q(i,j,k,QFX:QFX+naux-1)
-             eos_state % p = 0.5d0 * g * q(i,j,k,QRHO  )**2
-             q(i,j,k,QPRES)  = eos_state % p
+             ! eos_state % p = 0.5d0 * g * q(i,j,k,QRHO  )**2
+             !q(i,j,k,QPRES)  = eos_state % p
 
-             call eos(eos_input_rp, eos_state)
+             call eos(eos_input_re, eos_state)
 
              ! q(i,j,k,QTEMP)  = eos_state % T // NOTE: this breaks it
              q(i,j,k,QREINT) = eos_state % e * q(i,j,k,QRHO)

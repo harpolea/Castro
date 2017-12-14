@@ -79,6 +79,7 @@ subroutine ca_mol_single_stage(time, level, &
   real(rt)        , intent(in) :: srcU(srU_lo(1):srU_hi(1), srU_lo(2):srU_hi(2), srU_lo(3):srU_hi(3), NVAR)
   real(rt)        , intent(inout) :: update(updt_lo(1):updt_hi(1), updt_lo(2):updt_hi(2), updt_lo(3):updt_hi(3), NVAR)
   real(rt)        , intent(inout) :: update_flux(uf_lo(1):uf_hi(1), uf_lo(2):uf_hi(2), uf_lo(3):uf_hi(3), NVAR)
+
   real(rt)        , intent(inout) :: flux1(flux1_lo(1):flux1_hi(1), flux1_lo(2):flux1_hi(2), flux1_lo(3):flux1_hi(3), NVAR)
   real(rt)        , intent(in) :: area1(area1_lo(1):area1_hi(1), area1_lo(2):area1_hi(2), area1_lo(3):area1_hi(3))
 #if BL_SPACEDIM >= 2
@@ -87,6 +88,7 @@ subroutine ca_mol_single_stage(time, level, &
 #endif
 #if BL_SPACEDIM == 3
   real(rt)        , intent(inout) :: flux3(flux3_lo(1):flux3_hi(1), flux3_lo(2):flux3_hi(2), flux3_lo(3):flux3_hi(3), NVAR)
+  
   real(rt)        , intent(in) :: area3(area3_lo(1):area3_hi(1), area3_lo(2):area3_hi(2), area3_lo(3):area3_hi(3))
 #endif
 #if BL_SPACEDIM <= 2
@@ -117,9 +119,9 @@ subroutine ca_mol_single_stage(time, level, &
   type (eos_t) :: eos_state
 
   It_lo = [lo(1)-1, lo(2) - dg(2), lo(3) - dg(3)]
-  It_hi = [hi(1)+1, hi(2) + dg(2), hi(3) + 2*dg(3)]
+  It_hi = [hi(1)+1, hi(2) + dg(2), hi(3) + dg(3)]
 
-  st_lo = [lo(1)-2, lo(2) - 2*dg(2), lo(3)-2*dg(3)]
+  st_lo = [lo(1)-2, lo(2) - 2*dg(2), lo(3) - 2*dg(3)]
   st_hi = [hi(1)+2, hi(2) + 2*dg(2), hi(3) + 2*dg(3)]
 
 #if BL_SPACEDIM <= 2
@@ -128,8 +130,6 @@ subroutine ca_mol_single_stage(time, level, &
   st_lo(3) = 0
   st_hi(3) = 0
 #endif
-
-  ! write(*,*) lo(3), hi(3), It_lo(3), It_hi(3)
 
   qaux(qa_lo(1):qa_hi(1),qa_lo(2):qa_hi(2),qa_lo(3):qa_hi(3),QGAMC) = eos_state % gam1
 

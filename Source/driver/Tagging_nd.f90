@@ -25,7 +25,7 @@ contains
 
   ! ::: -----------------------------------------------------------
   ! ::: INPUTS/OUTPUTS:
-  ! ::: 
+  ! :::
   ! ::: tag      <=  integer tag array
   ! ::: lo,hi     => index extent of work region
   ! ::: set       => integer value to tag cell for refinement
@@ -81,22 +81,22 @@ contains
     delua = 0.0
 
     ! d/dx
-    do k=lo(3)-1*dg(3),hi(3)+1*dg(3)
-       do j=lo(2)-1*dg(2),hi(2)+1*dg(2)
-          do i=lo(1)-1*dg(1),hi(1)+1*dg(1)
-             delu(i,j,k,1)  =     var(i+1*dg(1),j,k)  -     var(i-1*dg(1),j,k)
-             delua(i,j,k,1) = abs(var(i+1*dg(1),j,k)) + abs(var(i-1*dg(1),j,k))
+    do k=lo(3)-dg(3),hi(3)+dg(3)
+       do j=lo(2)-dg(2),hi(2)+dg(2)
+          do i=lo(1)-dg(1),hi(1)+dg(1)
+             delu(i,j,k,1)  =     var(i+dg(1),j,k)  -     var(i-dg(1),j,k)
+             delua(i,j,k,1) = abs(var(i+dg(1),j,k)) + abs(var(i-dg(1),j,k))
           end do
        end do
     end do
 
     ! d/dy
     if (dim .ge. 2) then
-       do k=lo(3)-1*dg(3),hi(3)+1*dg(3)
-          do j=lo(2)-1*dg(2),hi(2)+1*dg(2)
-             do i=lo(1)-1*dg(1),hi(1)+1*dg(1)
-                delu(i,j,k,2)  =     var(i,j+1*dg(2),k)  -     var(i,j-1*dg(2),k) 
-                delua(i,j,k,2) = abs(var(i,j+1*dg(2),k)) + abs(var(i,j-1*dg(2),k))
+       do k=lo(3)-dg(3),hi(3)+dg(3)
+          do j=lo(2)-dg(2),hi(2)+dg(2)
+             do i=lo(1)-dg(1),hi(1)+dg(1)
+                delu(i,j,k,2)  =     var(i,j+dg(2),k)  -     var(i,j-dg(2),k)
+                delua(i,j,k,2) = abs(var(i,j+dg(2),k)) + abs(var(i,j-dg(2),k))
              end do
           end do
        end do
@@ -104,11 +104,11 @@ contains
 
     ! d/dz
     if (dim .eq. 3) then
-       do k=lo(3)-1*dg(3),hi(3)+1*dg(3)
-          do j=lo(2)-1*dg(2),hi(2)+1*dg(2)
-             do i=lo(1)-1*dg(1),hi(1)+1*dg(1)
-                delu(i,j,k,3)  =     var(i,j,k+1*dg(3))  -     var(i,j,k-1*dg(3))
-                delua(i,j,k,3) = abs(var(i,j,k+1*dg(3))) + abs(var(i,j,k-1*dg(3)))
+       do k=lo(3)-dg(3),hi(3)+dg(3)
+          do j=lo(2)-dg(2),hi(2)+dg(2)
+             do i=lo(1)-dg(1),hi(1)+dg(1)
+                delu(i,j,k,3)  =     var(i,j,k+dg(3))  -     var(i,j,k-dg(3))
+                delua(i,j,k,3) = abs(var(i,j,k+dg(3))) + abs(var(i,j,k-dg(3)))
              end do
           end do
        end do
@@ -223,12 +223,12 @@ contains
        do k = lo(3), hi(3)
           do j = lo(2), hi(2)
              do i = lo(1), hi(1)
-                ax = ABS(den(i+1*dg(1),j,k,1) - den(i,j,k,1))
-                ay = ABS(den(i,j+1*dg(2),k,1) - den(i,j,k,1))
-                az = ABS(den(i,j,k+1*dg(3),1) - den(i,j,k,1))
-                ax = MAX(ax,ABS(den(i,j,k,1) - den(i-1*dg(1),j,k,1)))
-                ay = MAX(ay,ABS(den(i,j,k,1) - den(i,j-1*dg(2),k,1)))
-                az = MAX(az,ABS(den(i,j,k,1) - den(i,j,k-1*dg(3),1)))
+                ax = ABS(den(i+dg(1),j,k,1) - den(i,j,k,1))
+                ay = ABS(den(i,j+dg(2),k,1) - den(i,j,k,1))
+                az = ABS(den(i,j,k+dg(3),1) - den(i,j,k,1))
+                ax = MAX(ax,ABS(den(i,j,k,1) - den(i-dg(1),j,k,1)))
+                ay = MAX(ay,ABS(den(i,j,k,1) - den(i,j-dg(2),k,1)))
+                az = MAX(az,ABS(den(i,j,k,1) - den(i,j,k-dg(3),1)))
                 if ( MAX(ax,ay,az) .ge. dengrad) then
                    tag(i,j,k) = set
                 endif
@@ -284,12 +284,12 @@ contains
        do k = lo(3), hi(3)
           do j = lo(2), hi(2)
              do i = lo(1), hi(1)
-                ax = ABS(temp(i+1*dg(1),j,k,1) - temp(i,j,k,1))
-                ay = ABS(temp(i,j+1*dg(2),k,1) - temp(i,j,k,1))
-                az = ABS(temp(i,j,k+1*dg(3),1) - temp(i,j,k,1))
-                ax = MAX(ax,ABS(temp(i,j,k,1) - temp(i-1*dg(1),j,k,1)))
-                ay = MAX(ay,ABS(temp(i,j,k,1) - temp(i,j-1*dg(2),k,1)))
-                az = MAX(az,ABS(temp(i,j,k,1) - temp(i,j,k-1*dg(3),1)))
+                ax = ABS(temp(i+dg(1),j,k,1) - temp(i,j,k,1))
+                ay = ABS(temp(i,j+dg(2),k,1) - temp(i,j,k,1))
+                az = ABS(temp(i,j,k+dg(3),1) - temp(i,j,k,1))
+                ax = MAX(ax,ABS(temp(i,j,k,1) - temp(i-dg(1),j,k,1)))
+                ay = MAX(ay,ABS(temp(i,j,k,1) - temp(i,j-dg(2),k,1)))
+                az = MAX(az,ABS(temp(i,j,k,1) - temp(i,j,k-dg(3),1)))
                 if ( MAX(ax,ay,az) .ge. tempgrad) then
                    tag(i,j,k) = set
                 endif
@@ -345,12 +345,12 @@ contains
        do k = lo(3), hi(3)
           do j = lo(2), hi(2)
              do i = lo(1), hi(1)
-                ax = ABS(press(i+1*dg(1),j,k,1) - press(i,j,k,1))
-                ay = ABS(press(i,j+1*dg(2),k,1) - press(i,j,k,1))
-                az = ABS(press(i,j,k+1*dg(3),1) - press(i,j,k,1))
-                ax = MAX(ax,ABS(press(i,j,k,1) - press(i-1*dg(1),j,k,1)))
-                ay = MAX(ay,ABS(press(i,j,k,1) - press(i,j-1*dg(2),k,1)))
-                az = MAX(az,ABS(press(i,j,k,1) - press(i,j,k-1*dg(3),1)))
+                ax = ABS(press(i+dg(1),j,k,1) - press(i,j,k,1))
+                ay = ABS(press(i,j+dg(2),k,1) - press(i,j,k,1))
+                az = ABS(press(i,j,k+dg(3),1) - press(i,j,k,1))
+                ax = MAX(ax,ABS(press(i,j,k,1) - press(i-dg(1),j,k,1)))
+                ay = MAX(ay,ABS(press(i,j,k,1) - press(i,j-dg(2),k,1)))
+                az = MAX(az,ABS(press(i,j,k,1) - press(i,j,k-dg(3),1)))
                 if ( MAX(ax,ay,az) .ge. pressgrad) then
                    tag(i,j,k) = set
                 endif
@@ -406,12 +406,12 @@ contains
        do k = lo(3), hi(3)
           do j = lo(2), hi(2)
              do i = lo(1), hi(1)
-                ax = ABS(vel(i+1*dg(1),j,k,1) - vel(i,j,k,1))
-                ay = ABS(vel(i,j+1*dg(2),k,1) - vel(i,j,k,1))
-                az = ABS(vel(i,j,k+1*dg(3),1) - vel(i,j,k,1))
-                ax = MAX(ax,ABS(vel(i,j,k,1) - vel(i-1*dg(1),j,k,1)))
-                ay = MAX(ay,ABS(vel(i,j,k,1) - vel(i,j-1*dg(2),k,1)))
-                az = MAX(az,ABS(vel(i,j,k,1) - vel(i,j,k-1*dg(3),1)))
+                ax = ABS(vel(i+dg(1),j,k,1) - vel(i,j,k,1))
+                ay = ABS(vel(i,j+dg(2),k,1) - vel(i,j,k,1))
+                az = ABS(vel(i,j,k+dg(3),1) - vel(i,j,k,1))
+                ax = MAX(ax,ABS(vel(i,j,k,1) - vel(i-dg(1),j,k,1)))
+                ay = MAX(ay,ABS(vel(i,j,k,1) - vel(i,j-dg(2),k,1)))
+                az = MAX(az,ABS(vel(i,j,k,1) - vel(i,j,k-dg(3),1)))
                 if ( MAX(ax,ay,az) .ge. velgrad) then
                    tag(i,j,k) = set
                 endif
@@ -467,12 +467,12 @@ contains
        do k = lo(3), hi(3)
           do j = lo(2), hi(2)
              do i = lo(1), hi(1)
-                ax = ABS(rad(i+1*dg(1),j,k,1) - rad(i,j,k,1))
-                ay = ABS(rad(i,j+1*dg(2),k,1) - rad(i,j,k,1))
-                az = ABS(rad(i,j,k+1*dg(3),1) - rad(i,j,k,1))
-                ax = MAX(ax,ABS(rad(i,j,k,1) - rad(i-1*dg(1),j,k,1)))
-                ay = MAX(ay,ABS(rad(i,j,k,1) - rad(i,j-1*dg(2),k,1)))
-                az = MAX(az,ABS(rad(i,j,k,1) - rad(i,j,k-1*dg(3),1)))
+                ax = ABS(rad(i+dg(1),j,k,1) - rad(i,j,k,1))
+                ay = ABS(rad(i,j+dg(2),k,1) - rad(i,j,k,1))
+                az = ABS(rad(i,j,k+dg(3),1) - rad(i,j,k,1))
+                ax = MAX(ax,ABS(rad(i,j,k,1) - rad(i-dg(1),j,k,1)))
+                ay = MAX(ay,ABS(rad(i,j,k,1) - rad(i,j-dg(2),k,1)))
+                az = MAX(az,ABS(rad(i,j,k,1) - rad(i,j,k-dg(3),1)))
                 if ( MAX(ax,ay,az) .ge. radgrad) then
                    tag(i,j,k) = set
                 endif
@@ -528,12 +528,12 @@ contains
        do k = lo(3), hi(3)
           do j = lo(2), hi(2)
              do i = lo(1), hi(1)
-                ax = ABS(ent(i+1*dg(1),j,k,1) - ent(i,j,k,1))
-                ay = ABS(ent(i,j+1*dg(2),k,1) - ent(i,j,k,1))
-                az = ABS(ent(i,j,k+1*dg(3),1) - ent(i,j,k,1))
-                ax = MAX(ax,ABS(ent(i,j,k,1) - ent(i-1*dg(1),j,k,1)))
-                ay = MAX(ay,ABS(ent(i,j,k,1) - ent(i,j-1*dg(2),k,1)))
-                az = MAX(az,ABS(ent(i,j,k,1) - ent(i,j,k-1*dg(3),1)))
+                ax = ABS(ent(i+dg(1),j,k,1) - ent(i,j,k,1))
+                ay = ABS(ent(i,j+dg(2),k,1) - ent(i,j,k,1))
+                az = ABS(ent(i,j,k+dg(3),1) - ent(i,j,k,1))
+                ax = MAX(ax,ABS(ent(i,j,k,1) - ent(i-dg(1),j,k,1)))
+                ay = MAX(ay,ABS(ent(i,j,k,1) - ent(i,j-dg(2),k,1)))
+                az = MAX(az,ABS(ent(i,j,k,1) - ent(i,j,k-dg(3),1)))
                 if ( MAX(ax,ay,az) .ge. entgrad) then
                    tag(i,j,k) = set
                 endif

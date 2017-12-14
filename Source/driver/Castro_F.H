@@ -127,14 +127,14 @@ extern "C"
     (BL_FORT_FAB_ARG_3D(S_new), const int* lo, const int* hi, const int* idx);
 
   void ca_swe_to_comp
-    (BL_FORT_FAB_ARG_3D(S_swe), BL_FORT_FAB_ARG_3D(S_comp), const int* lo, const int* hi);
+    (BL_FORT_FAB_ARG_3D(S_swe), BL_FORT_FAB_ARG_3D(S_comp), const int* lo, const int* hi, const amrex::Real* dx, const amrex::Real* xlo);
 
   void ca_comp_to_swe
     (BL_FORT_FAB_ARG_3D(S_swe), BL_FORT_FAB_ARG_3D(S_comp), const int* lo, const int* hi);
 
 // NOTE: ignore_errors flag is a very dangerous argument that should only be set to true if no other option is available (e.g. for regridding where cannot work out how to fill entire grids with valid data)
 void ca_swe_to_comp_self
-  (BL_FORT_FAB_ARG_3D(S_swe), const int* lo, const int* hi, bool* ignore_errors);
+  (BL_FORT_FAB_ARG_3D(S_swe), const int* lo, const int* hi, const amrex::Real* dx, const amrex::Real* xlo, bool* ignore_errors);
 
 void ca_comp_to_swe_self
   (BL_FORT_FAB_ARG_3D(S_comp), const int* lo, const int* hi, bool* ignore_errors);

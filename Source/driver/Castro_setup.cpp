@@ -402,6 +402,14 @@ Castro::variableSetUp ()
 
   num_state_type = desc_lst.size();
 
+  //
+  // DEFINE DERIVED QUANTITIES
+  //
+  // Pressure
+  //
+  derive_lst.add("pressure",IndexType::TheCellType(),1,ca_derpres,the_same_box);
+  derive_lst.addComponent("pressure",desc_lst,State_Type,Density,NUM_STATE);
+
 
   //
   // Kinetic energy
@@ -513,16 +521,6 @@ Castro::variableSetUp ()
     derive_lst.addComponent(aux_names[i],desc_lst,State_Type,Density,1);
     derive_lst.addComponent(aux_names[i],desc_lst,State_Type,FirstAux+i,1);
   }
-
-#if 0
-  //
-  // A derived quantity equal to all the state variables.
-  //
-  derive_lst.add("FULLSTATE",IndexType::TheCellType(),NUM_STATE,FORT_DERCOPY,the_same_box);
-  derive_lst.addComponent("FULLSTATE",desc_lst,State_Type,Density,NUM_STATE);
-
-#endif
-
 
   //
   // Problem-specific adds

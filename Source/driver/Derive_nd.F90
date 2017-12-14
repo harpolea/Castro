@@ -646,7 +646,6 @@ contains
     real(rt)         :: cs
     integer          :: i, j, k
 
-
     do k = lo(3), hi(3)
        do j = lo(2), hi(2)
           do i = lo(1), hi(1)
@@ -726,7 +725,6 @@ contains
     use amrex_fort_module, only : rt => amrex_real
 
     implicit none
-
 
     integer, intent(in) :: lo(3), hi(3)
     integer, intent(in) :: t_lo(3), t_hi(3), ncomp_t
@@ -891,9 +889,9 @@ contains
     !
     ! Convert momentum to velocity.
     !
-    do k = lo(3)-1*dg(3), hi(3)+1*dg(3)
-       do j = lo(2)-1*dg(2), hi(2)+1*dg(2)
-          do i = lo(1)-1*dg(1), hi(1)+1*dg(1)
+    do k = lo(3)-dg(3), hi(3)+dg(3)
+       do j = lo(2)-dg(2), hi(2)+dg(2)
+          do i = lo(1)-dg(1), hi(1)+dg(1)
              ldat(i,j,k,2) = dat(i,j,k,UMX) / dat(i,j,k,URHO)
              ldat(i,j,k,3) = dat(i,j,k,UMY) / dat(i,j,k,URHO)
              ldat(i,j,k,4) = dat(i,j,k,UMZ) / dat(i,j,k,URHO)
@@ -965,12 +963,12 @@ contains
     do k = lo(3), hi(3)
        do j = lo(2), hi(2)
           do i = lo(1), hi(1)
-             uhi = dat(i+1*dg(1),j,k,UMX)
-             ulo = dat(i-1*dg(1),j,k,UMX)
-             vhi = dat(i,j+1*dg(2),k,UMY)
-             vlo = dat(i,j-1*dg(2),k,UMY)
-             whi = dat(i,j,k+1*dg(3),UMZ)
-             wlo = dat(i,j,k-1*dg(3),UMZ)
+             uhi = dat(i+dg(1),j,k,UMX)
+             ulo = dat(i-dg(1),j,k,UMX)
+             vhi = dat(i,j+dg(2),k,UMY)
+             vlo = dat(i,j-dg(2),k,UMY)
+             whi = dat(i,j,k+dg(3),UMZ)
+             wlo = dat(i,j,k-dg(3),UMZ)
              divu(i,j,k,1) = HALF * (uhi-ulo) / delta(1)
              if (delta(2) > ZERO) then
                 divu(i,j,k,1) = divu(i,j,k,1) + HALF * (vhi-vlo) / delta(2)
@@ -1051,8 +1049,6 @@ contains
     integer, intent(in) :: level, grid_no
 
   end subroutine ca_dernull
-
-
 
 
 end module derive_module

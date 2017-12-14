@@ -17,7 +17,7 @@ contains
                                    szm, szp, &
 #endif
                                    sd_lo, sd_hi, &
-                                   lo, hi, dx)!, k3d, kc, km)
+                                   lo, hi, dx)
 
         use mempool_module, only : bl_allocate, bl_deallocate
         use prob_params_module, only : dg
@@ -27,7 +27,6 @@ contains
         integer, intent(in) ::  s_lo(3),  s_hi(3)
         integer, intent(in) ::  sd_lo(3),  sd_hi(3)
         integer, intent(in) :: lo(3), hi(3)
-        !integer, intent(in) :: k3d, kc, km
 
         real(rt)        , intent(in) ::     s( s_lo(1): s_hi(1), s_lo(2): s_hi(2), s_lo(3): s_hi(3))
         real(rt)        , intent(inout) :: sxm( sd_lo(1): sd_hi(1), sd_lo(2): sd_hi(2), sd_lo(3): sd_hi(3))
@@ -61,8 +60,6 @@ contains
 #endif
             do j=lo(2)-dg(2),hi(2)+dg(2)
                 do i=lo(1)-2,hi(1)+1
-
-                    !write(*,*) "i, j, s(i-1, j)", i, j, s(i-1, j, k)
 
                     slope_l = s(i,j,k) - s(i-1,j,k)
                     slope_r = s(i+1,j,k) - s(i,j,k)

@@ -1400,13 +1400,15 @@ Castro::avgDown (int state_indx)
 			 0, S_fine.nComp(), fine_ratio);
 
     if ((level == swe_to_comp_level)){
+         const Real* dx        = geom.CellSize();
          for (MFIter mfi(S_fine); mfi.isValid(); ++mfi)
          {
              const Box& bx = mfi.tilebox();//growntilebox(S_fine.nGrow());
              bool f = false;
+             RealBox gridloc = RealBox(grids[mfi.index()],geom.CellSize(),geom.ProbLo());
 
              ca_swe_to_comp_self(BL_TO_FORTRAN_3D(S_fine[mfi]),
-                 ARLIM_3D(bx.loVect()), ARLIM_3D(bx.hiVect()), &f);
+                 ARLIM_3D(bx.loVect()), ARLIM_3D(bx.hiVect()), ZFILL(dx), ZFILL(gridloc.lo()), &f);
          }
     }
 }

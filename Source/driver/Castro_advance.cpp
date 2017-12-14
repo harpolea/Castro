@@ -357,7 +357,6 @@ Castro::initialize_advance(Real time, Real dt, int amr_iteration, int amr_ncycle
     // Make a copy of the MultiFabs in the old and new state data in case we may do a retry.
 
     if (use_retry) {
-
       // Store the old and new time levels.
 
       for (int k = 0; k < num_state_type; k++) {

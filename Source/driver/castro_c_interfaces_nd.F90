@@ -76,7 +76,7 @@ end subroutine ca_reset_internal_e
 
   end subroutine ca_normalize_species
 
-  subroutine ca_swe_to_comp(swe, slo, shi, comp, clo, chi, lo, hi) &
+  subroutine ca_swe_to_comp(swe, slo, shi, comp, clo, chi, lo, hi, dx, xlo) &
        bind(C, name="ca_swe_to_comp")
 
     use riemann_module, only: swe_to_comp
@@ -87,6 +87,7 @@ end subroutine ca_reset_internal_e
     integer, intent(in)   :: slo(3), shi(3), clo(3), chi(3), lo(3), hi(3)
     real(rt), intent(in)  :: swe(slo(1):shi(1), slo(2):shi(2), slo(3):shi(3), NVAR)
     real(rt), intent(inout) :: comp(clo(1):chi(1), clo(2):chi(2), clo(3):chi(3), NVAR)
+    real(rt), intent(in) :: dx(3), xlo(3)
 
     ! write(*,*) "calling ca_swe_to_comp"
     ! write(*,*) "lo, slo, clo = ", lo, slo, clo
@@ -96,12 +97,12 @@ end subroutine ca_reset_internal_e
         comp(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),1:NVAR) = swe(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),1:NVAR)
     else
         ! write(*,*) "ca_swe_to_comp", sum(swe(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),URHO))
-        call swe_to_comp(swe, slo, shi, comp, clo, chi, lo, hi)
+        call swe_to_comp(swe, slo, shi, comp, clo, chi, lo, hi, dx, xlo)
     endif
 
   end subroutine ca_swe_to_comp
 
-  subroutine ca_swe_to_comp_self(swe, slo, shi, lo, hi, ignore_errors) &
+  subroutine ca_swe_to_comp_self(swe, slo, shi, lo, hi, dx, xlo, ignore_errors) &
        bind(C, name="ca_swe_to_comp_self")
 
     use riemann_module, only: swe_to_comp
@@ -111,6 +112,7 @@ end subroutine ca_reset_internal_e
 
     integer, intent(in)   :: slo(3), shi(3), lo(3), hi(3)
     real(rt), intent(inout)  :: swe(slo(1):shi(1), slo(2):shi(2), slo(3):shi(3), NVAR)
+    real(rt), intent(in) :: dx(3), xlo(3)
     logical, intent(in) :: ignore_errors
 
     real(rt) :: comp(slo(1):shi(1), slo(2):shi(2), slo(3):shi(3), NVAR)
@@ -124,7 +126,7 @@ end subroutine ca_reset_internal_e
         return
     else
         ! write(*,*) "ca_swe_to_comp_self", sum(swe(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),URHO))
-        call swe_to_comp(swe, slo, shi, comp, slo, shi, lo, hi, ignore_errors)
+        call swe_to_comp(swe, slo, shi, comp, slo, shi, lo, hi, dx, xlo,  ignore_errors)
 
         swe(slo(1):shi(1), slo(2):shi(2), slo(3):shi(3), 1:NVAR) = comp(slo(1):shi(1), slo(2):shi(2), slo(3):shi(3), 1:NVAR)
     endif

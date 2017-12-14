@@ -172,28 +172,30 @@ subroutine ca_initdata(level,time,lo,hi,nscal, &
             xmin = xlo(1) + delta(1)*dble(i-lo(1))
             xx = xlo(1) + delta(1)*dble(i-lo(1)+HALF)
 
-            r = xx
+            r = yy
 
            ! r = sqrt((xx - center(1))**2 + (yy - center(2))**2)
 
-        !    if (level <= swe_to_comp_level) then
-        !        ! shallow water level
-        !        if (r < damn_rad) then
-        !            state(i,j,k,URHO) = h_in
-        !        else
-        !            state(i,j,k,URHO) = h_out
-        !        end if
-           !
-        !        !do n = 1,nspec
-        !         !  state(i,j,k,UFS+n-1) = state(i,j,k,URHO) * state(i,j,k,UFS+n-1)
-        !        !end do
-           !
-        !    else ! compressible level
+           if (level <= swe_to_comp_level) then
+               ! shallow water level
+               if (r < damn_rad) then
+                   state(i,j,k,URHO) = h_in
+               else
+                   state(i,j,k,URHO) = h_out
+               end if
 
-                if (yy > xx) then !(r < damn_rad) then
-                    state(i,j,k,URHO) = h_in! + 0.5d0 * (1.0d0 + tanh((r - damn_rad) / 0.03))
+               !do n = 1,nspec
+                !  state(i,j,k,UFS+n-1) = state(i,j,k,URHO) * state(i,j,k,UFS+n-1)
+               !end do
+
+           else ! compressible level
+
+               state(i,j,k,URHO) = 1.0d0
+
+                if (r < damn_rad) then
+                    eos_state % p = state(i,j,k,URHO) * g * (h_in - xx)
                 else
-                    state(i,j,k,URHO) = h_out
+                    eos_state % p = state(i,j,k,URHO) * g * (h_out - xx)
                 end if
 
                 ! if (level > swe_to_comp_level) then
@@ -203,7 +205,7 @@ subroutine ca_initdata(level,time,lo,hi,nscal, &
                 !eos_state % e = e_zone
                 eos_state % rho = state(i,j,k,URHO)
                 eos_state % xn(:) = xn_zone(:)
-                eos_state % p = 0.5d0 * g * state(i,j,k,URHO)**2
+                !eos_state % p = 0.5d0 * g * state(i,j,k,URHO)**2
 
                 call eos(eos_input_rp, eos_state)
 
@@ -218,7 +220,7 @@ subroutine ca_initdata(level,time,lo,hi,nscal, &
                 state(i,j,k,UFS) = state(i,j,k,URHO)
 
                 state(i,j,k,UTEMP) = eos_state % T
-          ! end if
+          end if
 
            state(i,j,k,UFA)  = dye
            state(i,j,k,UFS:UFS-1+nspec) = state(i,j,k,URHO) / nspec
