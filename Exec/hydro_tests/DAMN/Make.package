@@ -1,2 +1,6 @@
 ca_f90EXE_sources += probdata.f90
 #ca_F90EXE_sources += problem_tagging_nd.F90
+ca_f90EXE_sources += problem_derive_nd.f90
+
+FEXE_headers += Problem_Derive_F.H
+CEXE_headers += Problem_Derives.H
