@@ -98,7 +98,12 @@ extern "C"
   void ca_ctoprim(const int* lo, const int* hi,
 	          const amrex::Real* u, const int* u_lo, const int* u_hi,
 		  amrex::Real* q, const int* q_lo, const int* q_hi,
-		  amrex::Real* qaux, const int* qa_lo, const int* qa_hi, const int* idx, const int* level);
+		  amrex::Real* qaux, const int* qa_lo, const int* qa_hi, const int* idx, const int* level, const amrex::Real* xlo, const amrex::Real* dx);
+
+  void ca_getbase(const int* lo, const int* hi,
+	          const amrex::Real* s, const int* slo, const int* shi,
+              const amrex::Real* b, const int* blo, const int* bhi,
+              const amrex::Real* xlo, const int* np);
 
   void ca_srctoprim(const int* lo,   const int* hi,
 		    const amrex::Real* q,   const int* q_lo,   const int* q_hi,
@@ -121,7 +126,7 @@ extern "C"
      const amrex::Real* vol, const int* vol_lo, const int* vol_hi,
      const int* lo, const int* hi,
            amrex::Real* frac_change, const int* verbose, const int* idx,
-       const int* level);
+       const int* level, const amrex::Real* xlo, const amrex::Real* dx);
 
   void ca_normalize_species
     (BL_FORT_FAB_ARG_3D(S_new), const int* lo, const int* hi, const int* idx);
@@ -130,14 +135,14 @@ extern "C"
     (BL_FORT_FAB_ARG_3D(S_swe), BL_FORT_FAB_ARG_3D(S_comp), const int* lo, const int* hi, const amrex::Real* dx, const amrex::Real* xlo);
 
   void ca_comp_to_swe
-    (BL_FORT_FAB_ARG_3D(S_swe), BL_FORT_FAB_ARG_3D(S_comp), const int* lo, const int* hi);
+    (BL_FORT_FAB_ARG_3D(S_swe), BL_FORT_FAB_ARG_3D(S_comp), const int* lo, const int* hi, const amrex::Real* xlo, const amrex::Real* dx);
 
 // NOTE: ignore_errors flag is a very dangerous argument that should only be set to true if no other option is available (e.g. for regridding where cannot work out how to fill entire grids with valid data)
 void ca_swe_to_comp_self
   (BL_FORT_FAB_ARG_3D(S_swe), const int* lo, const int* hi, const amrex::Real* dx, const amrex::Real* xlo, bool* ignore_errors);
 
 void ca_comp_to_swe_self
-  (BL_FORT_FAB_ARG_3D(S_comp), const int* lo, const int* hi, bool* ignore_errors);
+  (BL_FORT_FAB_ARG_3D(S_comp), const int* lo, const int* hi, const amrex::Real* xlo, const amrex::Real* dx, bool* ignore_errors);
 
   void ca_get_swe_to_comp_level(int* lev_out);
 
@@ -150,7 +155,7 @@ void ca_comp_to_swe_self
     (const int* lo, const int* hi, BL_FORT_FAB_ARG_3D(state), const int* idx);
 
   void ca_enforce_consistent_e
-    (const int* lo, const int* hi, BL_FORT_FAB_ARG_3D(state), const int* idx, const int* level);
+    (const int* lo, const int* hi, BL_FORT_FAB_ARG_3D(state), const int* idx, const int* level, const amrex::Real* xlo, const amrex::Real* dx);
 
   void ca_reset_internal_e
     (const int* lo, const int* hi, BL_FORT_FAB_ARG_3D(S_new),
@@ -356,7 +361,7 @@ void ca_comp_to_swe_self
 #endif
      const BL_FORT_FAB_ARG_3D(volume),
      amrex::Real* cflLoc,
-     const int&  verbose);
+     const int&  verbose, const amrex::Real* xlo);
 
   void flush_output();
 

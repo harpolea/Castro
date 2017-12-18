@@ -1275,14 +1275,16 @@ Castro::enforce_consistent_e (MultiFab& S)
 #ifdef _OPENMP
 #pragma omp parallel
 #endif
+    const Real* dx        = geom.CellSize();
     for (MFIter mfi(S,true); mfi.isValid(); ++mfi)
     {
         const Box& box     = mfi.tilebox();
         const int* lo      = box.loVect();
         const int* hi      = box.hiVect();
     	const int idx      = mfi.tileIndex();
+        RealBox gridloc = RealBox(grids[mfi.index()],geom.CellSize(),geom.ProbLo());
 
-        ca_enforce_consistent_e(ARLIM_3D(lo), ARLIM_3D(hi), BL_TO_FORTRAN_3D(S[mfi]), &idx, &level);
+        ca_enforce_consistent_e(ARLIM_3D(lo), ARLIM_3D(hi), BL_TO_FORTRAN_3D(S[mfi]), &idx, &level, ZFILL(gridloc.lo()), ZFILL(dx));
     }
 }
 
@@ -1315,6 +1317,7 @@ Castro::enforce_min_density (MultiFab& S_old, MultiFab& S_new)
 #ifdef _OPENMP
 #pragma omp parallel reduction(min:dens_change)
 #endif
+    const Real* dx        = geom.CellSize();
 
     for (MFIter mfi(S_new, true); mfi.isValid(); ++mfi) {
 
@@ -1324,12 +1327,13 @@ Castro::enforce_min_density (MultiFab& S_old, MultiFab& S_new)
     	FArrayBox& statenew = S_new[mfi];
     	const FArrayBox& vol      = volume[mfi];
     	const int idx = mfi.tileIndex();
+        RealBox gridloc = RealBox(grids[mfi.index()],geom.CellSize(),geom.ProbLo());
 
     	ca_enforce_minimum_density(stateold.dataPtr(), ARLIM_3D(stateold.loVect()), ARLIM_3D(stateold.hiVect()),
 				   statenew.dataPtr(), ARLIM_3D(statenew.loVect()), ARLIM_3D(statenew.hiVect()),
 				   vol.dataPtr(), ARLIM_3D(vol.loVect()), ARLIM_3D(vol.hiVect()),
 				   ARLIM_3D(bx.loVect()), ARLIM_3D(bx.hiVect()),
-				   &dens_change, &verbose, &idx, &level);
+				   &dens_change, &verbose, &idx, &level, ZFILL(gridloc.lo()), ZFILL(dx));
     }
 
     if (print_update_diagnostics)
@@ -1385,13 +1389,29 @@ Castro::avgDown (int state_indx)
     ca_get_swe_to_comp_level(&swe_to_comp_level);
 
     if ((level == swe_to_comp_level)){
-        for (MFIter mfi(S_fine); mfi.isValid(); ++mfi)
+        const Real* dx        = fgeom.CellSize();
+
+        MultiFab base(S_fine.boxArray(), S_fine.DistributionMap(), S_fine.nComp(), S_fine.nGrow());
+
+        int np = S_fine.nComp();
+        // MultiFab::Copy(base, S_fine, 0, 0, S_fine.nComp());
+
+        for (MFIter mfi(base); mfi.isValid(); ++mfi)
+        {
+            const Box& bx = mfi.tilebox();
+            RealBox gridloc = RealBox(fine_lev.grids[mfi.index()],fgeom.CellSize(),fgeom.ProbLo());
+
+            ca_getbase(ARLIM_3D(bx.loVect()), ARLIM_3D(bx.hiVect()), BL_TO_FORTRAN_3D(S_fine[mfi]), BL_TO_FORTRAN_3D(base[mfi]), ZFILL(gridloc.lo()), &np);
+        }
+
+
+        for (MFIter mfi(base); mfi.isValid(); ++mfi)
         { //it breaks without this
             const Box& bx = mfi.tilebox();//growntilebox(S_fine.nGrow());
-            bool f = false;
+            RealBox gridloc = RealBox(fine_lev.grids[mfi.index()],fgeom.CellSize(),fgeom.ProbLo());
 
-            ca_comp_to_swe_self(BL_TO_FORTRAN_3D(S_fine[mfi]),
-                ARLIM_3D(bx.loVect()), ARLIM_3D(bx.hiVect()), &f);
+            ca_comp_to_swe(BL_TO_FORTRAN_3D(S_fine[mfi]), BL_TO_FORTRAN_3D(base[mfi]),
+                ARLIM_3D(bx.loVect()), ARLIM_3D(bx.hiVect()), ZFILL(gridloc.lo()), ZFILL(dx));
         }
     }
 
@@ -1400,12 +1420,13 @@ Castro::avgDown (int state_indx)
 			 0, S_fine.nComp(), fine_ratio);
 
     if ((level == swe_to_comp_level)){
-         const Real* dx        = geom.CellSize();
+        // std::cout << "Calling ca_swe_to_comp\n";
+         const Real* dx        = fgeom.CellSize();
          for (MFIter mfi(S_fine); mfi.isValid(); ++mfi)
          {
              const Box& bx = mfi.tilebox();//growntilebox(S_fine.nGrow());
              bool f = false;
-             RealBox gridloc = RealBox(grids[mfi.index()],geom.CellSize(),geom.ProbLo());
+             RealBox gridloc = RealBox(fine_lev.grids[mfi.index()],fgeom.CellSize(),fgeom.ProbLo());
 
              ca_swe_to_comp_self(BL_TO_FORTRAN_3D(S_fine[mfi]),
                  ARLIM_3D(bx.loVect()), ARLIM_3D(bx.hiVect()), ZFILL(dx), ZFILL(gridloc.lo()), &f);

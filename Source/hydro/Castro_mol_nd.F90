@@ -30,7 +30,7 @@ subroutine ca_mol_single_stage(time, level, &
                                dloga, dloga_lo, dloga_hi, &
 #endif
                                vol, vol_lo, vol_hi, &
-                               courno, verbose) bind(C, name="ca_mol_single_stage")
+                               courno, verbose, xlo) bind(C, name="ca_mol_single_stage")
 
   use meth_params_module, only : NQ, QVAR, NVAR, &
                                  NQAUX, QFS, QFX, QREINT, QRHO, QGAMC
@@ -48,7 +48,7 @@ subroutine ca_mol_single_stage(time, level, &
 
   integer, intent(in) :: lo(3), hi(3), verbose, level
   integer, intent(in) ::  domlo(3), domhi(3)
-  real(rt), intent(in) :: stage_weight
+  real(rt), intent(in) :: stage_weight, xlo(3)
   integer, intent(in) :: uin_lo(3), uin_hi(3)
   integer, intent(in) :: uout_lo(3), uout_hi(3)
   integer, intent(in) :: q_lo(3), q_hi(3)
@@ -88,7 +88,7 @@ subroutine ca_mol_single_stage(time, level, &
 #endif
 #if BL_SPACEDIM == 3
   real(rt)        , intent(inout) :: flux3(flux3_lo(1):flux3_hi(1), flux3_lo(2):flux3_hi(2), flux3_lo(3):flux3_hi(3), NVAR)
-  
+
   real(rt)        , intent(in) :: area3(area3_lo(1):area3_hi(1), area3_lo(2):area3_hi(2), area3_lo(3):area3_hi(3))
 #endif
 #if BL_SPACEDIM <= 2
@@ -142,7 +142,7 @@ subroutine ca_mol_single_stage(time, level, &
        call compctoprim(q_lo, q_hi, &
                     uin, uin_lo, uin_hi, &
                     q,     q_lo,   q_hi, &
-                    qaux, qa_lo,  qa_hi)
+                    qaux, qa_lo,  qa_hi, xlo, dx)
    endif
 
   ! nan check

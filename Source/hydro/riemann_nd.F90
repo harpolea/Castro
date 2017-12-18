@@ -492,20 +492,41 @@ subroutine swe_to_comp(swe, slo, shi, comp, clo, chi, lo, hi, dx, xlo, ignore_er
         ignore_errs = .false.
     endif
 
+    ! comp(lo(1):hi(1), lo(2):hi(2), lo(3):hi(3), :) = swe(lo(1):hi(1), lo(2):hi(2), lo(3):hi(3), :)
+    !
+    ! return
+    !
+    ! write(*,*) "swe_to_comp"
+
     ! phi = gh
     call swectoprim(lo, hi, swe, slo, shi, q_swe, slo, shi, qaux, slo, shi, ignore_errs)
 
+    ! write(*,*) "xlo(1) = ", xlo(1), "lo(1) = ", lo(1), "dx = ", dx(1)!, "xhi = ", xlo(1) + dx(1)*dble(hi(1) - lo(1)+HALF), "h = ", q_swe(lo(1):lo(1)+5, lo(2):lo(2)+5, lo(3), QRHO)
+
+    ! write(*,*) "dx = ", dx(1)
+
     do k = lo(3), hi(3)
         do j = lo(2), hi(2)
-            xx = xlo(1) + dx(1)*dble(i-lo(1)+HALF)
-            basep = q_swe(lo(1),j,k,QPRES)
-            q_comp(QRHO) = basep / (g * q_swe(lo(1),j,k,QRHO))
+            ! basep = 0.5 * g * q_swe(lo(1),j,k,QRHO)**2 !q_swe(lo(1),j,k,QPRES)
+            q_comp(1:NQ) = q_swe(i,j,k,1:NQ)
+            U_comp(1:NVAR) = 0.0d0
+            ! NOTE: incompressible for now
+            q_comp(QRHO) = 1.0d0 !basep / (g * q_swe(lo(1),j,k,QRHO))
+
             do i = lo(1), hi(1)
-                q_comp(1:NQ) = q_swe(i,j,k,1:NQ)
-                U_comp(1:NVAR) = 0.0d0
+                xx = xlo(1) + dx(1)*dble(i-lo(1)+HALF)
+                ! if (xx > 2.0d0) then
+                !     xx = xlo(1) + 0.5d0*dx(1)*dble(i-lo(1)+HALF)
+                ! endif
+                ! q_comp(1:NQ) = q_swe(i,j,k,1:NQ)
+                ! U_comp(1:NVAR) = 0.0d0
                 !q_comp(QW) = 0.d0
-                !q_comp(QPRES) = 0.5d0 * g * q_swe(i,j,k,QRHO)**2
-                q_comp(QPRES) = q_comp(QRHO) * g * (q_swe(lo(1),j,k,QRHO) - xx)
+                q_comp(QPRES) = 0.5d0 * g * (q_swe(i,j,k,QRHO) - xx)**2
+                !q_comp(QPRES) = q_comp(QRHO) * g * (q_swe(lo(1),j,k,QRHO) - xx)
+
+                ! if (q_swe(lo(1),j,k,QRHO) < 2) then
+                    ! write(*,*) q_swe(i,j,k,QRHO), q_comp(QPRES), xx, xlo(1)
+                ! endif
 
                 !q_comp(QRHO) = q_swe(i,j,k,QRHO)
 
@@ -539,7 +560,7 @@ subroutine swe_to_comp(swe, slo, shi, comp, clo, chi, lo, hi, dx, xlo, ignore_er
 end subroutine swe_to_comp
 
 
-subroutine comp_to_swe(swe, slo, shi, comp, clo, chi, lo, hi, ignore_errors)
+subroutine comp_to_swe(swe, slo, shi, comp, clo, chi, lo, hi, xlo, dx, ignore_errors)
     use meth_params_module, only: QVAR, QRHO, QU, QV, QW, &
          NVAR, URHO, UMX, UMY, UMZ, QTEMP, UTEMP, UFS, UEDEN, UEINT, UFA
     use probdata_module, only : g
@@ -551,6 +572,7 @@ subroutine comp_to_swe(swe, slo, shi, comp, clo, chi, lo, hi, ignore_errors)
     integer, intent(in)   :: slo(3), shi(3), clo(3), chi(3), lo(3), hi(3)
     real(rt), intent(inout)  :: swe(slo(1):shi(1), slo(2):shi(2), slo(3):shi(3), NVAR)
     real(rt), intent(in) :: comp(clo(1):chi(1), clo(2):chi(2), clo(3):chi(3), NVAR)
+    real(rt), intent(in) :: xlo(3), dx(3)
     logical, optional, intent(in) :: ignore_errors
 
     real(rt) :: q_swe(NQ), U_swe(NVAR)
@@ -566,12 +588,18 @@ subroutine comp_to_swe(swe, slo, shi, comp, clo, chi, lo, hi, ignore_errors)
         ignore_errs = .false.
     endif
 
+    ! write(*,*) "comp to swe"
+
     ! phi = gh
 
     ! NOTE: DON'T DO THIS IS CAUSES ALL OF COMP TO BE SET TO ZERO AS WELL
     !swe(:,:,:,:) = 0.0d0
 
-    call compctoprim(lo, hi, comp, clo, chi, q_comp, clo, chi, qaux, clo, chi, ignore_errs)
+    ! write(*,*) comp(lo(1):hi(1), lo(2), lo(3), UEINT)
+
+    call compctoprim(lo, hi, comp, clo, chi, q_comp, clo, chi, qaux, clo, chi, xlo, dx, ignore_errs)
+
+    ! write(*,*) "p = ", q_comp(:, lo(2), lo(3), QPRES)
 
     do k = lo(3), hi(3)
         do j = lo(2), hi(2)
@@ -580,7 +608,19 @@ subroutine comp_to_swe(swe, slo, shi, comp, clo, chi, lo, hi, ignore_errors)
             ! using p = 0.5 * g * h**2
             q_swe(1:NQ) = q_comp(lo(1),j,k,1:NQ)
             q_swe(QPRES) = q_comp(lo(1),j,k,QPRES)
-            q_swe(QRHO) = sqrt(2.0d0 * q_swe(QPRES) / g)
+            q_swe(QRHO) = sqrt(2.0d0 * q_swe(QPRES) / g) + xlo(1) + HALF*dx(1)
+
+            q_swe(QU) = 0
+#if BL_SPACEDIM == 1
+            q_swe(QV) = 0
+#endif
+#if BL_SPACEDIM <= 2
+            q_swe(QW) = 0
+#endif
+
+            ! if (q_swe(QRHO) < 2) then
+                ! write(*,*) q_swe(QRHO), q_swe(QPRES)
+            ! endif
 
             call swe_cons_state(q_swe, U_swe)
 

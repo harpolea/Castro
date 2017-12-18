@@ -106,6 +106,9 @@ Castro::construct_mol_hydro_source(Real time, Real dt)
     	}
 #endif
 
+
+        RealBox gridloc = RealBox(grids[mfi.index()],geom.CellSize(),geom.ProbLo());
+
     	ca_mol_single_stage
     	  (&time, &level,
     	   lo, hi, domain_lo, domain_hi,
@@ -131,7 +134,7 @@ Castro::construct_mol_hydro_source(Real time, Real dt)
 	       BL_TO_FORTRAN_3D(dLogArea[0][mfi]),
 #endif
     	   BL_TO_FORTRAN_3D(volume[mfi]),
-    	   &cflLoc, verbose);
+    	   &cflLoc, verbose, ZFILL(gridloc.lo()));
 
     	// Store the fluxes from this advance -- we weight them by the
     	// integrator weight for this stage
@@ -201,6 +204,7 @@ Castro::cons_to_prim(const Real time)
     const int* domain_hi = geom.Domain().hiVect();
 
     MultiFab& S_new = get_new_data(State_Type);
+    const Real* dx        = geom.CellSize();
 
 #ifdef _OPENMP
 #pragma omp parallel
@@ -209,6 +213,7 @@ Castro::cons_to_prim(const Real time)
 
         const Box& qbx = mfi.growntilebox(NUM_GROW);
         const int idx = mfi.tileIndex();
+        RealBox gridloc = RealBox(grids[mfi.index()],geom.CellSize(),geom.ProbLo());
 
         // Convert the conservative state to the primitive variable state.
         // This fills both q and qaux.
@@ -217,7 +222,7 @@ Castro::cons_to_prim(const Real time)
                    BL_TO_FORTRAN_ANYD(Sborder[mfi]),
                    BL_TO_FORTRAN_ANYD(q[mfi]),
                    BL_TO_FORTRAN_ANYD(qaux[mfi]),
-                   &idx, &level);
+                   &idx, &level, ZFILL(gridloc.lo()), ZFILL(dx));
 
         // Convert the source terms expressed as sources to the conserved state to those
         // expressed as sources for the primitive state.

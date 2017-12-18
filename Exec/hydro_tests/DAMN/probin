@@ -1,14 +1,14 @@
 &fortin
 
-   h_in = 2.0
-   h_out = 1.0
+   h_in = 5.0
+   h_out = 4.0
    damn_rad = 0.5
    g = 1.0
    p_ambient = 1.d-6
    exp_energy = 1.0d-5
    dens_ambient = 1.0
    nsub = 10
-   swe_to_comp_level = 1
+   swe_to_comp_level = 0
 
 /
 
@@ -16,6 +16,8 @@
 
   dengrad = 0.05
   velgrad = 0.5
+  pressgrad = 0.5
+  max_pressgrad_lev = 5
 
 /
 

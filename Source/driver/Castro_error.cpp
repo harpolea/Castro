@@ -28,6 +28,7 @@ Castro::ErrorSetUp ()
 #if (BL_SPACEDIM == 3)
     err_list.add("z_velocity",1,ErrorRec::Special,ca_velerror);
 #endif
+    err_list.add("pressure",1,ErrorRec::Special,ca_presserror);    
 
 //   err_list.add("entropy",1,ErrorRec::Special,ca_enterror);
 

@@ -68,10 +68,16 @@ contains
 
     U(URHO) = q(QRHO)
 
+    U(UMY:UMZ) = q(QRHO) * q(QV:QW)
+    ! U(UMX)  = 0.0d0! q(QRHO) * q(QW)
+
     ! since we advect all 3 velocity components regardless of dimension, this
-    U(UMX)  = q(QRHO) * q(QU)
-    U(UMY)  = q(QRHO) * q(QV)
-    U(UMZ)  = q(QRHO) * q(QW)
+#if BL_SPACEDIM == 1
+    U(UMY)  = 0.0d0! q(QRHO) * q(QU)
+#endif
+#if BL_SPACEDIM <= 2
+    U(UMZ)  = 0.0d0!q(QRHO) * q(QV)
+#endif
 
     ! don't care for swe but might help
     U(UEDEN) = q(QREINT) + 0.5d0*q(QRHO)*(q(QU)**2 + q(QV)**2 + q(QW)**2)
@@ -98,7 +104,7 @@ contains
     !integer  :: ipassive, n, nq
     U(1:NVAR) = 0.0d0
 
-    U(URHO) = q(QRHO)
+    U(URHO) = 1.0d0!q(QRHO)
 
     ! since we advect all 3 velocity components regardless of dimension, this
     ! will be general
@@ -152,7 +158,18 @@ contains
     F(UMY) = U(UMY) * u_flx
     F(UMZ) = U(UMZ) * u_flx
 
-    F(UMX-1+idir) = F(UMX-1+idir) + 0.5d0 * g * U(URHO)**2
+#if BL_SPACEDIM == 2
+    if (idir == 2) then
+        F(UMY) = F(UMY) + 0.5d0 * g * U(URHO)**2
+    endif
+    F(UMZ) = 0.0d0
+#elif BL_SPACEDIM == 3
+    if (idir == 1) then
+        F(UMX) = F(UMX) + 0.5d0 * g * U(URHO)**2
+    else if (idir == 2) then
+        F(UMY) = F(UMY) + 0.5d0 * g * U(URHO)**2
+    endif
+#endif
 
     F(UEINT) = U(UEINT) * u_flx
     F(UEDEN) = (U(UEDEN) + 0.5d0 * g * U(URHO)**2) * u_flx
@@ -191,7 +208,8 @@ contains
     endif
     F(1:NVAR) = 0.0d0
 
-    F(URHO) = U(URHO) * u_flx
+    ! NOTE: Made incompressible for now
+    F(URHO) = 0.0d0!U(URHO) * u_flx
 
     F(UMX) = U(UMX) * u_flx
     F(UMY) = U(UMY) * u_flx

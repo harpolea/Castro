@@ -11,7 +11,7 @@ module c_interface_modules
 
 contains
 
-subroutine ca_enforce_consistent_e(lo,hi,state,s_lo,s_hi,idx,level) &
+subroutine ca_enforce_consistent_e(lo,hi,state,s_lo,s_hi,idx,level,xlo,dx) &
        bind(c, name='ca_enforce_consistent_e')
 
     use advection_util_module, only: enforce_consistent_e
@@ -22,8 +22,9 @@ subroutine ca_enforce_consistent_e(lo,hi,state,s_lo,s_hi,idx,level) &
     integer, intent(in)     :: s_lo(3), s_hi(3)
     real(rt), intent(inout) :: state(s_lo(1):s_hi(1),s_lo(2):s_hi(2),s_lo(3):s_hi(3),NVAR)
     integer, intent(in)     :: idx, level
+    real(rt), intent(in) :: xlo(3), dx(3)
 
-    call enforce_consistent_e(lo, hi, state, s_lo, s_hi, level)
+    call enforce_consistent_e(lo, hi, state, s_lo, s_hi, level, xlo, dx)
 
 end subroutine ca_enforce_consistent_e
 
@@ -133,7 +134,7 @@ end subroutine ca_reset_internal_e
 
 end subroutine ca_swe_to_comp_self
 
-  subroutine ca_comp_to_swe(swe, slo, shi, comp, clo, chi, lo, hi) &
+  subroutine ca_comp_to_swe(swe, slo, shi, comp, clo, chi, lo, hi, xlo, dx) &
        bind(C, name="ca_comp_to_swe")
 
     use riemann_module, only: comp_to_swe
@@ -144,18 +145,19 @@ end subroutine ca_swe_to_comp_self
     integer, intent(in)   :: slo(3), shi(3), clo(3), chi(3), lo(3), hi(3)
     real(rt), intent(out)  :: swe(slo(1):shi(1), slo(2):shi(2), slo(3):shi(3), NVAR)
     real(rt), intent(inout) :: comp(clo(1):chi(1), clo(2):chi(2), clo(3):chi(3), NVAR)
+    real(rt), intent(in) :: xlo(3), dx(3)
     !
     ! write(*,*) "calling ca_comp_to_swe"
 
     if (sum(comp(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),URHO)) == 0.0d0) then
         swe(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),1:NVAR) = comp(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),1:NVAR)
     else
-        call comp_to_swe(swe, slo, shi, comp, clo, chi, lo, hi)
+        call comp_to_swe(swe, slo, shi, comp, clo, chi, lo, hi, xlo, dx)
     endif
 
   end subroutine ca_comp_to_swe
 
-  subroutine ca_comp_to_swe_self(comp, clo, chi, lo, hi, ignore_errors) &
+  subroutine ca_comp_to_swe_self(comp, clo, chi, lo, hi, xlo, dx, ignore_errors) &
        bind(C, name="ca_comp_to_swe_self")
 
     use riemann_module, only: comp_to_swe
@@ -166,6 +168,7 @@ end subroutine ca_swe_to_comp_self
     integer, intent(in)   :: clo(3), chi(3), lo(3), hi(3)
     real(rt), intent(inout) :: comp(clo(1):chi(1), clo(2):chi(2), clo(3):chi(3), NVAR)
     logical, intent(in) :: ignore_errors
+    real(rt), intent(in) :: xlo(3), dx(3)
 
     real(rt) :: swe(clo(1):chi(1), clo(2):chi(2), clo(3):chi(3), NVAR)
 
@@ -175,7 +178,7 @@ end subroutine ca_swe_to_comp_self
         !write(*,*) "ca_comp_to_swe_self, sum of rhos is zero :("
         return
     else
-        call comp_to_swe(swe, clo, chi, comp, clo, chi, lo, hi, ignore_errors)
+        call comp_to_swe(swe, clo, chi, comp, clo, chi, lo, hi, xlo, dx,  ignore_errors)
 
         comp(clo(1):chi(1), clo(2):chi(2), clo(3):chi(3), 1:NVAR) = swe(clo(1):chi(1), clo(2):chi(2), clo(3):chi(3), 1:NVAR)
     endif
@@ -187,7 +190,7 @@ end subroutine ca_swe_to_comp_self
                                         uout, uout_lo, uout_hi, &
                                         vol, vol_lo, vol_hi, &
                                         lo, hi, frac_change, verbose, idx, &
-                                        level) &
+                                        level, xlo, dx) &
                                         bind(C, name="ca_enforce_minimum_density")
 
     use advection_util_module, only: enforce_minimum_density
@@ -204,11 +207,12 @@ end subroutine ca_swe_to_comp_self
     real(rt), intent(in) ::  vol( vol_lo(1): vol_hi(1), vol_lo(2): vol_hi(2), vol_lo(3): vol_hi(3))
     real(rt), intent(inout) :: frac_change
     integer, intent(in)     :: idx
+    real(rt), intent(in) :: xlo(3), dx(3)
 
     call enforce_minimum_density(uin, uin_lo, uin_hi, &
                                  uout, uout_lo, uout_hi, &
                                  vol, vol_lo, vol_hi, &
-                                 lo, hi, frac_change, verbose, level)
+                                 lo, hi, frac_change, verbose, level, xlo, dx)
 
   end subroutine ca_enforce_minimum_density
 
@@ -233,7 +237,8 @@ end subroutine ca_swe_to_comp_self
   subroutine ca_ctoprim(lo, hi, &
                         uin, uin_lo, uin_hi, &
                         q,     q_lo,   q_hi, &
-                        qaux, qa_lo,  qa_hi, idx, level) bind(C, name = "ca_ctoprim")
+                        qaux, qa_lo,  qa_hi, idx, level, &
+                        xlo, dx) bind(C, name = "ca_ctoprim")
 
     use advection_util_module, only: swectoprim, compctoprim
     use probdata_module, only: swe_to_comp_level
@@ -250,6 +255,7 @@ end subroutine ca_swe_to_comp_self
     real(rt)        , intent(inout) :: q(q_lo(1):q_hi(1),q_lo(2):q_hi(2),q_lo(3):q_hi(3),NQ)
     real(rt)        , intent(inout) :: qaux(qa_lo(1):qa_hi(1),qa_lo(2):qa_hi(2),qa_lo(3):qa_hi(3),NQAUX)
     integer, intent(in)     :: idx, level
+    real(rt), intent(in) :: dx(3), xlo(3)
 
     !write(*,*) "level = ", level, "swe_to_comp_level", swe_to_comp_level
 
@@ -265,10 +271,35 @@ end subroutine ca_swe_to_comp_self
          call compctoprim(lo, hi, &
                       uin, uin_lo, uin_hi, &
                       q,     q_lo,   q_hi, &
-                      qaux, qa_lo,  qa_hi)
+                      qaux, qa_lo,  qa_hi, xlo, dx)
      endif
 
   end subroutine ca_ctoprim
+
+  subroutine ca_getbase(lo, hi, s, slo, shi, &
+                        b, blo, bhi, xlo, np) bind(C, name="ca_getbase")
+    implicit none
+
+    integer, intent(in) :: lo(3), hi(3)
+    integer, intent(in) :: slo(3), shi(3)
+    integer, intent(in) :: blo(3), bhi(3), xlo(3), np
+
+    real(rt), intent(in) :: s(slo(1):shi(1),slo(2):shi(2),slo(3):shi(3),np)
+    real(rt), intent(inout) :: b(blo(1):bhi(1),blo(2):bhi(2),blo(3):bhi(3),np)
+
+    integer :: i, j,k
+
+    if (xlo(1) == 0) then
+        do k = lo(3), hi(3)
+            do j = lo(2), hi(2)
+                do i = lo(1), hi(1)
+                    b(i,j,k,:) = s(lo(1),j,k,:)
+                enddo
+            enddo
+        enddo
+    endif
+
+end subroutine ca_getbase
 
 
 end module c_interface_modules
