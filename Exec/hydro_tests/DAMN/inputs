@@ -9,8 +9,8 @@ geometry.prob_lo     = 0.0 0.0 0.0
 geometry.prob_hi     = 2.0 2.0 2.0 #0.125
 castro.center        = 1.0 1.0 1.0 #0.0625
 
-amr.n_cell           = 64 64 64
-amr.max_level        = 3        # maximum level number allowed; base level is 0
+amr.n_cell           = 32 32 64
+amr.max_level        = 2        # maximum level number allowed; base level is 0
 
 amr.max_grid_size    = 64
 
