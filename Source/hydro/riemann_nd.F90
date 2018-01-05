@@ -484,7 +484,7 @@ subroutine swe_to_comp(swe, slo, shi, comp, clo, chi, lo, hi, dx, xlo, ignore_er
 
     integer i, j, k, n
     logical ignore_errs
-    real(rt) :: basep, xx
+    real(rt) :: basep, xx, rho
 
     if (present(ignore_errors)) then
         ignore_errs = ignore_errors
@@ -505,32 +505,20 @@ subroutine swe_to_comp(swe, slo, shi, comp, clo, chi, lo, hi, dx, xlo, ignore_er
 
     ! write(*,*) "dx = ", dx(1)
 
+    ! INCOMPRESSIBLE
+    rho = 1.0d0
+
     do k = lo(3), hi(3)
         do j = lo(2), hi(2)
             ! basep = 0.5 * g * q_swe(lo(1),j,k,QRHO)**2 !q_swe(lo(1),j,k,QPRES)
-            q_comp(1:NQ) = q_swe(i,j,k,1:NQ)
+            q_comp(1:NQ) = q_swe(lo(1),j,k,1:NQ)
             U_comp(1:NVAR) = 0.0d0
             ! NOTE: incompressible for now
-            q_comp(QRHO) = 1.0d0 !basep / (g * q_swe(lo(1),j,k,QRHO))
+            q_comp(QRHO) = rho !basep / (g * q_swe(lo(1),j,k,QRHO))
 
             do i = lo(1), hi(1)
                 xx = xlo(1) + dx(1)*dble(i-lo(1)+HALF)
-                ! if (xx > 2.0d0) then
-                !     xx = xlo(1) + 0.5d0*dx(1)*dble(i-lo(1)+HALF)
-                ! endif
-                ! q_comp(1:NQ) = q_swe(i,j,k,1:NQ)
-                ! U_comp(1:NVAR) = 0.0d0
-                !q_comp(QW) = 0.d0
                 q_comp(QPRES) = 0.5d0 * g * (q_swe(i,j,k,QRHO) - xx)**2
-                !q_comp(QPRES) = q_comp(QRHO) * g * (q_swe(lo(1),j,k,QRHO) - xx)
-
-                ! if (q_swe(lo(1),j,k,QRHO) < 2) then
-                    ! write(*,*) q_swe(i,j,k,QRHO), q_comp(QPRES), xx, xlo(1)
-                ! endif
-
-                !q_comp(QRHO) = q_swe(i,j,k,QRHO)
-
-                !kineng = 0.5d0 * q_comp(i,j,k,QRHO) * (q_comp(i,j,k,QU)**2 + q_comp(i,j,k,QV)**2 + q_comp(i,j,k,QW)**2)
 
                 eos_state % rho = q_comp(QRHO)
                 eos_state % p   = q_comp(QPRES)
@@ -544,15 +532,7 @@ subroutine swe_to_comp(swe, slo, shi, comp, clo, chi, lo, hi, dx, xlo, ignore_er
 
                 U_comp(UFS:UFS-1+nspec) =  U_comp(URHO) / nspec
 
-                comp(i,j,k,URHO) = U_comp(URHO)
-                comp(i,j,k,UMX) = U_comp(UMX)
-                comp(i,j,k,UMY) = U_comp(UMY)
-                comp(i,j,k,UMZ) = U_comp(UMZ)
-                comp(i,j,k,UEINT) = U_comp(UEINT)
-                comp(i,j,k,UEDEN) = U_comp(UEDEN)
-                comp(i,j,k,UTEMP) = U_comp(UTEMP)
-                comp(i,j,k,UFA) = U_comp(UFA)
-                comp(i,j,k,UFS:UFS-1+nspec) = U_comp(UFS:UFS-1+nspec)
+                comp(i,j,k,1:NVAR) = U_comp(1:NVAR)
             enddo
         enddo
     enddo
@@ -575,7 +555,7 @@ subroutine comp_to_swe(swe, slo, shi, comp, clo, chi, lo, hi, xlo, dx, ignore_er
     real(rt), intent(in) :: xlo(3), dx(3)
     logical, optional, intent(in) :: ignore_errors
 
-    real(rt) :: q_swe(NQ), U_swe(NVAR)
+    real(rt) :: q_swe(NQ), U_swe(NVAR), xx
     real(rt) :: q_comp(clo(1):chi(1), clo(2):chi(2), clo(3):chi(3), NQ)
     real(rt) :: qaux(clo(1):chi(1), clo(2):chi(2), clo(3):chi(3), NQAUX)
 
@@ -599,54 +579,32 @@ subroutine comp_to_swe(swe, slo, shi, comp, clo, chi, lo, hi, xlo, dx, ignore_er
 
     call compctoprim(lo, hi, comp, clo, chi, q_comp, clo, chi, qaux, clo, chi, xlo, dx, ignore_errs)
 
-    ! write(*,*) "p = ", q_comp(:, lo(2), lo(3), QPRES)
-
     do k = lo(3), hi(3)
         do j = lo(2), hi(2)
-            U_swe(1:NVAR) = 0.0d0
-            ! look at pressure at bottom and invert to get height
-            ! using p = 0.5 * g * h**2
-            q_swe(1:NQ) = q_comp(lo(1),j,k,1:NQ)
-            q_swe(QPRES) = q_comp(lo(1),j,k,QPRES)
-            q_swe(QRHO) = sqrt(2.0d0 * q_swe(QPRES) / g) + xlo(1) + HALF*dx(1)
+            xx = xlo(1) + dx(1)*HALF
 
-            q_swe(QU) = 0
-#if BL_SPACEDIM == 1
-            q_swe(QV) = 0
-#endif
-#if BL_SPACEDIM <= 2
-            q_swe(QW) = 0
-#endif
-
-            ! if (q_swe(QRHO) < 2) then
-                ! write(*,*) q_swe(QRHO), q_swe(QPRES)
-            ! endif
-
-            call swe_cons_state(q_swe, U_swe)
-
-            U_swe(UFS:UFS-1+nspec) = U_swe(URHO) / nspec
 
             do i = lo(1), hi(1)
-                ! U_swe(1:NVAR) = 0.0d0
-                !
-                ! q_swe(1:NQ) = q_comp(i,j,k,1:NQ)
-                ! q_swe(QRHO) = q_comp(i,j,k,QRHO)
-                !
-                ! call swe_cons_state(q_swe, U_swe)
-                !
-                ! U_swe(UFS:UFS-1+nspec) = U_swe(URHO) / nspec
+                U_swe(1:NVAR) = 0.0d0
+                ! look at pressure at bottom and invert to get height
+                ! using p = 0.5 * g * h**2
+                q_swe(1:NQ) = q_comp(i,j,k,1:NQ)
+                q_swe(QRHO) = sqrt(2.0d0 * q_comp(lo(1),j,k,QPRES) / g) + xx
+                q_swe(QPRES) = 0.5d0 * g * q_swe(QRHO)**2
 
-                swe(i,j,k,:) = U_swe
+                q_swe(QU) = 0
+#if BL_SPACEDIM == 1
+                q_swe(QV) = 0
+#endif
+#if BL_SPACEDIM <= 2
+                q_swe(QW) = 0
+#endif
 
-                swe(i,j,k,URHO) = U_swe(URHO)
-                swe(i,j,k,UMX) = U_swe(UMX)
-                swe(i,j,k,UMY) = U_swe(UMY)
-                swe(i,j,k,UMZ) = U_swe(UMZ)
-                swe(i,j,k,UEINT) = U_swe(UEINT)
-                swe(i,j,k,UEDEN) = U_swe(UEDEN)
-                swe(i,j,k,UTEMP) = U_swe(UTEMP)
-                swe(i,j,k,UFA) = U_swe(UFA)
-                swe(i,j,k,UFS:UFS-1+nspec) = U_swe(UFS:UFS-1+nspec)
+                call swe_cons_state(q_swe, U_swe)
+
+                U_swe(UFS:UFS-1+nspec) = U_swe(URHO) / nspec
+
+                swe(i,j,k,1:NVAR) = U_swe(1:NVAR)
             enddo
         enddo
     enddo
