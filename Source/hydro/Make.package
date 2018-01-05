@@ -16,3 +16,5 @@ ca_F90EXE_sources += Castro_mol_nd.F90
 #endif
 
 ca_F90EXE_sources += reconstruct.F90
+
+ca_f90EXE_sources += metric.f90

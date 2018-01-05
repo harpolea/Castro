@@ -125,12 +125,13 @@ subroutine ca_initdata(level,time,lo,hi,nscal, &
 
   use probdata_module
   use meth_params_module, only : NVAR, URHO, UMX, UMY, UMZ, &
-       UFS, UFA, UEDEN, UEINT, UTEMP
+       QFS, QFA, UEDEN, UEINT, QTEMP, NQ, QRHO, QU, QV, QW, QREINT, QPRES
   use network, only : nspec
   use bl_constants_module
   use prob_params_module, only: problo, center, probhi
   use eos_module, only : eos
   use eos_type_module, only : eos_t, eos_input_rp, eos_input_re, eos_input_rt
+  use riemann_util_module, only: comp_cons_state, swe_cons_state
 
   use amrex_fort_module, only : rt => amrex_real
   implicit none
@@ -146,6 +147,7 @@ subroutine ca_initdata(level,time,lo,hi,nscal, &
   integer :: i, j, k, n, ii, jj, kk
 
   real(rt)         :: dye, eint, xmin, ymin
+  real(rt)         :: q(state_lo(1):state_hi(1),state_lo(2):state_hi(2),state_lo(3):state_hi(3),NQ)
   type(eos_t) :: eos_state
 
   !state(:,:,:,:) = 0.0d0
@@ -168,72 +170,57 @@ subroutine ca_initdata(level,time,lo,hi,nscal, &
         do i = lo(1), hi(1)
 
             state(i,j,k,1:NVAR) = 0.0d0
+            q(i,j,k,1:NQ) = 0.0d0
 
             xmin = xlo(1) + delta(1)*dble(i-lo(1))
             xx = xlo(1) + delta(1)*dble(i-lo(1)+HALF)
 
             r = yy
 
-           ! r = sqrt((xx - center(1))**2 + (yy - center(2))**2)
+            q(i,j,k,QRHO) = 1.0d0
 
-           ! if (level <= swe_to_comp_level) then
-           !     ! shallow water level
-           !     if (r < damn_rad) then
-           !         state(i,j,k,URHO) = h_in
-           !     else
-           !         state(i,j,k,URHO) = h_out
-           !     end if
-           !
-           !     !do n = 1,nspec
-           !      !  state(i,j,k,UFS+n-1) = state(i,j,k,URHO) * state(i,j,k,UFS+n-1)
-           !     !end do
-           !
-           ! else ! compressible level
+            if (r < damn_rad) then
+                eos_state % p = 0.5 * g * (h_in-xx)**2
+            else
+                eos_state % p = 0.5 * g * (h_out-xx)**2
+            end if
 
-                state(i,j,k,URHO) = 1.0d0
+            !eos_state % e = e_zone
+            eos_state % rho = q(i,j,k, QRHO)
+            eos_state % xn(:) = xn_zone(:)
+            !eos_state % p = 0.5d0 * g * state(i,j,k,URHO)**2
 
+            call eos(eos_input_rp, eos_state)
+
+            eint = q(i,j,k,QRHO) * eos_state % e
+            q(i,j,k,QU:QW) = 0.e0_rt
+
+            q(i,j,k,QREINT) = eint +  &
+                0.5e0_rt*(sum(q(i,j,k,QU:QW)**2)/q(i,j,k,QRHO))
+
+            if (level <= swe_to_comp_level) then
+                ! shallow water level
                 if (r < damn_rad) then
-                    eos_state % p = 0.5 * g * (h_in-xx)**2
+                    q(i,j,k,QRHO) = h_in
                 else
-                    eos_state % p = 0.5 * g * (h_out-xx)**2
+                    q(i,j,k,QRHO) = h_out
                 end if
+            end if
 
-                ! if (level > swe_to_comp_level) then
-                !     state(i,j,k,URHO) = 2.0d0 * state(i,j,k,URHO)
-                ! endif
+            q(i,j,k,QFS) = q(i,j,k,QRHO)
 
+            q(i,j,k,QTEMP) = eos_state % T
 
-                !eos_state % e = e_zone
-                eos_state % rho = state(i,j,k,URHO)
-                eos_state % xn(:) = xn_zone(:)
-                !eos_state % p = 0.5d0 * g * state(i,j,k,URHO)**2
+            q(i,j,k,QFA)  = dye
+            q(i,j,k,QFS:QFS-1+nspec) = q(i,j,k,QRHO) / nspec
 
-                call eos(eos_input_rp, eos_state)
-
-                eint = state(i,j,k,URHO) * eos_state % e
-                state(i,j,k,UMX:UMZ) = 0.e0_rt
-
-                state(i,j,k,UEDEN) = eint +  &
-                    0.5e0_rt*(sum(state(i,j,k,UMX:UMZ)**2)/state(i,j,k,URHO))
-
-                if (level <= swe_to_comp_level) then
-                    ! shallow water level
-                    if (r < damn_rad) then
-                        state(i,j,k,URHO) = h_in
-                    else
-                        state(i,j,k,URHO) = h_out
-                    end if
-                end if
-
-                state(i,j,k,UEINT) = eint
-
-                state(i,j,k,UFS) = state(i,j,k,URHO)
-
-                state(i,j,k,UTEMP) = eos_state % T
-          ! end if
-
-           state(i,j,k,UFA)  = dye
-           state(i,j,k,UFS:UFS-1+nspec) = state(i,j,k,URHO) / nspec
+            if (level <= swe_to_comp_level) then
+                ! shallow water level
+                call swe_cons_state(q(i,j,k,:), state(i,j,k,:))
+            else
+                call comp_cons_state(q(i,j,k,:), state(i,j,k,:))
+                state(i,j,k,URHO) = 1.0d0
+            end if
 
         enddo
      enddo

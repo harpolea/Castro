@@ -504,6 +504,7 @@ end subroutine ca_compute_cfl
 
     integer          :: i, j, k, ii, jj, kk
     integer          :: n, iq, ipassive
+    real(rt)         :: W
 
     do k = lo(3), hi(3)
        do j = lo(2), hi(2)
@@ -548,17 +549,19 @@ end subroutine ca_compute_cfl
           do i = lo(1), hi(1)
               q(i,j,k,1:NQ) = 0.0d0
 
+              W = sqrt(1.0d0 + sum(uin(i,j,k,UMX:UMZ)**2) / uin(i,j,k,URHO)**2)
+
               !q(i,j,k,:QW) = uin(i,j,k,:QW)
               if (uin(i,j,k,URHO) .le. ZERO) then
-                  q(i,j,k,QRHO) = 1.0d0
+                  q(i,j,k,QRHO) = 1.0d0 / W
                   ! q(i,j,k,QU) = 0.1d0 * uin(i,j,k,UMX)
-                  q(i,j,k,QV) = 0.1d0 * uin(i,j,k,UMY)
-                  q(i,j,k,QW) = 0.1d0 * uin(i,j,k,UMZ)
+                  q(i,j,k,QV) = 0.1d0 * uin(i,j,k,UMY) / W
+                  q(i,j,k,QW) = 0.1d0 * uin(i,j,k,UMZ) / W
               else
                   q(i,j,k,QRHO) = uin(i,j,k,URHO)
                   ! q(i,j,k,QU) = uin(i,j,k,UMX) / uin(i,j,k,URHO)
-                  q(i,j,k,QV) = uin(i,j,k,UMY) / uin(i,j,k,URHO)
-                  q(i,j,k,QW) = uin(i,j,k,UMZ) / uin(i,j,k,URHO)
+                  q(i,j,k,QV) = uin(i,j,k,UMY) / (uin(i,j,k,URHO) * W)
+                  q(i,j,k,QW) = uin(i,j,k,UMZ) / (uin(i,j,k,URHO) * W)
               endif
 #if BL_SPACEDIM == 1
               q(i,j,k,QV) = 0
@@ -606,6 +609,7 @@ subroutine compctoprim(lo, hi, &
   use bl_constants_module, only: ZERO, HALF, ONE
   use castro_util_module, only: position
   use probdata_module, only : g
+  use riemann_util_module, only : zbrent, f_of_p
 
   use amrex_fort_module, only : rt => amrex_real
 
@@ -627,8 +631,15 @@ subroutine compctoprim(lo, hi, &
 
   integer          :: i, j, k
   integer          :: n, iq, ipassive
-  real(rt)         :: kineng, xx
+  real(rt)         :: xx, pmin, pmax, gamma, sq, W2, h, ssq, p
+  real(rt)         :: fmin, fmax, eden, vel(3)
   type (eos_t)     :: eos_state
+
+  eos_state % rho = 1.0d0
+  eos_state % e = 1.0d0
+
+  call eos(eos_input_re, eos_state)
+  gamma = eos_state % gam1
 
   do k = lo(3), hi(3)
      do j = lo(2), hi(2)
@@ -657,29 +668,90 @@ subroutine compctoprim(lo, hi, &
         do i = lo(1), hi(1)
             q(i,j,k,1:NQ) = 0.0d0
 
-            if (uin(i,j,k,URHO) .le. ZERO) then
-                q(i,j,k,QRHO) = 1.0d0
-                q(i,j,k,QU) = 0.1d0 * uin(i,j,k,UMX) !/ uin(i,j,k,URHO)
-                q(i,j,k,QV) = 0.1d0 * uin(i,j,k,UMY) !/ uin(i,j,k,URHO)
-                q(i,j,k,QW) = 0.1d0 * uin(i,j,k,UMZ) !/ uin(i,j,k,URHO)
-            else
-                ! Incompressible
-                q(i,j,k,QRHO) = 1.0d0!uin(i,j,k,URHO)
-                q(i,j,k,QU) = uin(i,j,k,UMX) / uin(i,j,k,URHO)
-                q(i,j,k,QV) = uin(i,j,k,UMY) / uin(i,j,k,URHO)
-                q(i,j,k,QW) = uin(i,j,k,UMZ) / uin(i,j,k,URHO)
-            endif
-
-            !kineng = HALF * q(i,j,k,QRHO) * (q(i,j,k,QU)**2 + q(i,j,k,QV)**2 + q(i,j,k,QW)**2)
-
-            ! if ( (uin(i,j,k,UEDEN) - kineng) / uin(i,j,k,UEDEN) .gt. dual_energy_eta1) then
-            !     q(i,j,k,QREINT) = (uin(i,j,k,UEDEN) - kineng) / uin(i,j,k,URHO)
-            !  else
-            !     q(i,j,k,QREINT) = uin(i,j,k,UEINT) / uin(i,j,k,URHO)
+            ! if (uin(i,j,k,URHO) .le. ZERO) then
+            !     q(i,j,k,QRHO) = 1.0d0
+            !     q(i,j,k,QU) = 0.1d0 * uin(i,j,k,UMX) !/ uin(i,j,k,URHO)
+            !     q(i,j,k,QV) = 0.1d0 * uin(i,j,k,UMY) !/ uin(i,j,k,URHO)
+            !     q(i,j,k,QW) = 0.1d0 * uin(i,j,k,UMZ) !/ uin(i,j,k,URHO)
+            ! else
+            !     ! Incompressible
+            !     q(i,j,k,QRHO) = 1.0d0!uin(i,j,k,URHO)
+            !     q(i,j,k,QU) = uin(i,j,k,UMX) / uin(i,j,k,URHO)
+            !     q(i,j,k,QV) = uin(i,j,k,UMY) / uin(i,j,k,URHO)
+            !     q(i,j,k,QW) = uin(i,j,k,UMZ) / uin(i,j,k,URHO)
             ! endif
 
-            q(i,j,k,QREINT) = uin(i,j,k,UEINT)
+            eden = uin(i,j,k,UEDEN)
+
+            if (eden < ZERO) then
+                eden = abs(eden)
+            endif
+
+            ssq = sum(uin(i,j,k,UMX:UMZ)**2)
+
+            pmin = (gamma - 1.0d0) * (eden + uin(i,j,k,URHO) - ssq / (eden + uin(i,j,k,URHO))**2 - uin(i,j,k,URHO))
+
+            pmax = (gamma - 1.0d0) * (eden + uin(i,j,k,URHO) - ssq / (eden + uin(i,j,k,URHO)))
+
+            if (pmin < 0.0d0) then
+                  pmin = 0.d0
+            end if
+
+            call f_of_p(fmin, pmin, uin(i,j,k,:))
+            call f_of_p(fmax, pmax, uin(i,j,k,:))
+
+            if (fmin * fmax > 0.0d0) then
+                pmin = pmin * 0.1d0 !0.d0
+            end if
+
+            call f_of_p(fmin, pmin, uin(i,j,k,:))
+
+            !write(*,*) "f = ", fmin, fmax, " p = ", pmin, pmax
+
+            if (fmin * fmax > 0.0d0) then
+              pmax = pmax * 10.d0
+            end if
+
+            call zbrent(p, pmin, pmax, uin(i,j,k,:))
+
+            !write(*,*) "pressure = ", pmin, pmax
+
+            if (p /= p .or. p <= 0.0d0) then! .or. p > 1.0d0) then
+
+              p = abs((gamma - 1.0d0) * ((eden + uin(i,j,k,URHO)) - ssq / (eden + uin(i,j,k,URHO))**2 - uin(i,j,k,URHO)))
+
+              !if (p > 1.0d0) then
+                  !p = 1.0d0
+              !end if
+            end if
+
+            sq = sqrt((eden + p + uin(i,j,k,URHO))**2 - ssq)
+
+            if (sq /= sq) then
+              sq = eden + p + uin(i,j,k,URHO)
+            end if
+
+            h = 1.0d0 + gamma * &
+            (sq - p * (eden + p + uin(i,j,k,URHO)) / sq - uin(i,j,k,URHO)) / uin(i,j,k,URHO)
+            W2 = 1.0d0 + ssq / (uin(i,j,k,URHO) * h)**2
+
+            !write(*,*) "p, sq, eden, rho", p, sq, eden, uin(i,j,k,URHO)
+            !return
+
+            q(i,j,k,QRHO) = 1.0d0! INCOMPRESSIBLE uin(i,j,k,URHO) * sq / (eden + p + uin(i,j,k,URHO))
+
+            vel(1) = uin(i,j,k,UMX) / (W2 * h * q(i,j,k,QRHO))
+            vel(2) = uin(i,j,k,UMY) / (W2 * h * q(i,j,k,QRHO))
+            vel(3) = uin(i,j,k,UMZ) / (W2 * h * q(i,j,k,QRHO))
+
+            q(i,j,k,QU:QW) = vel(1:3)
+
+            q(i,j,k,QREINT) = p / (gamma - 1.0d0)
+
             q(i,j,k,QTEMP) = uin(i,j,k,UTEMP)
+
+            q(i,j,k,QPRES) = p
+
             q(i,j,k,QFA) = 0.0d0
         enddo
      enddo

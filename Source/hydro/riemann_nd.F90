@@ -255,21 +255,21 @@ contains
 
                !!!!!!!!!! HACK doesn't help
                ! signal speeds
-               !S_l = -Smax
-               !S_r = Smax
+               S_l = -1.0d0
+               S_r = 1.0d0
 
               if (S_r <= ZERO) then
                  ! R region
                  call comp_cons_state(qr(i,j,k,:), U_state)
-                 call comp_compute_flux(idir, bnd_fac, U_state, F_state, pr)
+                 call comp_compute_flux(idir, bnd_fac, qr(i,j,k,:), U_state, F_state, pr)
 
              else if (S_r > ZERO .and. S_l <= ZERO) then
                  ! * region
                  call comp_cons_state(ql(i,j,k,:), U_state)
-                 call comp_compute_flux(idir, bnd_fac, U_state, F_state, pl)
+                 call comp_compute_flux(idir, bnd_fac, ql(i,j,k,:), U_state, F_state, pl)
 
                  call comp_cons_state(qr(i,j,k,:), U_hll_state)
-                 call comp_compute_flux(idir, bnd_fac, U_hll_state, Fr_state, pr)
+                 call comp_compute_flux(idir, bnd_fac, qr(i,j,k,:), U_hll_state, Fr_state, pr)
 
                  ! correct the flux
                  F_state(:) = (S_r * F_state(:) - S_l * Fr_state(:) + S_r * S_l * (U_hll_state(:) - U_state(:)))/ (S_r - S_l)
@@ -277,7 +277,7 @@ contains
               else
                  ! L region
                  call comp_cons_state(ql(i,j,k,:), U_state)
-                 call comp_compute_flux(idir, bnd_fac, U_state, F_state, pl)
+                 call comp_compute_flux(idir, bnd_fac, ql(i,j,k,:), U_state, F_state, pl)
 
               endif
 
@@ -433,15 +433,15 @@ contains
               if (S_r <= ZERO) then
                  ! R region
                  call swe_cons_state(qr(i,j,k,:), U_state)
-                 call swe_compute_flux(idir, bnd_fac, U_state, F_state)
+                 call swe_compute_flux(idir, bnd_fac, qr(i,j,k,:), U_state, F_state)
 
              else if (S_r > ZERO .and. S_l <= ZERO) then
                  ! * region
                  call swe_cons_state(ql(i,j,k,:), U_state)
-                 call swe_compute_flux(idir, bnd_fac, U_state, F_state)
+                 call swe_compute_flux(idir, bnd_fac, ql(i,j,k,:), U_state, F_state)
 
                  call swe_cons_state(qr(i,j,k,:), U_hll_state)
-                 call swe_compute_flux(idir, bnd_fac, U_hll_state, Fr_state)
+                 call swe_compute_flux(idir, bnd_fac, qr(i,j,k,:), U_hll_state, Fr_state)
 
                  ! correct the flux
                  F_state(:) = (S_r * F_state(:) - S_l * Fr_state(:) + S_r * S_l * (U_hll_state(:) - U_state(:)))/ (S_r - S_l)
@@ -449,7 +449,7 @@ contains
               else
                  ! L region
                  call swe_cons_state(ql(i,j,k,:), U_state)
-                 call swe_compute_flux(idir, bnd_fac, U_state, F_state)
+                 call swe_compute_flux(idir, bnd_fac, ql(i,j,k,:), U_state, F_state)
 
               endif
 
@@ -582,7 +582,6 @@ subroutine comp_to_swe(swe, slo, shi, comp, clo, chi, lo, hi, xlo, dx, ignore_er
     do k = lo(3), hi(3)
         do j = lo(2), hi(2)
             xx = xlo(1) + dx(1)*HALF
-
 
             do i = lo(1), hi(1)
                 U_swe(1:NVAR) = 0.0d0
