@@ -144,7 +144,7 @@ contains
 
     ! we don't care about T here, but initialize it to make NaN
     ! checking happy
-    U(UTEMP) = eos_state % T!q(QTEMP)
+    U(UTEMP) = q(QTEMP)
     U(UFA) = 0.0d0
     U(UFS:UFS-1+nspec) = U(URHO) / nspec
 
@@ -294,7 +294,7 @@ contains
     double precision, intent(in)  :: U(NVAR), x1
     double precision, intent(inout) :: b
 
-    double precision, parameter :: TOL = 1.0d-12
+    double precision, parameter :: TOL = 1.0d-6
     integer, parameter :: ITMAX = 100
 
     double precision a, c, d, fa, fb, fc, fs, s

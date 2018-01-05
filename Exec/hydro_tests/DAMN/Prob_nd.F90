@@ -45,9 +45,9 @@ subroutine amrex_probinit (init,name,namlen,problo,probhi) bind(c)
 
    ! Set namelist defaults
 
-   h_in = 2.0d0
-   h_out = 1.0d0
-   damn_rad = 0.2d0
+   h_in = 2.e0_rt
+   h_out = 1.e0_rt
+   damn_rad = 2.e-1_rt
 
    g = 1.0d0
    p_ambient = 1.e-5_rt        ! ambient pressure (in erg/cc)
@@ -88,7 +88,7 @@ subroutine amrex_probinit (init,name,namlen,problo,probhi) bind(c)
 
    eos_state % rho = dens_ambient
    eos_state % p   = p_ambient
-   eos_state % T   = 1.d5 ! Initial guess for iterations
+   eos_state % T   = 1.e5_rt ! Initial guess for iterations
    eos_state % xn  = xn_zone
 
    call eos(eos_input_rp, eos_state)
@@ -125,7 +125,7 @@ subroutine ca_initdata(level,time,lo,hi,nscal, &
 
   use probdata_module
   use meth_params_module, only : NVAR, URHO, UMX, UMY, UMZ, &
-       QFS, QFA, UEDEN, UEINT, QTEMP, NQ, QRHO, QU, QV, QW, QREINT, QPRES
+       QFS, QFA, UEDEN, UEINT, QTEMP, NQ, QRHO, QU, QV, QW, QREINT, QPRES, UTEMP
   use network, only : nspec
   use bl_constants_module
   use prob_params_module, only: problo, center, probhi
@@ -169,25 +169,26 @@ subroutine ca_initdata(level,time,lo,hi,nscal, &
 
         do i = lo(1), hi(1)
 
-            state(i,j,k,1:NVAR) = 0.0d0
-            q(i,j,k,1:NQ) = 0.0d0
+            state(i,j,k,1:NVAR) = 0.e0_rt
+            q(i,j,k,1:NQ) = 0.e0_rt
 
             xmin = xlo(1) + delta(1)*dble(i-lo(1))
             xx = xlo(1) + delta(1)*dble(i-lo(1)+HALF)
 
             r = yy
 
-            q(i,j,k,QRHO) = 1.0d0
+            q(i,j,k,QRHO) = 1.e0_rt
 
             if (r < damn_rad) then
-                eos_state % p = 0.5 * g * (h_in-xx)**2
+                eos_state % p = 0.5e0_rt * g * (h_in-xx)**2
             else
-                eos_state % p = 0.5 * g * (h_out-xx)**2
+                eos_state % p = 0.5e0_rt * g * (h_out-xx)**2
             end if
 
             !eos_state % e = e_zone
             eos_state % rho = q(i,j,k, QRHO)
             eos_state % xn(:) = xn_zone(:)
+            eos_state%T = 100000.e0_rt ! initial guess
             !eos_state % p = 0.5d0 * g * state(i,j,k,URHO)**2
 
             call eos(eos_input_rp, eos_state)
@@ -196,7 +197,7 @@ subroutine ca_initdata(level,time,lo,hi,nscal, &
             q(i,j,k,QU:QW) = 0.e0_rt
 
             q(i,j,k,QREINT) = eint +  &
-                0.5e0_rt*(sum(q(i,j,k,QU:QW)**2)/q(i,j,k,QRHO))
+                0.5e0_rt*sum(q(i,j,k,QU:QW)**2)*q(i,j,k, QRHO)
 
             if (level <= swe_to_comp_level) then
                 ! shallow water level
@@ -219,12 +220,14 @@ subroutine ca_initdata(level,time,lo,hi,nscal, &
                 call swe_cons_state(q(i,j,k,:), state(i,j,k,:))
             else
                 call comp_cons_state(q(i,j,k,:), state(i,j,k,:))
-                state(i,j,k,URHO) = 1.0d0
+                state(i,j,k,URHO) = 1.e0_rt
             end if
 
         enddo
      enddo
   enddo
   !$OMP END PARALLEL DO
+
+  ! write(*,*) state(lo(1), lo(2), lo(3), UTEMP)
 
 end subroutine ca_initdata

@@ -888,7 +888,6 @@ Castro::plotFileOutput(const std::string& dir,
     const Real* dx        = geom.CellSize();
 
     // convert to compressible
-    // NOTE: this appears to be working???
 
     // if ((level <= swe_to_comp_level) && (State_Type == 0)) {
     //     for (MFIter mfi(plotMF); mfi.isValid(); ++mfi)
