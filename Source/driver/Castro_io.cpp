@@ -883,24 +883,24 @@ Castro::plotFileOutput(const std::string& dir,
     	}
     }
 
-    int swe_to_comp_level;
-    ca_get_swe_to_comp_level(&swe_to_comp_level);
-    const Real* dx        = geom.CellSize();
+    // int swe_to_comp_level;
+    // ca_get_swe_to_comp_level(&swe_to_comp_level);
+    // const Real* dx        = geom.CellSize();
 
     // convert to compressible
 
-    if ((level <= swe_to_comp_level) && (State_Type == 0)) {
-        for (MFIter mfi(plotMF); mfi.isValid(); ++mfi)
-        {
-            const Box& bx = mfi.tilebox();
-            // do some conversion stuff
-            bool ignore_errors = false;
-            RealBox gridloc = RealBox(grids[mfi.index()],geom.CellSize(),geom.ProbLo());
-
-            ca_swe_to_comp_self(BL_TO_FORTRAN_3D(plotMF[mfi]),
-                ARLIM_3D(bx.loVect()), ARLIM_3D(bx.hiVect()), ZFILL(dx), ZFILL(gridloc.lo()), &ignore_errors);
-        }
-    }
+    // if ((level <= swe_to_comp_level) && (State_Type == 0)) {
+    //     for (MFIter mfi(plotMF); mfi.isValid(); ++mfi)
+    //     {
+    //         const Box& bx = mfi.tilebox();
+    //         // do some conversion stuff
+    //         bool ignore_errors = false;
+    //         RealBox gridloc = RealBox(grids[mfi.index()],geom.CellSize(),geom.ProbLo());
+    //
+    //         ca_swe_to_comp_self(BL_TO_FORTRAN_3D(plotMF[mfi]),
+    //             ARLIM_3D(bx.loVect()), ARLIM_3D(bx.hiVect()), ZFILL(dx), ZFILL(gridloc.lo()), &ignore_errors);
+    //     }
+    // }
 
     //
     // Use the Full pathname when naming the MultiFab.

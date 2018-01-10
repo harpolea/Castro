@@ -33,7 +33,7 @@ subroutine ca_mol_single_stage(time, level, &
                                courno, verbose, xlo) bind(C, name="ca_mol_single_stage")
 
   use meth_params_module, only : NQ, QVAR, NVAR, &
-                                 NQAUX, QFS, QFX, QREINT, QRHO, QGAMC
+                                 NQAUX, QFS, QFX, QREINT, QRHO
   use advection_util_module
   use reconstruct_module, only : compute_reconstruction_tvd
   use bl_constants_module, only : ZERO, HALF, ONE, FOURTH
@@ -131,8 +131,6 @@ subroutine ca_mol_single_stage(time, level, &
   st_hi(3) = 0
 #endif
 
-  qaux(qa_lo(1):qa_hi(1),qa_lo(2):qa_hi(2),qa_lo(3):qa_hi(3),QGAMC) = eos_state % gam1
-
   if (level <= swe_to_comp_level) then
       call swectoprim(q_lo, q_hi, &
                    uin, uin_lo, uin_hi, &
@@ -156,9 +154,9 @@ subroutine ca_mol_single_stage(time, level, &
             do i = q_lo(1), q_hi(1)
                 if (q(i,j,k,n) /= q(i,j,k,n)) then
                     if (n==1) then
-                        q(i,j,k,n) = 1.0d0
+                        q(i,j,k,n) = 1.0e0_rt
                     else
-                        q(i,j,k,n) = 0.0d0
+                        q(i,j,k,n) = 0.0e0_rt
                     endif
                 endif
             enddo
@@ -323,7 +321,7 @@ subroutine ca_mol_single_stage(time, level, &
               update(i,j,k,n) = update(i,j,k,n) + srcU(i,j,k,n)
 
               if (update(i,j,k,n) /= update(i,j,k,n)) then
-                  update(i,j,k,n) = 0.0d0
+                  update(i,j,k,n) = 0.0e0_rt
               endif
 
            enddo
@@ -345,7 +343,7 @@ subroutine ca_mol_single_stage(time, level, &
            do i = lo(1), hi(1) + 1
               flux1(i,j,k,n) = dt * flux1(i,j,k,n) * area1(i,j,k)
               if (flux1(i,j,k,n) /= flux1(i,j,k,n)) then
-                  flux1(i,j,k,n) = 0.0d0
+                  flux1(i,j,k,n) = 0.0e0_rt
               endif
            enddo
         enddo
@@ -365,7 +363,7 @@ subroutine ca_mol_single_stage(time, level, &
            do i = lo(1), hi(1)
               flux2(i,j,k,n) = dt * flux2(i,j,k,n) * area2(i,j,k)
               if (flux2(i,j,k,n) /= flux2(i,j,k,n)) then
-                  flux2(i,j,k,n) = 0.0d0
+                  flux2(i,j,k,n) = 0.0e0_rt
               endif
            enddo
         enddo
@@ -382,7 +380,7 @@ subroutine ca_mol_single_stage(time, level, &
            do i = lo(1), hi(1)
               flux3(i,j,k,n) = dt * flux3(i,j,k,n) * area3(i,j,k)
               if (flux3(i,j,k,n) /= flux3(i,j,k,n)) then
-                  flux3(i,j,k,n) = 0.0d0
+                  flux3(i,j,k,n) = 0.0e0_rt
               endif
            enddo
         enddo

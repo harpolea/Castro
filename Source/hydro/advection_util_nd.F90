@@ -391,7 +391,7 @@ contains
        dtdz = ZERO
     endif
 
-    large_number = 1.0d10
+    large_number = 1.0e10_rt
 
     do k = lo(3),hi(3)
        do j = lo(2),hi(2)
@@ -402,14 +402,14 @@ contains
                  print *,'   '
                  print *,'>>> Error: advection_util_nd.F90::compute_cfl ',i, j, k
                  print *,'>>> ... negative density ', q(i,j,k,QRHO)
-                 q(i,j,k,QRHO) = 1.0d0
+                 q(i,j,k,QRHO) = 1.0e0_rt
                  call bl_error("Error:: advection_util_nd.f90 :: compute_cfl")
              else if (q(i,j,k,QRHO) > large_number) then
                     !print *, uin(:,:,:,URHO)
                     print *,'   '
                     print *,'>>> Error: advection_util_nd.F90::compute_cfl ',i, j, k
                     print *,'>>> ... density is very large ', q(i,j,k,QRHO)
-                    q(i,j,k,QRHO) = 1.0d0
+                    q(i,j,k,QRHO) = 1.0e0_rt
                     call bl_error("Error:: advection_util_nd.f90 :: compute_cfl")
              else if (q(i,j,k,QRHO) /= q(i,j,k,QRHO)) then
                   print *,'   '
@@ -454,7 +454,7 @@ contains
                call bl_error("Warning:: advection_util_nd.F90 :: CFL violation in compute_cfl")
             endif
 
-            courno = max(min(1.0d0,courno), min(1.0d0,courtmp))
+            courno = max(min(1.0e0_rt,courno), min(1.0e0_rt,courtmp))
 
             if (courno > ONE) then
                 print *,'   '
@@ -500,7 +500,7 @@ end subroutine ca_compute_cfl
 
     logical, optional, intent(in) :: ignore_errors
 
-    real(rt)        , parameter :: small = 1.d-8
+    real(rt)        , parameter :: small = 1.0e-8_rt
 
     integer          :: i, j, k, ii, jj, kk
     integer          :: n, iq, ipassive
@@ -521,8 +521,8 @@ end subroutine ca_compute_cfl
                     print *,'   '
                     print *,'>>> Error: advection_util_nd.F90::swectoprim ',i, j, k
                     print *,'>>> ... negative density ', uin(i,j,k,URHO)
-                    ! uin(i,j,k,:) = 0.0d0
-                    ! uin(i,j,k,URHO) = 1.0d0
+                    ! uin(i,j,k,:) = 0.0e0_rt
+                    ! uin(i,j,k,URHO) = 1.0e0_rt
                     call bl_error("Error:: advection_util_nd.f90 :: swectoprim")
                  else if (uin(i,j,k,URHO) /= uin(i,j,k,URHO)) then
                      print *,'   '
@@ -547,16 +547,16 @@ end subroutine ca_compute_cfl
           end do
 
           do i = lo(1), hi(1)
-              q(i,j,k,1:NQ) = 0.0d0
+              q(i,j,k,1:NQ) = 0.0e0_rt
 
-              W = sqrt(1.0d0 + sum(uin(i,j,k,UMX:UMZ)**2) / uin(i,j,k,URHO)**2)
+              W = sqrt(1.0e0_rt + sum(uin(i,j,k,UMX:UMZ)**2) / uin(i,j,k,URHO)**2)
 
               !q(i,j,k,:QW) = uin(i,j,k,:QW)
               if (uin(i,j,k,URHO) .le. ZERO) then
-                  q(i,j,k,QRHO) = 1.0d0 / W
-                  ! q(i,j,k,QU) = 0.1d0 * uin(i,j,k,UMX)
-                  q(i,j,k,QV) = 0.1d0 * uin(i,j,k,UMY) / W
-                  q(i,j,k,QW) = 0.1d0 * uin(i,j,k,UMZ) / W
+                  q(i,j,k,QRHO) = 1.0e0_rt / W
+                  ! q(i,j,k,QU) = 0.1e0_rt * uin(i,j,k,UMX)
+                  q(i,j,k,QV) = 0.1e0_rt * uin(i,j,k,UMY) / W
+                  q(i,j,k,QW) = 0.1e0_rt * uin(i,j,k,UMZ) / W
               else
                   q(i,j,k,QRHO) = uin(i,j,k,URHO)
                   ! q(i,j,k,QU) = uin(i,j,k,UMX) / uin(i,j,k,URHO)
@@ -564,15 +564,15 @@ end subroutine ca_compute_cfl
                   q(i,j,k,QW) = uin(i,j,k,UMZ) / (uin(i,j,k,URHO) * W)
               endif
 #if BL_SPACEDIM == 1
-              q(i,j,k,QV) = 0
+              q(i,j,k,QV) = 0.0e0_rt
 #endif
 #if BL_SPACEDIM <= 2
-              q(i,j,k,QW) = 0
+              q(i,j,k,QW) = 0.0e0_rt
 #endif
-              q(i,j,k,QPRES) = 0.5d0 * g * q(i,j,k,QRHO)**2
+              q(i,j,k,QPRES) = 0.5e0_rt * g * q(i,j,k,QRHO)**2
               q(i,j,k,QREINT) = uin(i,j,k,UEINT)
               q(i,j,k,QTEMP) = uin(i,j,k,UTEMP)
-              q(i,j,k,QFA) = 0.0d0
+              q(i,j,k,QFA) = 0.0e0_rt
 
           enddo
        enddo
@@ -599,16 +599,16 @@ subroutine compctoprim(lo, hi, &
                    qaux, qa_lo,  qa_hi, xlo, dx, ignore_errors)
 
   use actual_network, only : nspec, naux
-  use eos_module, only : eos
+  use eos_module, only : eos, eos_init, initialized
   use eos_type_module, only : eos_t, eos_input_rp, eos_input_re
   use meth_params_module, only : NVAR, URHO, UMX, UMY, UMZ, UEDEN, UEINT,&
                                  QRHO, QU, QV, QW, QREINT, QTEMP, &
                                  NQ, QC, QCSML, QGAMC, QDPDR, QDPDE, NQAUX, QFS, QFX, QGAME, QPRES, UTEMP, &
                                  npassive, upass_map, qpass_map, &
-                                 small_dens, UFA, QFA
+                                 small_dens, small_temp, UFA, QFA
   use bl_constants_module, only: ZERO, HALF, ONE
   use castro_util_module, only: position
-  use probdata_module, only : g
+  use probdata_module, only : g, dens_incompressible
   use riemann_util_module, only : zbrent, f_of_p
 
   use amrex_fort_module, only : rt => amrex_real
@@ -627,19 +627,20 @@ subroutine compctoprim(lo, hi, &
 
   logical, optional, intent(in) :: ignore_errors
 
-  real(rt)        , parameter :: small = 1.d-8
+  real(rt)        , parameter :: small = 1.0e-8_rt
 
   integer          :: i, j, k
   integer          :: n, iq, ipassive
-  real(rt)         :: xx, pmin, pmax, gamma, sq, W2, h, ssq, p
+  real(rt)         :: xx, pmin, pmax, sq, W2, h, ssq, p, rhoh
   real(rt)         :: fmin, fmax, eden, vel(3)
   type (eos_t)     :: eos_state
 
-  eos_state % rho = 1.0d0
-  eos_state % e = 1.0d0
+  eos_state % rho = dens_incompressible
+  eos_state % e = 1.0e0_rt
+
+  if (.not. initialized) call eos_init(small_dens=small_dens, small_temp=small_temp)
 
   call eos(eos_input_re, eos_state)
-  gamma = eos_state % gam1
 
   do k = lo(3), hi(3)
      do j = lo(2), hi(2)
@@ -666,93 +667,122 @@ subroutine compctoprim(lo, hi, &
         end do
 
         do i = lo(1), hi(1)
-            q(i,j,k,1:NQ) = 0.0d0
+            q(i,j,k,1:NQ) = 0.0e0_rt
 
             ! if (uin(i,j,k,URHO) .le. ZERO) then
-            !     q(i,j,k,QRHO) = 1.0d0
-            !     q(i,j,k,QU) = 0.1d0 * uin(i,j,k,UMX) !/ uin(i,j,k,URHO)
-            !     q(i,j,k,QV) = 0.1d0 * uin(i,j,k,UMY) !/ uin(i,j,k,URHO)
-            !     q(i,j,k,QW) = 0.1d0 * uin(i,j,k,UMZ) !/ uin(i,j,k,URHO)
+            !     q(i,j,k,QRHO) = 1.0e0_rt
+            !     q(i,j,k,QU) = 0.1e0_rt * uin(i,j,k,UMX) !/ uin(i,j,k,URHO)
+            !     q(i,j,k,QV) = 0.1e0_rt * uin(i,j,k,UMY) !/ uin(i,j,k,URHO)
+            !     q(i,j,k,QW) = 0.1e0_rt * uin(i,j,k,UMZ) !/ uin(i,j,k,URHO)
             ! else
             !     ! Incompressible
-            !     q(i,j,k,QRHO) = 1.0d0!uin(i,j,k,URHO)
+            !     q(i,j,k,QRHO) = 1.0e0_rt!uin(i,j,k,URHO)
             !     q(i,j,k,QU) = uin(i,j,k,UMX) / uin(i,j,k,URHO)
             !     q(i,j,k,QV) = uin(i,j,k,UMY) / uin(i,j,k,URHO)
             !     q(i,j,k,QW) = uin(i,j,k,UMZ) / uin(i,j,k,URHO)
             ! endif
 
-            eden = uin(i,j,k,UEDEN)
-
-            if (eden < ZERO) then
-                eden = abs(eden)
-            endif
-
-            ssq = sum(uin(i,j,k,UMX:UMZ)**2)
-
-            pmin = (gamma - 1.0d0) * (eden + uin(i,j,k,URHO) - ssq / (eden + uin(i,j,k,URHO))**2 - uin(i,j,k,URHO))
-
-            pmax = (gamma - 1.0d0) * (eden + uin(i,j,k,URHO) - ssq / (eden + uin(i,j,k,URHO)))
-
-            if (pmin < 0.0d0) then
-                  pmin = 0.d0
-            end if
-
-            call f_of_p(fmin, pmin, uin(i,j,k,:))
-            call f_of_p(fmax, pmax, uin(i,j,k,:))
-
-            if (fmin * fmax > 0.0d0) then
-                pmin = pmin * 0.1d0 !0.d0
-            end if
-
-            call f_of_p(fmin, pmin, uin(i,j,k,:))
-
-            !write(*,*) "f = ", fmin, fmax, " p = ", pmin, pmax
-
-            if (fmin * fmax > 0.0d0) then
-              pmax = pmax * 10.d0
-            end if
-
-            call zbrent(p, pmin, pmax, uin(i,j,k,:))
-
-            !write(*,*) "pressure = ", pmin, pmax
-
-            if (p /= p .or. p <= 0.0d0) then! .or. p > 1.0d0) then
-
-              p = abs((gamma - 1.0d0) * ((eden + uin(i,j,k,URHO)) - ssq / (eden + uin(i,j,k,URHO))**2 - uin(i,j,k,URHO)))
-
-              !if (p > 1.0d0) then
-                  !p = 1.0d0
-              !end if
-            end if
-
-            sq = sqrt((eden + p + uin(i,j,k,URHO))**2 - ssq)
-
-            if (sq /= sq) then
-              sq = eden + p + uin(i,j,k,URHO)
-            end if
-
-            h = 1.0d0 + gamma * &
-            (sq - p * (eden + p + uin(i,j,k,URHO)) / sq - uin(i,j,k,URHO)) / uin(i,j,k,URHO)
-            W2 = 1.0d0 + ssq / (uin(i,j,k,URHO) * h)**2
+            ! eden = uin(i,j,k,UEDEN)
+            !
+            ! if (eden < ZERO) then
+            !     eden = abs(eden)
+            ! endif
+            !
+            ! ssq = sum(uin(i,j,k,UMX:UMZ)**2)
+            !
+            ! pmin = (gamma - 1.0e0_rt) * (eden + uin(i,j,k,URHO) - ssq / (eden + uin(i,j,k,URHO))**2 - uin(i,j,k,URHO))
+            !
+            ! pmax = (gamma - 1.0e0_rt) * (eden + uin(i,j,k,URHO) - ssq / (eden + uin(i,j,k,URHO)))
+            !
+            ! if (pmin < 0.0e0_rt) then
+            !       pmin = 0.e0_rt
+            ! end if
+            !
+            ! call f_of_p(fmin, pmin, uin(i,j,k,:))
+            ! call f_of_p(fmax, pmax, uin(i,j,k,:))
+            !
+            ! if (fmin * fmax > 0.0e0_rt) then
+            !     pmin = pmin * 0.1e0_rt !0.e0_rt
+            ! end if
+            !
+            ! call f_of_p(fmin, pmin, uin(i,j,k,:))
+            !
+            ! !write(*,*) "f = ", fmin, fmax, " p = ", pmin, pmax
+            !
+            ! if (fmin * fmax > 0.0e0_rt) then
+            !   pmax = pmax * 10.e0_rt
+            ! end if
+            !
+            ! call zbrent(p, pmin, pmax, uin(i,j,k,:))
+            !
+            ! !write(*,*) "pressure = ", pmin, pmax
+            !
+            ! if (p /= p .or. p <= 0.0e0_rt) then! .or. p > 1.0e0_rt) then
+            !
+            !   p = abs((gamma - 1.0e0_rt) * ((eden + uin(i,j,k,URHO)) - ssq / (eden + uin(i,j,k,URHO))**2 - uin(i,j,k,URHO)))
+            !
+            !   !if (p > 1.0e0_rt) then
+            !       !p = 1.0e0_rt
+            !   !end if
+            ! end if
+            !
+            ! sq = sqrt((eden + p + uin(i,j,k,URHO))**2 - ssq)
+            !
+            ! if (sq /= sq) then
+            !   sq = eden + p + uin(i,j,k,URHO)
+            ! end if
+            !
+            ! h = 1.0e0_rt + gamma * &
+            ! (sq - p * (eden + p + uin(i,j,k,URHO)) / sq - uin(i,j,k,URHO)) / uin(i,j,k,URHO)
+            ! W2 = 1.0e0_rt + ssq / (uin(i,j,k,URHO) * h)**2
 
             !write(*,*) "p, sq, eden, rho", p, sq, eden, uin(i,j,k,URHO)
             !return
 
-            q(i,j,k,QRHO) = 1.0d0! INCOMPRESSIBLE uin(i,j,k,URHO) * sq / (eden + p + uin(i,j,k,URHO))
+            q(i,j,k,QRHO) = dens_incompressible! INCOMPRESSIBLE uin(i,j,k,URHO) * sq / (eden + p + uin(i,j,k,URHO))
 
-            vel(1) = uin(i,j,k,UMX) / (W2 * h * q(i,j,k,QRHO))
-            vel(2) = uin(i,j,k,UMY) / (W2 * h * q(i,j,k,QRHO))
-            vel(3) = uin(i,j,k,UMZ) / (W2 * h * q(i,j,k,QRHO))
+            ! write(*,*) uin(i,j,k,URHO) * sq / (eden + p + uin(i,j,k,URHO))
+
+            W2 = (uin(i,j,k,URHO) / dens_incompressible)**2
+            ! if ((W2 - 1.0e0_rt) < 1.0e-8_rt) then
+                ! eden = uin(i,j,k,UEDEN)
+                ! p = (gamma - 1.0e0_rt) * (eden + uin(i,j,k,URHO) - ssq / (eden + uin(i,j,k,URHO))**2 - uin(i,j,k,URHO))
+            p = (uin(i,j,k,UEDEN) - dens_incompressible * W2 + uin(i,j,k,URHO)) / (eos_state % gam1 * W2 / (eos_state % gam1 - 1.0e0_rt) - 1.0e0_rt)
+            rhoh = dens_incompressible + eos_state % gam1 * p / (eos_state % gam1 - 1.0e0_rt)
+                ! rhoh = uin(i,j,k,UEINT) * eos_state % gam1 + dens_incompressible
+            ! else
+            !     rhoh = ssq / (W2 - 1.0e0_rt)
+            ! endif
+
+            vel(1) = uin(i,j,k,UMX) / (W2 * rhoh)
+            vel(2) = uin(i,j,k,UMY) / (W2 * rhoh)
+            vel(3) = uin(i,j,k,UMZ) / (W2 * rhoh)
+#if BL_SPACEDIM == 1
+            vel(2) = 0.0e0_rt
+#endif
+#if BL_SPACEDIM <= 2
+            vel(3) = 0.0e0_rt
+#endif
+
+            ! p = rhoh * W2 - uin(i,j,k,UEDEN) - uin(i,j,k,URHO)
+
+            if (p < 0) then
+                write(*,*) "p = ", p, "rhoh = ", rhoh, "UEDEN = ", uin(i,j,k,UEDEN)
+            endif
 
             q(i,j,k,QU:QW) = vel(1:3)
 
-            q(i,j,k,QREINT) = p / (gamma - 1.0d0)
+            q(i,j,k,QREINT) = (rhoh - q(i,j,k,QRHO)) / eos_state % gam1!p / (gamma - 1.0e0_rt)
+
+            if (q(i,j,k,QREINT) > 1) then
+                write(*,*) q(i,j,k,QREINT)
+            endif
 
             q(i,j,k,QTEMP) = uin(i,j,k,UTEMP)
 
             q(i,j,k,QPRES) = p
 
-            q(i,j,k,QFA) = 0.0d0
+            q(i,j,k,QFA) = 0.0e0_rt
         enddo
      enddo
   enddo
@@ -782,15 +812,15 @@ subroutine compctoprim(lo, hi, &
              eos_state % e   = q(i,j,k,QREINT)
              eos_state % xn  = q(i,j,k,QFS:QFS+nspec-1)
              eos_state % aux = q(i,j,k,QFX:QFX+naux-1)
-             ! eos_state % p = 0.5d0 * g * q(i,j,k,QRHO  )**2
-             !eos_state % p = 0.5d0 * g * (xx**2
+             ! eos_state % p = 0.5e0_rt * g * q(i,j,k,QRHO  )**2
+             eos_state % p = q(i,j,k,QPRES)
              !q(i,j,k,QPRES)  = eos_state % p
 
-             call eos(eos_input_re, eos_state)
-             q(i,j,k,QPRES)  = eos_state % p
+             call eos(eos_input_rp, eos_state)
+             !q(i,j,k,QPRES)  = eos_state % p
 
-             ! q(i,j,k,QTEMP)  = eos_state % T // NOTE: this breaks it
-             q(i,j,k,QREINT) = eos_state % e * q(i,j,k,QRHO)
+             q(i,j,k,QTEMP)  = eos_state % T
+             !q(i,j,k,QREINT) = eos_state % e * q(i,j,k,QRHO)
              q(i,j,k,QGAME)  = q(i,j,k,QPRES) / q(i,j,k,QREINT) + ONE
 
              qaux(i,j,k,QDPDR)  = eos_state % dpdr_e

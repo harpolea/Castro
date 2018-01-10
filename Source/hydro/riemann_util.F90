@@ -67,31 +67,31 @@ contains
 
     !integer  :: ipassive, n, nq
 
-    U(1:NVAR) = 0.0d0
+    U(1:NVAR) = 0.0e0_rt
 
     call calculate_scalar_W(q(QU:QW), W)
 
     U(URHO) = q(QRHO) * W
 
     U(UMY:UMZ) = q(QRHO) * W**2 * q(QV:QW)
-    ! U(UMX)  = 0.0d0! q(QRHO) * q(QW)
+    ! U(UMX)  = 0.0e0_rt! q(QRHO) * q(QW)
 
     ! since we advect all 3 velocity components regardless of dimension, this
 #if BL_SPACEDIM == 1
-    U(UMY)  = 0.0d0! q(QRHO) * q(QU)
+    U(UMY)  = 0.0e0_rt! q(QRHO) * q(QU)
 #endif
 #if BL_SPACEDIM <= 2
-    U(UMZ)  = 0.0d0!q(QRHO) * q(QV)
+    U(UMZ)  = 0.0e0_rt!q(QRHO) * q(QV)
 #endif
 
     ! don't care for swe but might help
-    U(UEDEN) = q(QREINT) + 0.5d0*q(QRHO)*(q(QU)**2 + q(QV)**2 + q(QW)**2)
+    U(UEDEN) = q(QREINT) + 0.5e0_rt*q(QRHO)*(q(QU)**2 + q(QV)**2 + q(QW)**2)
     U(UEINT) = q(QREINT)
 
     ! we don't care about T here, but initialize it to make NaN
     ! checking happy
     U(UTEMP) = q(QTEMP)
-    U(UFA) = 0.0d0
+    U(UFA) = 0.0e0_rt
     U(UFS:UFS-1+nspec) = U(URHO) / nspec
 
   end subroutine swe_cons_state
@@ -103,8 +103,9 @@ contains
          npassive, upass_map, qpass_map, UFS, UFA, QPRES, small_dens, small_temp
     use network, only : nspec
     use eos_module, only: eos, eos_init, initialized
-    use eos_type_module, only: eos_input_re, eos_t, eos_input_rt
+    use eos_type_module, only: eos_input_re, eos_t, eos_input_rt, eos_input_rp
     use metric_module, only: calculate_scalar_W
+    use probdata_module, only: dens_incompressible
 
     real(rt)        , intent(in)  :: q(NQ)
     real(rt)        , intent(out) :: U(NVAR)
@@ -112,12 +113,14 @@ contains
     real(rt) :: W, rhoh, p, rho
     type(eos_t) :: eos_state
 
+    if (.not. initialized) call eos_init(small_dens=small_dens, small_temp=small_temp)
+
     call calculate_scalar_W(q(QU:QW), W)
     !integer  :: ipassive, n, nq
-    U(1:NVAR) = 0.0d0
+    U(1:NVAR) = 0.0e0_rt
 
     ! INCOMPRESSIBLE
-    rho = 1.0d0
+    rho = dens_incompressible
 
     U(URHO) = rho * W !q(QRHO)
 
@@ -126,12 +129,10 @@ contains
     eos_state % p = q(QPRES)
     eos_state % T = q(QTEMP)
 
-    if (.not. initialized) call eos_init(small_dens=small_dens, small_temp=small_temp)
-
     call eos(eos_input_re, eos_state)
 
     rhoh = eos_state % gam1 * q(QREINT) + rho
-    p = q(QPRES)
+    p = eos_state % p
 
     ! since we advect all 3 velocity components regardless of dimension, this
     ! will be general
@@ -139,13 +140,20 @@ contains
     U(UMY)  = rhoh * q(QV) * W**2
     U(UMZ)  = rhoh * q(QW) * W**2
 
+#if BL_SPACEDIM == 1
+    U(UMY) = 0.0e0_rt
+#endif
+#if BL_SPACEDIM <= 2
+    U(UMZ) = 0.0e0_rt
+#endif
+
     U(UEDEN) = rhoh * W**2 - p - U(URHO)
     U(UEINT) = q(QREINT)
 
     ! we don't care about T here, but initialize it to make NaN
     ! checking happy
     U(UTEMP) = q(QTEMP)
-    U(UFA) = 0.0d0
+    U(UFA) = 0.0e0_rt
     U(UFS:UFS-1+nspec) = U(URHO) / nspec
 
   end subroutine comp_cons_state
@@ -179,7 +187,7 @@ contains
        u_flx = ZERO
     endif
 
-    F(1:NVAR) = 0.0d0
+    F(1:NVAR) = 0.0e0_rt
 
     F(URHO) = U(URHO) * u_flx
 
@@ -189,21 +197,21 @@ contains
 
 #if BL_SPACEDIM == 2
     if (idir == 2) then
-        F(UMY) = F(UMY) + 0.5d0 * g * q(QRHO)**2
+        F(UMY) = F(UMY) + 0.5e0_rt * g * q(QRHO)**2
     endif
-    F(UMZ) = 0.0d0
+    F(UMZ) = 0.0e0_rt
 #elif BL_SPACEDIM == 3
     if (idir == 1) then
-        F(UMX) = F(UMX) + 0.5d0 * g * q(QRHO)**2
+        F(UMX) = F(UMX) + 0.5e0_rt * g * q(QRHO)**2
     else if (idir == 2) then
-        F(UMY) = F(UMY) + 0.5d0 * g * q(QRHO)**2
+        F(UMY) = F(UMY) + 0.5e0_rt * g * q(QRHO)**2
     endif
 #endif
 
     F(UEINT) = U(UEINT) * u_flx
-    F(UEDEN) = (U(UEDEN) + 0.5d0 * g * q(QRHO)**2) * u_flx
+    F(UEDEN) = (U(UEDEN) + 0.5e0_rt * g * q(QRHO)**2) * u_flx
 
-    F(UTEMP) = 0.0d0
+    F(UTEMP) = 0.0e0_rt
     F(UFA) = U(UFA) * u_flx
     F(UFS:UFS-1+nspec) = U(UFS:UFS-1+nspec) * u_flx
 
@@ -236,21 +244,28 @@ contains
     if (bnd_fac == 0) then
        u_flx = ZERO
     endif
-    F(1:NVAR) = 0.0d0
+    F(1:NVAR) = 0.0e0_rt
 
     ! NOTE: Made incompressible for now
-    F(URHO) = 0.0d0!U(URHO) * u_flx
+    F(URHO) = 0.0e0_rt!U(URHO) * u_flx
 
     F(UMX) = U(UMX) * u_flx
     F(UMY) = U(UMY) * u_flx
     F(UMZ) = U(UMZ) * u_flx
+
+#if BL_SPACEDIM == 1
+    F(UMY) = 0.0e0_rt
+#endif
+#if BL_SPACEDIM <= 2
+    F(UMZ) = 0.0e0_rt
+#endif
 
     F(UMX-1+idir) = F(UMX-1+idir) + p
 
     F(UEINT) = U(UEINT) * u_flx
     F(UEDEN) = (U(UEDEN) + p) * u_flx
 
-    F(UTEMP) = 0.0d0
+    F(UTEMP) = 0.0e0_rt
     F(UFA) = U(UFA) * u_flx
     F(UFS:UFS-1+nspec) = U(UFS:UFS-1+nspec) * u_flx
 
@@ -261,17 +276,20 @@ contains
     use meth_params_module, only: NVAR, URHO, UMX, UMY, UMZ, UEDEN
     use eos_module, only: eos
     use eos_type_module, only: eos_input_re, eos_t
+    use probdata_module, only: dens_incompressible
 
     double precision, intent(in)  :: U(NVAR), p
     double precision, intent(out) :: f
 
-    double precision :: ss, tpd
+    double precision :: ss, tpd, rho
     type (eos_t)     :: eos_state
+
+    rho = dens_incompressible !INCOMPRESSIBLE
 
     tpd = U(UEDEN) + p + U(URHO)
     ss = sum(U(UMX:UMZ)**2) ! norm of S
 
-    eos_state % rho  = U(URHO) * sqrt(tpd**2 - ss) / tpd
+    eos_state % rho  = rho! U(URHO) * sqrt(tpd**2 - ss) / tpd
     eos_state % e    = (sqrt(tpd**2 - ss) - &
         p * tpd / sqrt(tpd**2 - ss) - U(URHO)) / U(URHO)
 
@@ -279,7 +297,9 @@ contains
 
     call eos(eos_input_re, eos_state)
 
-    !write(*,*) "p = ", eos_state % p, (eos_state % gam1 - 1.0d0) * eos_state % rho * eos_state % e
+    ! if (p < 1.0e-4_rt) then
+    !     write(*,*) "p = ", eos_state % p, p, eos_state % rho, U(UEDEN), eos_state % e
+    ! endif
 
     f = eos_state % p - p
 
@@ -294,7 +314,7 @@ contains
     double precision, intent(in)  :: U(NVAR), x1
     double precision, intent(inout) :: b
 
-    double precision, parameter :: TOL = 1.0d-6
+    double precision, parameter :: TOL = 1.0e-6_rt
     integer, parameter :: ITMAX = 100
 
     double precision a, c, d, fa, fb, fc, fs, s
@@ -302,13 +322,13 @@ contains
     integer i
 
     a = x1
-    c = 0.0d0
-    d = 0.0d0
+    c = 0.0e0_rt
+    d = 0.0e0_rt
     call f_of_p(fa, a, U)
     call f_of_p(fb, b, U)
-    fc = 0.0d0
+    fc = 0.0e0_rt
 
-    if (fa * fb >= 0.0d0) then
+    if (fa * fb >= 0.0e0_rt) then
         p = x1
         return
     end if
@@ -338,24 +358,24 @@ contains
 
         con1 = .false.
 
-        if (0.25d0 * (3.0d0 * a + b) < b) then
-            if ( s < 0.25d0 * (3.0d0 * a + b) .or. s > b) then
+        if (0.25e0_rt * (3.0e0_rt * a + b) < b) then
+            if ( s < 0.25e0_rt * (3.0e0_rt * a + b) .or. s > b) then
                 con1 = .true.
             end if
-        else if (s < b .or. s > 0.25d0  * (3.0d0 * a + b)) then
+        else if (s < b .or. s > 0.25e0_rt  * (3.0e0_rt * a + b)) then
             con1 = .true.
         end if
 
-        con2 = mflag .and. abs(s - b) >= 0.5d0 * abs(b-c)
+        con2 = mflag .and. abs(s - b) >= 0.5e0_rt * abs(b-c)
 
-        con3 = (.not. mflag) .and. abs(s-b) >= 0.5d0 * abs(c-d)
+        con3 = (.not. mflag) .and. abs(s-b) >= 0.5e0_rt * abs(c-d)
 
         con4 = mflag .and. abs(b-c) < TOL
 
         con5 = (.not. mflag) .and. abs(c-d) < TOL
 
         if (con1 .or. con2 .or. con3 .or. con4 .or. con5) then
-            s = 0.5d0 * (a + b)
+            s = 0.5e0_rt * (a + b)
             mflag = .true.
         else
             mflag = .false.
@@ -377,7 +397,7 @@ contains
         c = b
         fc = fb
 
-        if (fa * fs < 0.0d0) then
+        if (fa * fs < 0.0e0_rt) then
             b = s
             fb = fs
         else
@@ -385,7 +405,7 @@ contains
             fa = fs
         end if
 
-        if (fb == 0.0d0 .or. fs == 0.0d0 .or. abs(b-a) < TOL) then
+        if (fb == 0.0e0_rt .or. fs == 0.0e0_rt .or. abs(b-a) < TOL) then
             p = b
             return
         end if

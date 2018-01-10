@@ -94,7 +94,7 @@ end subroutine ca_reset_internal_e
     ! write(*,*) "lo, slo, clo = ", lo, slo, clo
     ! write(*,*) "hi, shi, chi = ", hi, shi, chi
 
-    if (sum(swe(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),URHO)) == 0.0d0) then
+    if (sum(swe(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),URHO)) == 0.0e0_rt) then
         comp(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),1:NVAR) = swe(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),1:NVAR)
     else
         ! write(*,*) "ca_swe_to_comp", sum(swe(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),URHO))
@@ -122,7 +122,7 @@ end subroutine ca_reset_internal_e
     ! write(*,*) "lo, slo = ", lo, slo
     ! write(*,*) "hi, shi = ", hi, shi
 
-    if (sum(swe(lo(1)+1:hi(1),lo(2):hi(2),lo(3):hi(3),URHO)) == 0.0d0) then
+    if (sum(swe(lo(1)+1:hi(1),lo(2):hi(2),lo(3):hi(3),URHO)) == 0.0e0_rt) then
         !write(*,*) "ca_swe_to_comp_self, sum of rhos is zero :("
         return
     else
@@ -149,7 +149,7 @@ end subroutine ca_swe_to_comp_self
     !
     ! write(*,*) "calling ca_comp_to_swe"
 
-    if (sum(comp(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),URHO)) == 0.0d0) then
+    if (sum(comp(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),URHO)) == 0.0e0_rt) then
         swe(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),1:NVAR) = comp(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),1:NVAR)
     else
         call comp_to_swe(swe, slo, shi, comp, clo, chi, lo, hi, xlo, dx)
@@ -174,7 +174,7 @@ end subroutine ca_swe_to_comp_self
 
     ! write(*,*) "calling ca_comp_to_swe_self"
 
-    if (sum(comp(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),URHO)) == 0.0d0) then
+    if (sum(comp(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),URHO)) == 0.0e0_rt) then
         !write(*,*) "ca_comp_to_swe_self, sum of rhos is zero :("
         return
     else
