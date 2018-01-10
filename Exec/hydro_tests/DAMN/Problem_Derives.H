@@ -18,7 +18,10 @@ derive_lst.addComponent("primrho",desc_lst,State_Type,Density,NUM_STATE);
 derive_lst.add("W",IndexType::TheCellType(),1,ca_derW,the_same_box);
 derive_lst.addComponent("W",desc_lst,State_Type,Density,NUM_STATE);
 
-
-// Lorentz factor
+// Internal energy
 derive_lst.add("eint",IndexType::TheCellType(),1,ca_dereint,the_same_box);
 derive_lst.addComponent("eint",desc_lst,State_Type,Density,NUM_STATE);
+
+// Primitive momentum magnitude
+derive_lst.add("primmom",IndexType::TheCellType(),1,ca_derprimmom,the_same_box);
+derive_lst.addComponent("primmom",desc_lst,State_Type,Density,NUM_STATE);

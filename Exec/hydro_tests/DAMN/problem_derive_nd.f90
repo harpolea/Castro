@@ -210,7 +210,7 @@ subroutine ca_dereint(e,e_lo,e_hi,ncomp_e, &
   real(rt), intent(in) :: u(u_lo(1):u_hi(1),u_lo(2):u_hi(2),u_lo(3):u_hi(3),ncomp_u)
   real(rt), intent(in) :: dx(3), xlo(3), time, dt
   integer, intent(in) :: bc(3,2,ncomp_u), level, grid_no
-  
+
   real(rt) :: q(lo(1):hi(1), lo(2):hi(2), lo(3):hi(3), NQ)
   real(rt) :: qaux(lo(1):hi(1), lo(2):hi(2), lo(3):hi(3),NQAUX)
   real(rt) :: comp(lo(1):hi(1), lo(2):hi(2), lo(3):hi(3), NVAR)
@@ -236,3 +236,47 @@ subroutine ca_dereint(e,e_lo,e_hi,ncomp_e, &
   enddo
 
 end subroutine ca_dereint
+
+subroutine ca_derprimmom(m,m_lo,m_hi,ncomp_m, &
+                       u,u_lo,u_hi,ncomp_u,lo,hi,domlo, &
+                       domhi,dx,xlo,time,dt,bc,level,grid_no) &
+                       bind(C, name="ca_derprimmom")
+
+  use meth_params_module, only: QU, QW, NQ, NQAUX, NVAR
+  use advection_util_module, only: compctoprim, swectoprim
+  use probdata_module, only: swe_to_comp_level
+
+  use amrex_fort_module, only : rt => amrex_real
+  implicit none
+
+  integer, intent(in) :: lo(3), hi(3)
+  integer, intent(in) :: m_lo(3), m_hi(3), ncomp_m
+  integer, intent(in) :: u_lo(3), u_hi(3), ncomp_u
+  integer, intent(in) :: domlo(3), domhi(3)
+  real(rt), intent(inout) :: m(m_lo(1):m_hi(1),m_lo(2):m_hi(2),m_lo(3):m_hi(3),ncomp_m)
+  real(rt), intent(in) :: u(u_lo(1):u_hi(1),u_lo(2):u_hi(2),u_lo(3):u_hi(3),ncomp_u)
+  real(rt), intent(in) :: dx(3), xlo(3), time, dt
+  integer, intent(in) :: bc(3,2,ncomp_u), level, grid_no
+
+  real(rt) :: q(lo(1):hi(1), lo(2):hi(2), lo(3):hi(3), NQ)
+  real(rt) :: qaux(lo(1):hi(1), lo(2):hi(2), lo(3):hi(3),NQAUX)
+  integer :: i,j,k
+
+  if (level > swe_to_comp_level) then
+      call compctoprim(lo, hi, u(:,:,:,1:NVAR), u_lo, u_hi, q, lo, hi, qaux, lo, hi, xlo, dx, .true.)
+  else
+      call swectoprim(lo, hi, u(:,:,:,1:NVAR), u_lo, u_hi, q, lo, hi, qaux, lo, hi, .true.)
+  endif
+
+  !
+  ! Compute primitive momentum magnitude
+  !
+  do k = lo(3),hi(3)
+     do j = lo(2),hi(2)
+        do i = lo(1),hi(1)
+           m(i,j,k,1) = sqrt(sum(q(i,j,k,QU:QW)**2))
+        enddo
+     enddo
+  enddo
+
+end subroutine ca_derprimmom
