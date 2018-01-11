@@ -162,7 +162,7 @@ subroutine ca_initdata(level,time,lo,hi,nscal, &
       write(*,*) "Initialising level ", level, " with compressible data"
   endif
 
-  a = 0.05e0_rt ! characteristic size of layer between states
+  a = 0.0005e0_rt ! characteristic size of layer between states
 
   !$OMP PARALLEL DO PRIVATE(i, j, k, xx, yy, zz, r)
   do k = lo(3), hi(3)

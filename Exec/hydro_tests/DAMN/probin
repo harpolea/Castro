@@ -16,7 +16,7 @@
 &tagging
 
   dengrad = 0.05
-  velgrad = 0.5
+  velgrad = 0.005
   pressgrad = 0.001
   max_pressgrad_lev = 5
 

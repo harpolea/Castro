@@ -20,7 +20,7 @@ else
   ca_F90EXE_sources += problem_tagging_nd.F90
 endif
 
-ca_f90EXE_sources += problem_derive_nd.f90
+ca_F90EXE_sources += problem_derive_nd.F90
 ca_f90EXE_sources += Problem.f90
 
 ifneq ($(DIMENSION_AGNOSTIC), TRUE)
