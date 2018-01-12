@@ -289,13 +289,7 @@ contains
     eos_state % e    = (sqrt(tpd**2 - ss) - &
         p * tpd / sqrt(tpd**2 - ss) - U(URHO)) / U(URHO)
 
-    !write(*,*) "D, p, tau, ss", U(URHO), p, U(UEDEN), ss, U(UMX), U(UMY), U(UMZ)
-
     call eos(eos_input_re, eos_state)
-
-    ! if (p < 1.0e-4_rt) then
-    !     write(*,*) "p = ", eos_state % p, p, eos_state % rho, U(UEDEN), eos_state % e
-    ! endif
 
     f = eos_state % p - p
 

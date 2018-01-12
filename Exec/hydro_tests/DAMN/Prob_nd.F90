@@ -153,26 +153,29 @@ subroutine ca_initdata(level,time,lo,hi,nscal, &
 
   if (.not. initialized) call eos_init(small_dens=small_dens, small_temp=small_temp)
 
-  !state(:,:,:,:) = 0.0e0_rt
   dye = ZERO
 
   if (level <= swe_to_comp_level) then
       write(*,*) "Initialising level ", level, " with SWE data"
   else
-      write(*,*) "Initialising level ", level, " with compressible data"
+      write(*,*) "Initialising level ", level, " with incompressible data"
   endif
 
   a = 0.0005e0_rt ! characteristic size of layer between states
 
-  !$OMP PARALLEL DO PRIVATE(i, j, k, xx, yy, zz, r)
+  !$OMP PARALLEL DO PRIVATE(i, j, k, xx, yy, zz, r, h)
   do k = lo(3), hi(3)
      zz = xlo(3) + delta(3)*dble(k-lo(3)+HALF)
 
      do j = lo(2), hi(2)
         yy = xlo(2) + delta(2)*dble(j-lo(2)+HALF)
 
-        !r = yy
-        r = sqrt((yy - center(2))**2 + (zz - center(3))**2)
+
+        r = yy
+
+        ! circular dam
+        !r = sqrt((yy - center(2))**2 + (zz - center(3))**2)
+        
         h = h_in + 0.5e0_rt * (h_out - h_in) * (1.0e0_rt + tanh((r - damn_rad) / a))
 
         do i = lo(1), hi(1)
@@ -207,13 +210,8 @@ subroutine ca_initdata(level,time,lo,hi,nscal, &
                 0.5e0_rt*sum(q(i,j,k,QU:QW)**2)*q(i,j,k, QRHO)
 
             if (level <= swe_to_comp_level) then
-                q(i,j,k,QRHO) = h
                 ! shallow water level
-                ! if (r < damn_rad) then
-                !     q(i,j,k,QRHO) = h_in
-                ! else
-                !     q(i,j,k,QRHO) = h_out
-                ! end if
+                q(i,j,k,QRHO) = h
             end if
 
             q(i,j,k,QFS) = q(i,j,k,QRHO)
@@ -235,7 +233,5 @@ subroutine ca_initdata(level,time,lo,hi,nscal, &
      enddo
   enddo
   !$OMP END PARALLEL DO
-
-  ! write(*,*) state(lo(1), lo(2), lo(3), UTEMP)
 
 end subroutine ca_initdata

@@ -247,9 +247,6 @@ contains
               ! signal speeds
               S_l = min(-Smax, min(ul - sqrt(gamcl*pl/rl), ur - sqrt(gamcr*pr/rr)))
               S_r = max(ul + sqrt(gamcl*pl/rl), ur + sqrt(gamcr*pr/rr))
-              ! if (Smax < S_r) then
-              !     write(*,*) "Smax = ", Smax, "S_r = ", S_r, "gamcl = ", gamcl, "gamcr = ", gamcr
-              ! endif
 
                S_r = max(Smax, max(ul + sqrt(gamcl*pl/rl), ur + sqrt(gamcr*pr/rr)))
 
@@ -501,10 +498,6 @@ subroutine swe_to_comp(swe, slo, shi, comp, clo, chi, lo, hi, dx, xlo, ignore_er
     ! phi = gh
     call swectoprim(lo, hi, swe, slo, shi, q_swe, slo, shi, qaux, slo, shi, ignore_errs)
 
-    ! write(*,*) "xlo(1) = ", xlo(1), "lo(1) = ", lo(1), "dx = ", dx(1)!, "xhi = ", xlo(1) + dx(1)*dble(hi(1) - lo(1)+HALF), "h = ", q_swe(lo(1):lo(1)+5, lo(2):lo(2)+5, lo(3), QRHO)
-
-    ! write(*,*) "dx = ", dx(1)
-
     ! INCOMPRESSIBLE
     rho = dens_incompressible
 
@@ -580,8 +573,6 @@ subroutine comp_to_swe(swe, slo, shi, comp, clo, chi, lo, hi, xlo, dx, ignore_er
     ! NOTE: DON'T DO THIS IS CAUSES ALL OF COMP TO BE SET TO ZERO AS WELL
     !swe(:,:,:,:) = 0.0e0_rt
 
-    ! write(*,*) comp(lo(1):hi(1), lo(2), lo(3), UEINT)
-
     call compctoprim(lo, hi, comp, clo, chi, q_comp, clo, chi, qaux, clo, chi, xlo, dx, ignore_errs)
 
     xx = xlo(1) + dx(1)*HALF
@@ -595,10 +586,6 @@ subroutine comp_to_swe(swe, slo, shi, comp, clo, chi, lo, hi, xlo, dx, ignore_er
                 q_swe(1:NQ) = q_comp(i,j,k,1:NQ)
                 q_swe(QRHO) = sqrt(2.0e0_rt * q_comp(lo(1),j,k,QPRES) / g) + xx
                 q_swe(QPRES) = 0.5e0_rt * g * q_swe(QRHO)**2
-
-                ! if (q_swe(QRHO) < 0.9) then
-                !     write(*,*) q_swe(QRHO), q_comp(lo(1),j,k,QPRES)
-                ! endif
 
                 q_swe(QU) = 0.0e0_rt
 #if BL_SPACEDIM == 1

@@ -388,5 +388,4 @@ subroutine ca_mol_single_stage(time, level, &
   enddo
 #endif
 
-! write(*,*) flux1(lo(1), :, lo(3), :)
 end subroutine ca_mol_single_stage

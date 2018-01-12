@@ -1271,11 +1271,11 @@ Castro::normalize_species (MultiFab& S_new)
 void
 Castro::enforce_consistent_e (MultiFab& S)
 {
+    const Real* dx        = geom.CellSize();
 
 #ifdef _OPENMP
 #pragma omp parallel
 #endif
-    const Real* dx        = geom.CellSize();
     for (MFIter mfi(S,true); mfi.isValid(); ++mfi)
     {
         const Box& box     = mfi.tilebox();
@@ -1313,11 +1313,11 @@ Castro::enforce_min_density (MultiFab& S_old, MultiFab& S_new)
 
     	MultiFab::Copy(reset_source, S_new, 0, 0, S_new.nComp(), 0);
     }
+    const Real* dx        = geom.CellSize();
 
 #ifdef _OPENMP
 #pragma omp parallel reduction(min:dens_change)
 #endif
-    const Real* dx        = geom.CellSize();
 
     for (MFIter mfi(S_new, true); mfi.isValid(); ++mfi) {
 
