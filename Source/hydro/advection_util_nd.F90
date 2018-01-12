@@ -789,9 +789,6 @@ subroutine compctoprim(lo, hi, &
      enddo
   enddo
 
-  ! write(*,*) "lo(1)", q(lo(1), lo(2):lo(2)+5, lo(3), QU)
-  ! write(*,*) "lo(1)+1", q(lo(1)+1, lo(2):lo(2)+5, lo(3), QU)
-
   ! ! Load passively advected quatities into q
   !   do ipassive = 1, npassive
   !      n  = upass_map(ipassive)
