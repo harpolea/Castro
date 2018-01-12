@@ -8,7 +8,7 @@
    exp_energy = 1.0d-5
    dens_ambient = 1.0
    nsub = 10
-   swe_to_comp_level = -5
+   swe_to_comp_level = 0
    dens_incompressible = 1.0d-2
 
 /
@@ -17,7 +17,7 @@
 
   dengrad = 0.05
   velgrad = 0.005
-  pressgrad = 0.001
+  pressgrad = 0.01 !0.001 for 2d
   max_pressgrad_lev = 5
 
 /
