@@ -191,21 +191,17 @@ contains
 
     F(URHO) = U(URHO) * u_flx
 
-    F(UMX) = U(UMX) * u_flx
+    F(UMX) = 0.0e0_rt!U(UMX) * u_flx
     F(UMY) = U(UMY) * u_flx
     F(UMZ) = U(UMZ) * u_flx
 
-#if BL_SPACEDIM == 2
-    if (idir == 2) then
-        F(UMY) = F(UMY) + 0.5e0_rt * g * q(QRHO)**2
-    endif
+    F(UMX-1+idir) = F(UMX-1+idir) + 0.5e0_rt * g * q(QRHO)**2
+
+#if BL_SPACEDIM == 1
+    F(UMY) = 0.0e0_rt
+#endif
+#if BL_SPACEDIM <= 2
     F(UMZ) = 0.0e0_rt
-#elif BL_SPACEDIM == 3
-    if (idir == 1) then
-        F(UMX) = F(UMX) + 0.5e0_rt * g * q(QRHO)**2
-    else if (idir == 2) then
-        F(UMY) = F(UMY) + 0.5e0_rt * g * q(QRHO)**2
-    endif
 #endif
 
     F(UEINT) = U(UEINT) * u_flx
@@ -253,14 +249,14 @@ contains
     F(UMY) = U(UMY) * u_flx
     F(UMZ) = U(UMZ) * u_flx
 
+    F(UMX-1+idir) = F(UMX-1+idir) + p
+
 #if BL_SPACEDIM == 1
     F(UMY) = 0.0e0_rt
 #endif
 #if BL_SPACEDIM <= 2
     F(UMZ) = 0.0e0_rt
 #endif
-
-    F(UMX-1+idir) = F(UMX-1+idir) + p
 
     F(UEINT) = U(UEINT) * u_flx
     F(UEDEN) = (U(UEDEN) + p) * u_flx

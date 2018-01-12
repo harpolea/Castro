@@ -445,15 +445,15 @@ subroutine ca_set_method_params(dm,Density,Xmom,Eden,Eint,Temp, &
 
   QTEMP = QTHERM ! = QLAST + 3
 
-  if (numadv >= 1) then
+  ! if (numadv >= 1) then
      QFA = QTHERM + 1
      QFS = QFA + numadv
 
-  else
-     QFA = 1   ! density
-     QFS = QTHERM + 1
-
-  end if
+  ! else
+  !    QFA = 1   ! density
+  !    QFS = QTHERM + 1
+  !
+  ! end if
 
   if (naux >= 1) then
      QFX = QFS + nspec

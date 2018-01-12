@@ -13,7 +13,7 @@ PROFILE    ?= FALSE
 
 DEBUG      ?= FALSE
 
-DIM        ?= 2
+DIM        ?= 3
 
 COMP	   ?= gnu
 

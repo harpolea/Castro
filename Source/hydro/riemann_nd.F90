@@ -512,11 +512,11 @@ subroutine swe_to_comp(swe, slo, shi, comp, clo, chi, lo, hi, dx, xlo, ignore_er
         do j = lo(2), hi(2)
             ! basep = 0.5 * g * q_swe(lo(1),j,k,QRHO)**2 !q_swe(lo(1),j,k,QPRES)
             q_comp(1:NQ) = q_swe(lo(1),j,k,1:NQ)
-            U_comp(1:NVAR) = 0.0e0_rt
             ! NOTE: incompressible for now
             q_comp(QRHO) = rho !basep / (g * q_swe(lo(1),j,k,QRHO))
 
             do i = lo(1), hi(1)
+                U_comp(1:NVAR) = 0.0e0_rt
                 xx = xlo(1) + dx(1)*dble(i-lo(1)+HALF)
                 q_comp(QPRES) = 0.5e0_rt * g * (q_swe(i,j,k,QRHO) - xx)**2
 
@@ -584,10 +584,10 @@ subroutine comp_to_swe(swe, slo, shi, comp, clo, chi, lo, hi, xlo, dx, ignore_er
 
     call compctoprim(lo, hi, comp, clo, chi, q_comp, clo, chi, qaux, clo, chi, xlo, dx, ignore_errs)
 
+    xx = xlo(1) + dx(1)*HALF
+
     do k = lo(3), hi(3)
         do j = lo(2), hi(2)
-            xx = xlo(1) + dx(1)*HALF
-
             do i = lo(1), hi(1)
                 U_swe(1:NVAR) = 0.0e0_rt
                 ! look at pressure at bottom and invert to get height

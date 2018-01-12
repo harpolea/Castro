@@ -468,7 +468,7 @@ contains
        enddo
     enddo
 
-end subroutine ca_compute_cfl
+  end subroutine ca_compute_cfl
 
   subroutine swectoprim(lo, hi, &
                      uin, uin_lo, uin_hi, &
@@ -480,7 +480,7 @@ end subroutine ca_compute_cfl
                                    QRHO, QU, QV, QW, QTEMP, UTEMP, &
                                    NQ, QC, QCSML, QGAMC, QDPDR, QDPDE, NQAUX, QPRES, QREINT, UEINT, &
                                    npassive, upass_map, qpass_map, &
-                                   small_dens, QFA
+                                   small_dens, QFA, QFS
     use bl_constants_module, only: ZERO, HALF, ONE
     use castro_util_module, only: position
     use probdata_module, only : g
@@ -573,6 +573,7 @@ end subroutine ca_compute_cfl
               q(i,j,k,QREINT) = uin(i,j,k,UEINT)
               q(i,j,k,QTEMP) = uin(i,j,k,UTEMP)
               q(i,j,k,QFA) = 0.0e0_rt
+              q(i,j,k,QFS:QFS-1+nspec) = q(i,j,k,QRHO) / nspec
 
           enddo
        enddo
@@ -783,22 +784,30 @@ subroutine compctoprim(lo, hi, &
             q(i,j,k,QPRES) = p
 
             q(i,j,k,QFA) = 0.0e0_rt
+            q(i,j,k,QFS:QFS-1+nspec) = q(i,j,k,QRHO) / nspec
         enddo
      enddo
   enddo
 
-  ! Load passively advected quatities into q
-    do ipassive = 1, npassive
-       n  = upass_map(ipassive)
-       iq = qpass_map(ipassive)
-       do k = lo(3),hi(3)
-          do j = lo(2),hi(2)
-             do i = lo(1),hi(1)
-                q(i,j,k,iq) = uin(i,j,k,n)/q(i,j,k,QRHO)
-             enddo
-          enddo
-       enddo
-    enddo
+  ! write(*,*) "lo(1)", q(lo(1), lo(2):lo(2)+5, lo(3), QU)
+  ! write(*,*) "lo(1)+1", q(lo(1)+1, lo(2):lo(2)+5, lo(3), QU)
+
+  ! ! Load passively advected quatities into q
+  !   do ipassive = 1, npassive
+  !      n  = upass_map(ipassive)
+  !      iq = qpass_map(ipassive)
+  !      do k = lo(3),hi(3)
+  !         do j = lo(2),hi(2)
+  !            do i = lo(1),hi(1)
+  !                if (abs(q(i,j,k,QRHO)) > 1.0e-9_rt) then
+  !                    q(i,j,k,iq) = uin(i,j,k,n)/q(i,j,k,QRHO)
+  !                else
+  !                    q(i,j,k,iq) = 0.0e0_rt
+  !                endif
+  !            enddo
+  !         enddo
+  !      enddo
+  !   enddo
 
     ! get gamc, p, T, c, csml using q state
     do k = lo(3), hi(3)

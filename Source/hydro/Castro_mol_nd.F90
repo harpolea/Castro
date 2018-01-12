@@ -32,8 +32,8 @@ subroutine ca_mol_single_stage(time, level, &
                                vol, vol_lo, vol_hi, &
                                courno, verbose, xlo) bind(C, name="ca_mol_single_stage")
 
-  use meth_params_module, only : NQ, QVAR, NVAR, &
-                                 NQAUX, QFS, QFX, QREINT, QRHO
+  use meth_params_module, only : NQ, QVAR, NVAR, QTEMP, QFA,&
+                                 NQAUX, QFS, QFX, QREINT, QRHO, QPRES
   use advection_util_module
   use reconstruct_module, only : compute_reconstruction_tvd
   use bl_constants_module, only : ZERO, HALF, ONE, FOURTH
@@ -131,6 +131,11 @@ subroutine ca_mol_single_stage(time, level, &
   st_hi(3) = 0
 #endif
 
+    ! write(*,*) "uin_lo, uin_hi", uin_lo, uin_hi
+    ! write(*,*) "q_lo, q_hi", q_lo, q_hi
+    ! write(*,*) "st_lo, st_hi", st_lo, st_hi
+    ! write(*,*) "dg = ", dg
+
   if (level <= swe_to_comp_level) then
       call swectoprim(q_lo, q_hi, &
                    uin, uin_lo, uin_hi, &
@@ -143,6 +148,8 @@ subroutine ca_mol_single_stage(time, level, &
                     qaux, qa_lo,  qa_hi, xlo, dx)
    endif
 
+   ! write(*,*) "QREINT", QREINT, "QPRES", QPRES, "QFA", QFA
+
   ! nan check
   do n = 1, NQ
 #if (BL_SPACEDIM <= 2)
@@ -153,6 +160,7 @@ subroutine ca_mol_single_stage(time, level, &
          do j = q_lo(2), q_hi(2)
             do i = q_lo(1), q_hi(1)
                 if (q(i,j,k,n) /= q(i,j,k,n)) then
+                    ! write(*,*) i,j,k,n,q(i,j,k,n)
                     if (n==1) then
                         q(i,j,k,n) = 1.0e0_rt
                     else
