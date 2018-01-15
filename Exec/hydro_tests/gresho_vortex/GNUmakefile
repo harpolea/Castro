@@ -1,27 +1,32 @@
+# define the location of the CASTRO top directory
+CASTRO_HOME  := ../../..
+
+TEST_DIR = $(CASTRO_HOME)/Exec/hydro_tests/DAMN
 
 PRECISION  = DOUBLE
 PROFILE    = FALSE
 
 DEBUG      = FALSE
 
-DIM        = 2
+DIM        = 3
 
 COMP	   = gnu
 
-USE_MPI    = TRUE
+USE_MPI    = FALSE
 USE_OMP    = FALSE
 
-# define the location of the CASTRO top directory
-CASTRO_HOME  := ../../..
+DIMENSION_AGNOSTIC = TRUE
+
+DEFINES += -DNUM_ADV=1
 
 # This sets the EOS directory in $(CASTRO_HOME)/EOS
-EOS_DIR     := gamma_law
+EOS_DIR     ?= gamma_law
 
 # This sets the network directory in Castro/Networks
-NETWORK_DIR := general_null
-GENERAL_NET_INPUTS = $(CASTRO_HOME)/Microphysics/networks/$(NETWORK_DIR)/gammalaw.net
+NETWORK_DIR ?= general_null
+GENERAL_NET_INPUTS ?= $(CASTRO_HOME)/Microphysics/networks/$(NETWORK_DIR)/gammalaw.net
 
-Bpack   := ./Make.package
-Blocs   := .
+Bpack   += $(TEST_DIR)/Make.package
+Blocs   += $(TEST_DIR)/.
 
 include $(CASTRO_HOME)/Exec/Make.Castro

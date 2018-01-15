@@ -202,8 +202,8 @@ contains
 
            !dir$ ivdep
            do i = ilo(1), ihi(1)
-               F_state(:) = 0.0e0_rt
-               U_state(:) = 0.0e0_rt
+               F_state(:) = 0.0_rt
+               U_state(:) = 0.0_rt
 
               rl = max(ql(i,j,k,QRHO), small_dens)
 
@@ -231,8 +231,8 @@ contains
               gamcl = qaux(i-sx,j-sy,k-sz,QGAMC)
               gamcr = qaux(i,j,k,QGAMC)
 
-              cl = sqrt(gamcl * pl / (rl + gamcl * pl / (gamcl - 1.0e0_rt)))
-              cr = sqrt(gamcr * pr / (rr + gamcr * pr / (gamcr - 1.0e0_rt)))
+              cl = sqrt(gamcl * pl / (rl + gamcl * pl / (gamcl - 1.0_rt)))
+              cr = sqrt(gamcr * pr / (rr + gamcr * pr / (gamcr - 1.0_rt)))
 
               ! Enforce that the fluxes through a symmetry plane or wall are hard zero.
               if ( special_bnd_lo_x .and. i== domlo(1) .or. &
@@ -252,8 +252,8 @@ contains
 
                !!!!!!!!!! HACK doesn't help
                ! signal speeds
-               S_l = -1.0e0_rt
-               S_r = 1.0e0_rt
+               S_l = -1.0_rt
+               S_r = 1.0_rt
 
               if (S_r <= ZERO) then
                  ! R region
@@ -384,7 +384,7 @@ contains
     Smax = max(Smax_r, Smax_l)
 
     if (Smax /= Smax .or. (Smax+1 .eq. Smax)) then
-        Smax = 1.0e0_rt
+        Smax = 1.0_rt
     endif
 
     do k = ilo(3), ihi(3)
@@ -410,8 +410,8 @@ contains
            !dir$ ivdep
            do i = ilo(1), ihi(1)
 
-               F_state(:) = 0.0e0_rt
-               U_state(:) = 0.0e0_rt
+               F_state(:) = 0.0_rt
+               U_state(:) = 0.0_rt
 
               ! Enforce that the fluxes through a symmetry plane or wall are hard zero.
               if ( special_bnd_lo_x .and. i== domlo(1) .or. &
@@ -509,9 +509,9 @@ subroutine swe_to_comp(swe, slo, shi, comp, clo, chi, lo, hi, dx, xlo, ignore_er
             q_comp(QRHO) = rho !basep / (g * q_swe(lo(1),j,k,QRHO))
 
             do i = lo(1), hi(1)
-                U_comp(1:NVAR) = 0.0e0_rt
+                U_comp(1:NVAR) = 0.0_rt
                 xx = xlo(1) + dx(1)*dble(i-lo(1)+HALF)
-                q_comp(QPRES) = 0.5e0_rt * g * (q_swe(i,j,k,QRHO) - xx)**2
+                q_comp(QPRES) = 0.5_rt * dens_incompressible * g * (q_swe(i,j,k,QRHO) - xx)**2
 
                 eos_state % rho = q_comp(QRHO)
                 eos_state % p   = q_comp(QPRES)
@@ -522,10 +522,10 @@ subroutine swe_to_comp(swe, slo, shi, comp, clo, chi, lo, hi, dx, xlo, ignore_er
                 q_comp(QTEMP) = swe(i,j,k,UTEMP)
 
 #if BL_SPACEDIM == 1
-                q_comp(QV) = 0.0e0_rt
+                q_comp(QV) = 0.0_rt
 #endif
 #if BL_SPACEDIM <= 2
-                q_comp(QW) = 0.0e0_rt
+                q_comp(QW) = 0.0_rt
 #endif
 
                 call comp_cons_state(q_comp, U_comp)
@@ -541,7 +541,7 @@ end subroutine swe_to_comp
 subroutine comp_to_swe(swe, slo, shi, comp, clo, chi, lo, hi, xlo, dx, ignore_errors)
     use meth_params_module, only: QVAR, QRHO, QU, QV, QW, &
          NVAR, URHO, UMX, UMY, UMZ, QTEMP, UTEMP, UFS, UEDEN, UEINT, UFA
-    use probdata_module, only : g
+    use probdata_module, only : g, dens_incompressible
     use advection_util_module, only: compctoprim
     use network, only : nspec
 
@@ -571,7 +571,7 @@ subroutine comp_to_swe(swe, slo, shi, comp, clo, chi, lo, hi, xlo, dx, ignore_er
     ! phi = gh
 
     ! NOTE: DON'T DO THIS IS CAUSES ALL OF COMP TO BE SET TO ZERO AS WELL
-    !swe(:,:,:,:) = 0.0e0_rt
+    !swe(:,:,:,:) = 0.0_rt
 
     call compctoprim(lo, hi, comp, clo, chi, q_comp, clo, chi, qaux, clo, chi, xlo, dx, ignore_errs)
 
@@ -580,19 +580,19 @@ subroutine comp_to_swe(swe, slo, shi, comp, clo, chi, lo, hi, xlo, dx, ignore_er
     do k = lo(3), hi(3)
         do j = lo(2), hi(2)
             do i = lo(1), hi(1)
-                U_swe(1:NVAR) = 0.0e0_rt
+                U_swe(1:NVAR) = 0.0_rt
                 ! look at pressure at bottom and invert to get height
                 ! using p = 0.5 * g * h**2
                 q_swe(1:NQ) = q_comp(i,j,k,1:NQ)
-                q_swe(QRHO) = sqrt(2.0e0_rt * q_comp(lo(1),j,k,QPRES) / g) + xx
-                q_swe(QPRES) = 0.5e0_rt * g * q_swe(QRHO)**2
+                q_swe(QRHO) = sqrt(2.0_rt * q_comp(lo(1),j,k,QPRES) / (dens_incompressible * g)) + xx
+                q_swe(QPRES) = 0.5_rt * dens_incompressible * g * q_swe(QRHO)**2
 
-                q_swe(QU) = 0.0e0_rt
+                q_swe(QU) = 0.0_rt
 #if BL_SPACEDIM == 1
-                q_swe(QV) = 0.0e0_rt
+                q_swe(QV) = 0.0_rt
 #endif
 #if BL_SPACEDIM <= 2
-                q_swe(QW) = 0.0e0_rt
+                q_swe(QW) = 0.0_rt
 #endif
 
                 call swe_cons_state(q_swe, U_swe)

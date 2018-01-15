@@ -175,7 +175,7 @@ subroutine ca_initdata(level,time,lo,hi,nscal, &
 
         ! circular dam
         !r = sqrt((yy - center(2))**2 + (zz - center(3))**2)
-        
+
         h = h_in + 0.5e0_rt * (h_out - h_in) * (1.0e0_rt + tanh((r - damn_rad) / a))
 
         do i = lo(1), hi(1)
@@ -187,7 +187,7 @@ subroutine ca_initdata(level,time,lo,hi,nscal, &
 
             q(i,j,k,QRHO) = dens_incompressible
 
-            eos_state % p = 0.5e0_rt * g * (h-xx)**2
+            eos_state % p = 0.5e0_rt * dens_incompressible * g * (h-xx)**2
 
             ! if (r < damn_rad) then
             !     eos_state % p = 0.5e0_rt * g * (h_in-xx)**2

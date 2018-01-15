@@ -67,31 +67,31 @@ contains
 
     !integer  :: ipassive, n, nq
 
-    U(1:NVAR) = 0.0e0_rt
+    U(1:NVAR) = 0.0_rt
 
     call calculate_scalar_W(q(QU:QW), W)
 
     U(URHO) = q(QRHO) * W
 
     U(UMY:UMZ) = q(QRHO) * W**2 * q(QV:QW)
-    ! U(UMX)  = 0.0e0_rt! q(QRHO) * q(QW)
+    ! U(UMX)  = 0.0_rt! q(QRHO) * q(QW)
 
     ! since we advect all 3 velocity components regardless of dimension, this
 #if BL_SPACEDIM == 1
-    U(UMY)  = 0.0e0_rt! q(QRHO) * q(QU)
+    U(UMY)  = 0.0_rt! q(QRHO) * q(QU)
 #endif
 #if BL_SPACEDIM <= 2
-    U(UMZ)  = 0.0e0_rt!q(QRHO) * q(QV)
+    U(UMZ)  = 0.0_rt!q(QRHO) * q(QV)
 #endif
 
     ! don't care for swe but might help
-    U(UEDEN) = q(QREINT) + 0.5e0_rt*q(QRHO)*(q(QU)**2 + q(QV)**2 + q(QW)**2)
+    U(UEDEN) = q(QREINT) + 0.5_rt*q(QRHO)*(q(QU)**2 + q(QV)**2 + q(QW)**2)
     U(UEINT) = q(QREINT)
 
     ! we don't care about T here, but initialize it to make NaN
     ! checking happy
     U(UTEMP) = q(QTEMP)
-    U(UFA) = 0.0e0_rt
+    U(UFA) = 0.0_rt
     U(UFS:UFS-1+nspec) = U(URHO) / nspec
 
   end subroutine swe_cons_state
@@ -117,7 +117,7 @@ contains
 
     call calculate_scalar_W(q(QU:QW), W)
     !integer  :: ipassive, n, nq
-    U(1:NVAR) = 0.0e0_rt
+    U(1:NVAR) = 0.0_rt
 
     ! INCOMPRESSIBLE
     rho = dens_incompressible
@@ -141,10 +141,10 @@ contains
     U(UMZ)  = rhoh * q(QW) * W**2
 
 #if BL_SPACEDIM == 1
-    U(UMY) = 0.0e0_rt
+    U(UMY) = 0.0_rt
 #endif
 #if BL_SPACEDIM <= 2
-    U(UMZ) = 0.0e0_rt
+    U(UMZ) = 0.0_rt
 #endif
 
     U(UEDEN) = rhoh * W**2 - p - U(URHO)
@@ -153,7 +153,7 @@ contains
     ! we don't care about T here, but initialize it to make NaN
     ! checking happy
     U(UTEMP) = q(QTEMP)
-    U(UFA) = 0.0e0_rt
+    U(UFA) = 0.0_rt
     U(UFS:UFS-1+nspec) = U(URHO) / nspec
 
   end subroutine comp_cons_state
@@ -164,7 +164,7 @@ contains
     use meth_params_module, only: NQ, NVAR, URHO, UMX, UMY, UMZ, &
          npassive, upass_map, UEDEN, UEINT, UTEMP, UFS, UFA, &
          QU, QV, QW, QRHO
-    use probdata_module, only: g
+    use probdata_module, only: g, dens_incompressible
     use network, only : nspec
 
     integer, intent(in) :: idir, bnd_fac
@@ -187,27 +187,27 @@ contains
        u_flx = ZERO
     endif
 
-    F(1:NVAR) = 0.0e0_rt
+    F(1:NVAR) = 0.0_rt
 
     F(URHO) = U(URHO) * u_flx
 
-    F(UMX) = 0.0e0_rt!U(UMX) * u_flx
+    F(UMX) = 0.0_rt!U(UMX) * u_flx
     F(UMY) = U(UMY) * u_flx
     F(UMZ) = U(UMZ) * u_flx
 
-    F(UMX-1+idir) = F(UMX-1+idir) + 0.5e0_rt * g * q(QRHO)**2
+    F(UMX-1+idir) = F(UMX-1+idir) + 0.5_rt * dens_incompressible * g * q(QRHO)**2
 
 #if BL_SPACEDIM == 1
-    F(UMY) = 0.0e0_rt
+    F(UMY) = 0.0_rt
 #endif
 #if BL_SPACEDIM <= 2
-    F(UMZ) = 0.0e0_rt
+    F(UMZ) = 0.0_rt
 #endif
 
     F(UEINT) = U(UEINT) * u_flx
-    F(UEDEN) = (U(UEDEN) + 0.5e0_rt * g * q(QRHO)**2) * u_flx
+    F(UEDEN) = (U(UEDEN) + 0.5_rt * dens_incompressible * g * q(QRHO)**2) * u_flx
 
-    F(UTEMP) = 0.0e0_rt
+    F(UTEMP) = 0.0_rt
     F(UFA) = U(UFA) * u_flx
     F(UFS:UFS-1+nspec) = U(UFS:UFS-1+nspec) * u_flx
 
@@ -240,10 +240,10 @@ contains
     if (bnd_fac == 0) then
        u_flx = ZERO
     endif
-    F(1:NVAR) = 0.0e0_rt
+    F(1:NVAR) = 0.0_rt
 
     ! NOTE: Made incompressible for now
-    F(URHO) = 0.0e0_rt!U(URHO) * u_flx
+    F(URHO) = 0.0_rt!U(URHO) * u_flx
 
     F(UMX) = U(UMX) * u_flx
     F(UMY) = U(UMY) * u_flx
@@ -252,16 +252,16 @@ contains
     F(UMX-1+idir) = F(UMX-1+idir) + p
 
 #if BL_SPACEDIM == 1
-    F(UMY) = 0.0e0_rt
+    F(UMY) = 0.0_rt
 #endif
 #if BL_SPACEDIM <= 2
-    F(UMZ) = 0.0e0_rt
+    F(UMZ) = 0.0_rt
 #endif
 
     F(UEINT) = U(UEINT) * u_flx
     F(UEDEN) = (U(UEDEN) + p) * u_flx
 
-    F(UTEMP) = 0.0e0_rt
+    F(UTEMP) = 0.0_rt
     F(UFA) = U(UFA) * u_flx
     F(UFS:UFS-1+nspec) = U(UFS:UFS-1+nspec) * u_flx
 
@@ -312,13 +312,13 @@ contains
     integer i
 
     a = x1
-    c = 0.0e0_rt
-    d = 0.0e0_rt
+    c = 0.0_rt
+    d = 0.0_rt
     call f_of_p(fa, a, U)
     call f_of_p(fb, b, U)
-    fc = 0.0e0_rt
+    fc = 0.0_rt
 
-    if (fa * fb >= 0.0e0_rt) then
+    if (fa * fb >= 0.0_rt) then
         p = x1
         return
     end if
@@ -348,24 +348,24 @@ contains
 
         con1 = .false.
 
-        if (0.25e0_rt * (3.0e0_rt * a + b) < b) then
-            if ( s < 0.25e0_rt * (3.0e0_rt * a + b) .or. s > b) then
+        if (0.25_rt * (3.0_rt * a + b) < b) then
+            if ( s < 0.25_rt * (3.0_rt * a + b) .or. s > b) then
                 con1 = .true.
             end if
-        else if (s < b .or. s > 0.25e0_rt  * (3.0e0_rt * a + b)) then
+        else if (s < b .or. s > 0.25_rt  * (3.0_rt * a + b)) then
             con1 = .true.
         end if
 
-        con2 = mflag .and. abs(s - b) >= 0.5e0_rt * abs(b-c)
+        con2 = mflag .and. abs(s - b) >= 0.5_rt * abs(b-c)
 
-        con3 = (.not. mflag) .and. abs(s-b) >= 0.5e0_rt * abs(c-d)
+        con3 = (.not. mflag) .and. abs(s-b) >= 0.5_rt * abs(c-d)
 
         con4 = mflag .and. abs(b-c) < TOL
 
         con5 = (.not. mflag) .and. abs(c-d) < TOL
 
         if (con1 .or. con2 .or. con3 .or. con4 .or. con5) then
-            s = 0.5e0_rt * (a + b)
+            s = 0.5_rt * (a + b)
             mflag = .true.
         else
             mflag = .false.
@@ -387,7 +387,7 @@ contains
         c = b
         fc = fb
 
-        if (fa * fs < 0.0e0_rt) then
+        if (fa * fs < 0.0_rt) then
             b = s
             fb = fs
         else
@@ -395,7 +395,7 @@ contains
             fa = fs
         end if
 
-        if (fb == 0.0e0_rt .or. fs == 0.0e0_rt .or. abs(b-a) < TOL) then
+        if (fb == 0.0_rt .or. fs == 0.0_rt .or. abs(b-a) < TOL) then
             p = b
             return
         end if
