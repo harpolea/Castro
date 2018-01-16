@@ -480,7 +480,7 @@ contains
                                    QRHO, QU, QV, QW, QTEMP, UTEMP, &
                                    NQ, QC, QCSML, QGAMC, QDPDR, QDPDE, NQAUX, QPRES, QREINT, UEINT, &
                                    npassive, upass_map, qpass_map, &
-                                   small_dens, QFA, QFS
+                                   small_dens, QFA, QFS, UFA
     use bl_constants_module, only: ZERO, HALF, ONE
     use castro_util_module, only: position
     use probdata_module, only : g, dens_incompressible
@@ -572,7 +572,7 @@ contains
               q(i,j,k,QPRES) = 0.5_rt * dens_incompressible * g * q(i,j,k,QRHO)**2
               q(i,j,k,QREINT) = uin(i,j,k,UEINT)
               q(i,j,k,QTEMP) = uin(i,j,k,UTEMP)
-              q(i,j,k,QFA) = 0.0_rt
+              q(i,j,k,QFA) = uin(i,j,k,UFA) / uin(i,j,k,URHO)
               q(i,j,k,QFS:QFS-1+nspec) = q(i,j,k,QRHO) / nspec
 
           enddo
@@ -580,17 +580,17 @@ contains
     enddo
 
     !Load passively advected quantities into q
-      do ipassive = 1, npassive
-         n  = upass_map(ipassive)
-         iq = qpass_map(ipassive)
-         do k = lo(3),hi(3)
-            do j = lo(2),hi(2)
-               do i = lo(1),hi(1)
-                  q(i,j,k,iq) = uin(i,j,k,n)/q(i,j,k,QRHO)
-               enddo
-            enddo
-         enddo
-      enddo
+      ! do ipassive = 1, npassive
+      !    n  = upass_map(ipassive)
+      !    iq = qpass_map(ipassive)
+      !    do k = lo(3),hi(3)
+      !       do j = lo(2),hi(2)
+      !          do i = lo(1),hi(1)
+      !             q(i,j,k,iq) = uin(i,j,k,n)/q(i,j,k,QRHO)
+      !          enddo
+      !       enddo
+      !    enddo
+      ! enddo
 
 end subroutine swectoprim
 
@@ -775,7 +775,7 @@ subroutine compctoprim(lo, hi, &
 
             q(i,j,k,QPRES) = p
 
-            q(i,j,k,QFA) = 0.0_rt
+            q(i,j,k,QFA) = uin(i,j,k,UFA) / uin(i,j,k,URHO)
             q(i,j,k,QFS:QFS-1+nspec) = q(i,j,k,QRHO) / nspec
         enddo
      enddo

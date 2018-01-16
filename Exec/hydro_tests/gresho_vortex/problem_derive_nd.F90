@@ -366,3 +366,44 @@ subroutine ca_derpressgrad(g,g_lo,g_hi,ncomp_g, &
   enddo
 
 end subroutine ca_derpressgrad
+
+subroutine ca_derprimadv(g,g_lo,g_hi,ncomp_g, &
+                       u,u_lo,u_hi,ncomp_u,lo,hi,domlo, &
+                       domhi,dx,xlo,time,dt,bc,level,grid_no) &
+                       bind(C, name="ca_derprimadv")
+
+  use meth_params_module, only: QFA, NQ, NQAUX, NVAR
+  use advection_util_module, only: compctoprim, swectoprim
+  use probdata_module, only: swe_to_comp_level
+
+  use amrex_fort_module, only : rt => amrex_real
+  implicit none
+
+  integer, intent(in) :: lo(3), hi(3)
+  integer, intent(in) :: g_lo(3), g_hi(3), ncomp_g
+  integer, intent(in) :: u_lo(3), u_hi(3), ncomp_u
+  integer, intent(in) :: domlo(3), domhi(3)
+  real(rt), intent(inout) :: g(g_lo(1):g_hi(1),g_lo(2):g_hi(2),g_lo(3):g_hi(3),ncomp_g)
+  real(rt), intent(in) :: u(u_lo(1):u_hi(1),u_lo(2):u_hi(2),u_lo(3):u_hi(3),ncomp_u)
+  real(rt), intent(in) :: dx(3), xlo(3), time, dt
+  integer, intent(in) :: bc(3,2,ncomp_u), level, grid_no
+
+  real(rt) :: q(lo(1):hi(1), lo(2):hi(2), lo(3):hi(3), NQ)
+  real(rt) :: qaux(lo(1):hi(1), lo(2):hi(2), lo(3):hi(3),NQAUX)
+  integer :: i,j,k
+
+  if (level > swe_to_comp_level) then
+      call compctoprim(lo, hi, u(:,:,:,1:NVAR), u_lo, u_hi, q, lo, hi, qaux, lo, hi, xlo, dx, .true.)
+  else
+      call swectoprim(lo, hi, u(:,:,:,1:NVAR), u_lo, u_hi, q, lo, hi, qaux, lo, hi, .true.)
+  endif
+
+  do k = lo(3),hi(3)
+     do j = lo(2),hi(2)
+        do i = lo(1),hi(1)
+            g(i,j,k,1) = q(i,j,k,QFA)
+        enddo
+     enddo
+  enddo
+
+end subroutine ca_derprimadv

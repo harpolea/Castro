@@ -778,7 +778,8 @@ subroutine ca_get_tagging_params(name, namlen) &
        velerr,     velgrad,   max_velerr_lev,   max_velgrad_lev, &
        presserr, pressgrad, max_presserr_lev, max_pressgrad_lev, &
        temperr,   tempgrad,  max_temperr_lev,  max_tempgrad_lev, &
-       raderr,     radgrad,   max_raderr_lev,   max_radgrad_lev
+       raderr,     radgrad,   max_raderr_lev,   max_radgrad_lev, &
+       speederr
 
   ! Set namelist defaults
   denerr = 1.e20_rt
@@ -810,6 +811,8 @@ subroutine ca_get_tagging_params(name, namlen) &
   radgrad = 1.e20_rt
   max_raderr_lev = -1
   max_radgrad_lev = -1
+
+  speederr = 1.0_rt
 
   ! create the filename
   if (namlen > maxlen) then

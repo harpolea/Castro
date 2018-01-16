@@ -117,13 +117,11 @@ subroutine ca_initdata(level,time,lo,hi,nscal, &
 
   integer :: i, j, k, jj, kk
 
-  real(rt)         :: dye, reint, p, u_phi, u_tot, p0
+  real(rt)         :: reint, p, u_phi, u_tot, p0
   real(rt)         :: q(state_lo(1):state_hi(1),state_lo(2):state_hi(2),state_lo(3):state_hi(3),NQ)
   type(eos_t) :: eos_state
 
   if (.not. initialized) call eos_init(small_dens=small_dens, small_temp=small_temp)
-
-  dye = ZERO
 
   if (level <= swe_to_comp_level) then
       write(*,*) "Initialising level ", level, " with SWE data"
@@ -229,7 +227,12 @@ subroutine ca_initdata(level,time,lo,hi,nscal, &
 
            ! write(*,*) "NQ, QFA = ", NQ, QFA
 
-           q(i,j,k,QFA)  = dye
+           ! make a tracer blob at (0.25, 0.25)
+           if (((z - 0.25_rt)**2 + (y - 0.25_rt)**2) < (0.25_rt)**2) then
+               q(i,j,k,QFA)  = 1.0_rt
+           else
+               q(i,j,k,QFA)  = 0.0_rt
+           endif
            q(i,j,k,QFS:QFS-1+nspec) = q(i,j,k,QRHO) / nspec
 
            if (level <= swe_to_comp_level) then

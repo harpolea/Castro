@@ -56,7 +56,7 @@ contains
     ! calculates the conserved state from the primitive variables
     use meth_params_module, only: NQ, QRHO, QU, QV, QW, QTEMP, &
          NVAR, URHO, UMX, UMY, UMZ, UEDEN, UEINT, UTEMP, QREINT, &
-         npassive, upass_map, qpass_map, UFS, UFA
+         npassive, upass_map, qpass_map, UFS, UFA, QFA
     use network, only : nspec
     use metric_module, only : calculate_scalar_W
 
@@ -91,7 +91,7 @@ contains
     ! we don't care about T here, but initialize it to make NaN
     ! checking happy
     U(UTEMP) = q(QTEMP)
-    U(UFA) = 0.0_rt
+    U(UFA) = q(QFA) * U(URHO)
     U(UFS:UFS-1+nspec) = U(URHO) / nspec
 
   end subroutine swe_cons_state
@@ -100,7 +100,7 @@ contains
     ! calculates the conserved state from the primitive variables
     use meth_params_module, only: NQ, QRHO, QU, QV, QW, QTEMP, &
          NVAR, URHO, UMX, UMY, UMZ, UEDEN, UEINT, UTEMP, QREINT, &
-         npassive, upass_map, qpass_map, UFS, UFA, QPRES, small_dens, small_temp
+         npassive, upass_map, qpass_map, UFS, UFA, QPRES, small_dens, small_temp, QFA
     use network, only : nspec
     use eos_module, only: eos, eos_init, initialized
     use eos_type_module, only: eos_input_re, eos_t, eos_input_rt, eos_input_rp
@@ -153,7 +153,7 @@ contains
     ! we don't care about T here, but initialize it to make NaN
     ! checking happy
     U(UTEMP) = q(QTEMP)
-    U(UFA) = 0.0_rt
+    U(UFA) = q(QFA) * U(URHO)
     U(UFS:UFS-1+nspec) = U(URHO) / nspec
 
   end subroutine comp_cons_state
@@ -195,7 +195,7 @@ contains
     F(UMY) = U(UMY) * u_flx
     F(UMZ) = U(UMZ) * u_flx
 
-    F(UMX-1+idir) = F(UMX-1+idir) + 0.5_rt * dens_incompressible * g * q(QRHO)**2
+    F(UMX-1+idir) = F(UMX-1+idir) + 0.5_rt * g * q(QRHO)**2
 
 #if BL_SPACEDIM == 1
     F(UMY) = 0.0_rt
@@ -205,7 +205,7 @@ contains
 #endif
 
     F(UEINT) = U(UEINT) * u_flx
-    F(UEDEN) = (U(UEDEN) + 0.5_rt * dens_incompressible * g * q(QRHO)**2) * u_flx
+    F(UEDEN) = (U(UEDEN) + 0.5_rt * g * q(QRHO)**2) * u_flx
 
     F(UTEMP) = 0.0_rt
     F(UFA) = U(UFA) * u_flx

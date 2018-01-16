@@ -9,14 +9,16 @@
 &tagging
 
   !denerr = 3
-  dengrad = 0.1
+  !dengrad = 0.1
   !max_denerr_lev = 3
   !max_dengrad_lev = 3
 
   !presserr = 3
-  pressgrad = 0.1
+  !pressgrad = 0.001
   !max_presserr_lev = 3
   !max_pressgrad_lev = 3
+  !max_pressgrad_lev = 5
+  speederr = 0.02
 
 /
 

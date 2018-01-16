@@ -9,6 +9,7 @@ module tagging_module
   real(rt)        , save ::   temperr,  tempgrad
   real(rt)        , save ::  presserr, pressgrad
   real(rt)        , save ::    raderr,   radgrad
+  real(rt)        , save :: speederr
   integer         , save ::  max_denerr_lev,   max_dengrad_lev
   integer         , save ::  max_enterr_lev,   max_entgrad_lev
   integer         , save ::  max_velerr_lev,   max_velgrad_lev

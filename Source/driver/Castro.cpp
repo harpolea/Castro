@@ -1524,19 +1524,21 @@ Castro::apply_problem_tags (TagBoxArray& tags,
     	    int*        tptr    = itags.dataPtr();
     	    const int*  tlo     = tilebx.loVect();
     	    const int*  thi     = tilebx.hiVect();
+            const RealBox& pbx  = RealBox(tilebx,geom.CellSize(),geom.ProbLo());
+            const Real* xlo     = pbx.lo();
 
 #ifdef DIMENSION_AGNOSTIC
     	    set_problem_tags(tptr,  ARLIM_3D(tlo), ARLIM_3D(thi),
     			     BL_TO_FORTRAN_3D(S_new[mfi]),
     			     &tagval, &clearval,
     			     ARLIM_3D(tilebx.loVect()), ARLIM_3D(tilebx.hiVect()),
-    			     ZFILL(dx), ZFILL(prob_lo), &time, &level);
+    			     ZFILL(dx), ZFILL(prob_lo), &time, &level, ZFILL(xlo));
 #else
     	    set_problem_tags(tptr,  ARLIM(tlo), ARLIM(thi),
     			     BL_TO_FORTRAN(S_new[mfi]),
     			     &tagval, &clearval,
     			     tilebx.loVect(), tilebx.hiVect(),
-    			     dx, prob_lo, &time, &level);
+    			     dx, prob_lo, &time, &level, xlo);
 #endif
 
     	    //
