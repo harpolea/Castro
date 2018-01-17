@@ -95,7 +95,7 @@ subroutine ca_initdata(level,time,lo,hi,nscal, &
 
   use probdata_module
   use meth_params_module, only : NVAR, URHO, UMX, UMY, UMZ, &
-       QFS, QFA, UEDEN, UEINT, QTEMP, NQ, QRHO, QU, QV, QW, QREINT, QPRES, UTEMP, small_dens, small_temp
+       QFS, QFA, UEDEN, UEINT, QTEMP, NQ, QRHO, QU, QV, QW, QREINT, QPRES, UTEMP, small_dens, small_temp, nadv, UFA
   use network, only : nspec
   use bl_constants_module
   use prob_params_module, only: problo, center, probhi
@@ -128,8 +128,6 @@ subroutine ca_initdata(level,time,lo,hi,nscal, &
   else
       write(*,*) "Initialising level ", level, " with incompressible data"
   endif
-
-  ! write(*,*) "problo = ", problo, "delta = ", delta
 
   eos_state % rho = dens_incompressible
   eos_state % e = 1.0_rt
@@ -199,6 +197,10 @@ subroutine ca_initdata(level,time,lo,hi,nscal, &
        q(lo(1):hi(1),j,k,QV) = -dens_incompressible*q_r*u_phi*((zc-center(3))/r)  ! -sin(phi) = z/r
        q(lo(1):hi(1),j,k,QW) = dens_incompressible*q_r*u_phi*((yc-center(2))/r)
 
+       ! HACK TO MAKE HOMOGENEOUS
+       !h = sqrt(p0 / (0.5_rt * dens_incompressible * g))
+       !q(lo(1):hi(1),j,k,QU:QW) = 0.0_rt
+
        q(lo(1):hi(1),j,k,QRHO) = dens_incompressible
 
        do i = lo(1), hi(1)
@@ -225,14 +227,12 @@ subroutine ca_initdata(level,time,lo,hi,nscal, &
                q(i,j,k,QRHO) = h
            end if
 
-           ! write(*,*) "NQ, QFA = ", NQ, QFA
-
            ! make a tracer blob at (0.25, 0.25)
-           if (((z - 0.25_rt)**2 + (y - 0.25_rt)**2) < (0.25_rt)**2) then
-               q(i,j,k,QFA)  = 1.0_rt
-           else
-               q(i,j,k,QFA)  = 0.0_rt
-           endif
+           ! if (((z - 0.25_rt)**2 + (y - 0.25_rt)**2) < (0.25_rt)**2) then
+           !     q(i,j,k,QFA:QFA-1+nadv)  = 1.0_rt
+           ! else
+               q(i,j,k,QFA:QFA-1+nadv)  = 0.0_rt
+           ! endif
            q(i,j,k,QFS:QFS-1+nspec) = q(i,j,k,QRHO) / nspec
 
            if (level <= swe_to_comp_level) then
@@ -246,9 +246,5 @@ subroutine ca_initdata(level,time,lo,hi,nscal, &
      enddo
   enddo
   !$OMP END PARALLEL DO
-  !
-  ! write(*,*) state(lo(1),:, lo(3), URHO)
-  !
-  ! call exit(0)
 
 end subroutine ca_initdata

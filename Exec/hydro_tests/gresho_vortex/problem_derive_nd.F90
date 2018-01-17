@@ -372,7 +372,7 @@ subroutine ca_derprimadv(g,g_lo,g_hi,ncomp_g, &
                        domhi,dx,xlo,time,dt,bc,level,grid_no) &
                        bind(C, name="ca_derprimadv")
 
-  use meth_params_module, only: QFA, NQ, NQAUX, NVAR
+  use meth_params_module, only: QFA, NQ, NQAUX, NVAR, UFA, URHO
   use advection_util_module, only: compctoprim, swectoprim
   use probdata_module, only: swe_to_comp_level
 

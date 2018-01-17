@@ -1,6 +1,7 @@
 module problem_tagging_module
 
   use amrex_fort_module, only : rt => amrex_real
+  use tagging_module, only : speederr
   implicit none
 
   public
@@ -14,11 +15,12 @@ contains
                               state,state_lo,state_hi, &
                               set,clear,&
                               lo,hi,&
-                              dx,problo,time,level) &
+                              dx,problo,time,level,xlo) &
                               bind(C, name="set_problem_tags")
 
-    use meth_params_module, only : NVAR
-    use probdata_module, only: swe_to_comp_level
+    use meth_params_module, only : NVAR, NQ, QU, QW, NQAUX
+    use probdata_module, only: swe_to_comp_level, damn_rad
+    use advection_util_module, only: compctoprim, swectoprim
     implicit none
 
     integer, intent(in)          :: lo(3),hi(3)
@@ -28,15 +30,42 @@ contains
                         state_lo(2):state_hi(2), &
                         state_lo(3):state_hi(3),NVAR)
     integer, intent(inout)         :: tag(tag_lo(1):tag_hi(1),tag_lo(2):tag_hi(2),tag_lo(3):tag_hi(3))
-    real(rt), intent(in)         :: problo(3),dx(3),time
+    real(rt), intent(in)         :: problo(3),dx(3),time,xlo(3)
     integer, intent(in)          :: level,set,clear
 
     integer :: i, j, k
-
-    ! if (level <= swe_to_comp_level) then
+    real(rt) :: yy
+    ! real(rt) :: q(lo(1):hi(1), lo(2):hi(2), lo(3):hi(3), NQ)
+    ! real(rt) :: qaux(lo(1):hi(1), lo(2):hi(2), lo(3):hi(3),NQAUX)
+    ! real(rt) :: speed
+    !
+    ! if (level > swe_to_comp_level) then
+    !     call compctoprim(lo, hi, state, state_lo, state_hi, q, lo, hi, qaux, lo, hi, xlo, dx, .false.)
     ! else
+    !     call swectoprim(lo, hi, state, state_lo, state_hi, q, lo, hi, qaux, lo, hi, .false.)
     ! endif
+    !
+    ! do k = lo(3), hi(3)
+    !    do j = lo(2), hi(2)
+    !       do i = lo(1), hi(1)
+    !           speed = sqrt(sum(q(i,j,k,QU:QW)**2))
+    !           if (speed .ge. speederr) then
+    !               tag(i,j,k) = set
+    !           endif
+    !       enddo
+    !    enddo
+    ! enddo
 
+    do k = lo(3), hi(3)
+       do j = lo(2), hi(2)
+          yy = xlo(2) + dx(2)*dble(j-lo(2)+0.5_rt)
+          do i = lo(1), hi(1)
+              if (abs(yy - damn_rad) .le. speederr) then
+                  tag(i,j,k) = set
+              endif
+          enddo
+       enddo
+    enddo
 
   end subroutine set_problem_tags
 

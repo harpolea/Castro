@@ -56,7 +56,7 @@ contains
     ! calculates the conserved state from the primitive variables
     use meth_params_module, only: NQ, QRHO, QU, QV, QW, QTEMP, &
          NVAR, URHO, UMX, UMY, UMZ, UEDEN, UEINT, UTEMP, QREINT, &
-         npassive, upass_map, qpass_map, UFS, UFA, QFA
+         npassive, upass_map, qpass_map, UFS, UFA, QFA, nadv
     use network, only : nspec
     use metric_module, only : calculate_scalar_W
 
@@ -65,8 +65,6 @@ contains
 
     real(rt) :: W
 
-    !integer  :: ipassive, n, nq
-
     U(1:NVAR) = 0.0_rt
 
     call calculate_scalar_W(q(QU:QW), W)
@@ -74,7 +72,6 @@ contains
     U(URHO) = q(QRHO) * W
 
     U(UMY:UMZ) = q(QRHO) * W**2 * q(QV:QW)
-    ! U(UMX)  = 0.0_rt! q(QRHO) * q(QW)
 
     ! since we advect all 3 velocity components regardless of dimension, this
 #if BL_SPACEDIM == 1
@@ -91,7 +88,7 @@ contains
     ! we don't care about T here, but initialize it to make NaN
     ! checking happy
     U(UTEMP) = q(QTEMP)
-    U(UFA) = q(QFA) * U(URHO)
+    U(UFA:UFA-1+nadv) = q(QFA:QFA-1+nadv) * U(URHO)
     U(UFS:UFS-1+nspec) = U(URHO) / nspec
 
   end subroutine swe_cons_state
@@ -100,7 +97,7 @@ contains
     ! calculates the conserved state from the primitive variables
     use meth_params_module, only: NQ, QRHO, QU, QV, QW, QTEMP, &
          NVAR, URHO, UMX, UMY, UMZ, UEDEN, UEINT, UTEMP, QREINT, &
-         npassive, upass_map, qpass_map, UFS, UFA, QPRES, small_dens, small_temp, QFA
+         npassive, upass_map, qpass_map, UFS, UFA, QPRES, small_dens, small_temp, QFA, nadv
     use network, only : nspec
     use eos_module, only: eos, eos_init, initialized
     use eos_type_module, only: eos_input_re, eos_t, eos_input_rt, eos_input_rp
@@ -116,7 +113,6 @@ contains
     if (.not. initialized) call eos_init(small_dens=small_dens, small_temp=small_temp)
 
     call calculate_scalar_W(q(QU:QW), W)
-    !integer  :: ipassive, n, nq
     U(1:NVAR) = 0.0_rt
 
     ! INCOMPRESSIBLE
@@ -153,7 +149,7 @@ contains
     ! we don't care about T here, but initialize it to make NaN
     ! checking happy
     U(UTEMP) = q(QTEMP)
-    U(UFA) = q(QFA) * U(URHO)
+    U(UFA:UFA-1+nadv) = q(QFA:QFA-1+nadv) * U(URHO)
     U(UFS:UFS-1+nspec) = U(URHO) / nspec
 
   end subroutine comp_cons_state
@@ -163,7 +159,7 @@ contains
     ! returns the GR flux in direction idir
     use meth_params_module, only: NQ, NVAR, URHO, UMX, UMY, UMZ, &
          npassive, upass_map, UEDEN, UEINT, UTEMP, UFS, UFA, &
-         QU, QV, QW, QRHO
+         QU, QV, QW, QRHO, nadv, QFA
     use probdata_module, only: g, dens_incompressible
     use network, only : nspec
 
@@ -208,7 +204,7 @@ contains
     F(UEDEN) = (U(UEDEN) + 0.5_rt * g * q(QRHO)**2) * u_flx
 
     F(UTEMP) = 0.0_rt
-    F(UFA) = U(UFA) * u_flx
+    F(UFA:UFA-1+nadv) = F(URHO) * q(QFA:QFA-1+nadv)
     F(UFS:UFS-1+nspec) = U(UFS:UFS-1+nspec) * u_flx
 
   end subroutine swe_compute_flux
@@ -216,7 +212,7 @@ contains
   subroutine comp_compute_flux(idir, bnd_fac, q, U, F, p)
     ! returns the GR flux in direction idir
     use meth_params_module, only: NQ, NVAR, URHO, UMX, UMY, UMZ, UTEMP, &
-         UEDEN, UEINT, npassive, upass_map, UFS, UFA, QU, QV, QW
+         UEDEN, UEINT, npassive, upass_map, UFS, UFA, QU, QV, QW, nadv, QFA
     use probdata_module, only: g
     use network, only : nspec
 
@@ -262,7 +258,7 @@ contains
     F(UEDEN) = (U(UEDEN) + p) * u_flx
 
     F(UTEMP) = 0.0_rt
-    F(UFA) = U(UFA) * u_flx
+    F(UFA:UFA-1+nadv) = F(URHO) * q(QFA:QFA-1+nadv)
     F(UFS:UFS-1+nspec) = U(UFS:UFS-1+nspec) * u_flx
 
   end subroutine comp_compute_flux

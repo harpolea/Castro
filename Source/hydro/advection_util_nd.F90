@@ -480,7 +480,7 @@ contains
                                    QRHO, QU, QV, QW, QTEMP, UTEMP, &
                                    NQ, QC, QCSML, QGAMC, QDPDR, QDPDE, NQAUX, QPRES, QREINT, UEINT, &
                                    npassive, upass_map, qpass_map, &
-                                   small_dens, QFA, QFS, UFA
+                                   small_dens, QFA, QFS, UFA, nadv
     use bl_constants_module, only: ZERO, HALF, ONE
     use castro_util_module, only: position
     use probdata_module, only : g, dens_incompressible
@@ -557,11 +557,13 @@ contains
                   ! q(i,j,k,QU) = 0.1_rt * uin(i,j,k,UMX)
                   q(i,j,k,QV) = 0.1_rt * uin(i,j,k,UMY) / W
                   q(i,j,k,QW) = 0.1_rt * uin(i,j,k,UMZ) / W
+                  q(i,j,k,QFA:QFA-1+nadv) = uin(i,j,k,UFA:UFA-1+nadv) * 0.1_rt
               else
                   q(i,j,k,QRHO) = uin(i,j,k,URHO)
                   ! q(i,j,k,QU) = uin(i,j,k,UMX) / uin(i,j,k,URHO)
                   q(i,j,k,QV) = uin(i,j,k,UMY) / (uin(i,j,k,URHO) * W)
                   q(i,j,k,QW) = uin(i,j,k,UMZ) / (uin(i,j,k,URHO) * W)
+                  q(i,j,k,QFA:QFA-1+nadv) = uin(i,j,k,UFA:UFA-1+nadv) / uin(i,j,k,URHO)
               endif
 #if BL_SPACEDIM == 1
               q(i,j,k,QV) = 0.0_rt
@@ -572,14 +574,13 @@ contains
               q(i,j,k,QPRES) = 0.5_rt * dens_incompressible * g * q(i,j,k,QRHO)**2
               q(i,j,k,QREINT) = uin(i,j,k,UEINT)
               q(i,j,k,QTEMP) = uin(i,j,k,UTEMP)
-              q(i,j,k,QFA) = uin(i,j,k,UFA) / uin(i,j,k,URHO)
               q(i,j,k,QFS:QFS-1+nspec) = q(i,j,k,QRHO) / nspec
 
           enddo
        enddo
     enddo
 
-    !Load passively advected quantities into q
+    ! Load passively advected quantities into q
       ! do ipassive = 1, npassive
       !    n  = upass_map(ipassive)
       !    iq = qpass_map(ipassive)
@@ -606,7 +607,7 @@ subroutine compctoprim(lo, hi, &
                                  QRHO, QU, QV, QW, QREINT, QTEMP, &
                                  NQ, QC, QCSML, QGAMC, QDPDR, QDPDE, NQAUX, QFS, QFX, QGAME, QPRES, UTEMP, &
                                  npassive, upass_map, qpass_map, &
-                                 small_dens, small_temp, UFA, QFA
+                                 small_dens, small_temp, UFA, QFA, nadv
   use bl_constants_module, only: ZERO, HALF, ONE
   use castro_util_module, only: position
   use probdata_module, only : g, dens_incompressible
@@ -775,7 +776,7 @@ subroutine compctoprim(lo, hi, &
 
             q(i,j,k,QPRES) = p
 
-            q(i,j,k,QFA) = uin(i,j,k,UFA) / uin(i,j,k,URHO)
+            q(i,j,k,QFA:QFA-1+nadv) = uin(i,j,k,UFA:UFA-1+nadv) / uin(i,j,k,URHO)
             q(i,j,k,QFS:QFS-1+nspec) = q(i,j,k,QRHO) / nspec
         enddo
      enddo
@@ -799,35 +800,35 @@ subroutine compctoprim(lo, hi, &
   !   enddo
 
     ! get gamc, p, T, c, csml using q state
-    do k = lo(3), hi(3)
-       do j = lo(2), hi(2)
-          do i = lo(1), hi(1)
-             xx = xlo(1) + dx(1)*dble(i-lo(1)+HALF)
-
-             eos_state % T   = q(i,j,k,QTEMP )
-             eos_state % rho = q(i,j,k,QRHO  )
-             eos_state % e   = q(i,j,k,QREINT)
-             eos_state % xn  = q(i,j,k,QFS:QFS+nspec-1)
-             eos_state % aux = q(i,j,k,QFX:QFX+naux-1)
-             ! eos_state % p = 0.5_rt * g * q(i,j,k,QRHO  )**2
-             eos_state % p = q(i,j,k,QPRES)
-             !q(i,j,k,QPRES)  = eos_state % p
-
-             call eos(eos_input_rp, eos_state)
-             !q(i,j,k,QPRES)  = eos_state % p
-
-             q(i,j,k,QTEMP)  = eos_state % T
-             !q(i,j,k,QREINT) = eos_state % e * q(i,j,k,QRHO)
-             q(i,j,k,QGAME)  = q(i,j,k,QPRES) / q(i,j,k,QREINT) + ONE
-
-             qaux(i,j,k,QDPDR)  = eos_state % dpdr_e
-             qaux(i,j,k,QDPDE)  = eos_state % dpde
-             qaux(i,j,k,QGAMC)  = eos_state % gam1
-             qaux(i,j,k,QC   )  = eos_state % cs
-             ! qaux(i,j,k,QCSML)  = max(small, small * qaux(i,j,k,QC))
-          enddo
-       enddo
-   enddo
+   !  do k = lo(3), hi(3)
+   !     do j = lo(2), hi(2)
+   !        do i = lo(1), hi(1)
+   !           xx = xlo(1) + dx(1)*dble(i-lo(1)+HALF)
+   !
+   !           eos_state % T   = q(i,j,k,QTEMP )
+   !           eos_state % rho = q(i,j,k,QRHO  )
+   !           eos_state % e   = q(i,j,k,QREINT)
+   !           eos_state % xn  = q(i,j,k,QFS:QFS+nspec-1)
+   !           eos_state % aux = q(i,j,k,QFX:QFX+naux-1)
+   !           ! eos_state % p = 0.5_rt * g * q(i,j,k,QRHO  )**2
+   !           eos_state % p = q(i,j,k,QPRES)
+   !           !q(i,j,k,QPRES)  = eos_state % p
+   !
+   !           call eos(eos_input_rp, eos_state)
+   !           !q(i,j,k,QPRES)  = eos_state % p
+   !
+   !           q(i,j,k,QTEMP)  = eos_state % T
+   !           !q(i,j,k,QREINT) = eos_state % e * q(i,j,k,QRHO)
+   !           q(i,j,k,QGAME)  = q(i,j,k,QPRES) / q(i,j,k,QREINT) + ONE
+   !
+   !           qaux(i,j,k,QDPDR)  = eos_state % dpdr_e
+   !           qaux(i,j,k,QDPDE)  = eos_state % dpde
+   !           qaux(i,j,k,QGAMC)  = eos_state % gam1
+   !           qaux(i,j,k,QC   )  = eos_state % cs
+   !           ! qaux(i,j,k,QCSML)  = max(small, small * qaux(i,j,k,QC))
+   !        enddo
+   !     enddo
+   ! enddo
 
 end subroutine compctoprim
 

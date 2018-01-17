@@ -471,7 +471,7 @@ contains
     use meth_params_module, only: URHO, UEINT, UTEMP, UFS, UFX
     use bl_constants_module
     use amrex_fort_module, only : rt => amrex_real
-    use probdata_module, only: swe_to_comp_level, g
+    use probdata_module, only: swe_to_comp_level, g, dens_incompressible
 
     implicit none
 
@@ -496,7 +496,7 @@ contains
              if (level <= swe_to_comp_level) then
 
                  xx = xlo(1) + dx(1)*dble(i-lo(1)+HALF)
-                 p(i,j,k,1) = 0.5d0 * g * (u(i,j,k,URHO) - xx)**2
+                 p(i,j,k,1) = 0.5d0 * dens_incompressible * g * (u(i,j,k,URHO) - xx)**2
 
              else
 

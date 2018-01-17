@@ -188,6 +188,7 @@ subroutine ca_initdata(level,time,lo,hi,nscal, &
             q(i,j,k,QRHO) = dens_incompressible
 
             eos_state % p = 0.5e0_rt * dens_incompressible * g * (h-xx)**2
+            q(i,j,k,QPRES) = eos_state % p
 
             ! if (r < damn_rad) then
             !     eos_state % p = 0.5e0_rt * g * (h_in-xx)**2

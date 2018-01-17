@@ -461,7 +461,7 @@ end subroutine swe_HLL
 subroutine swe_to_comp(swe, slo, shi, comp, clo, chi, lo, hi, dx, xlo, ignore_errors)
     use meth_params_module, only: NQ, QVAR, QRHO, QU, QV, QW, &
          NVAR, URHO, UMX, UMY, UMZ, NQAUX, QTEMP, UTEMP, UEDEN, UEINT, &
-         dual_energy_eta1, QPRES, UFS, UFA
+         QPRES, UFS, UFA, QFA
     use probdata_module, only : g, dens_incompressible
     use eos_module, only : eos
     use eos_type_module, only : eos_t, eos_input_rp
@@ -481,18 +481,13 @@ subroutine swe_to_comp(swe, slo, shi, comp, clo, chi, lo, hi, dx, xlo, ignore_er
 
     integer i, j, k, n
     logical ignore_errs
-    real(rt) :: basep, xx, rho
+    real(rt) :: xx, rho
 
     if (present(ignore_errors)) then
         ignore_errs = ignore_errors
     else
         ignore_errs = .false.
     endif
-
-    ! comp(lo(1):hi(1), lo(2):hi(2), lo(3):hi(3), :) = swe(lo(1):hi(1), lo(2):hi(2), lo(3):hi(3), :)
-    !
-    ! return
-    !
     ! write(*,*) "swe_to_comp"
 
     ! phi = gh
@@ -503,10 +498,9 @@ subroutine swe_to_comp(swe, slo, shi, comp, clo, chi, lo, hi, dx, xlo, ignore_er
 
     do k = lo(3), hi(3)
         do j = lo(2), hi(2)
-            ! basep = 0.5 * g * q_swe(lo(1),j,k,QRHO)**2 !q_swe(lo(1),j,k,QPRES)
             q_comp(1:NQ) = q_swe(lo(1),j,k,1:NQ)
             ! NOTE: incompressible for now
-            q_comp(QRHO) = rho !basep / (g * q_swe(lo(1),j,k,QRHO))
+            q_comp(QRHO) = rho
 
             do i = lo(1), hi(1)
                 U_comp(1:NVAR) = 0.0_rt
@@ -540,7 +534,7 @@ end subroutine swe_to_comp
 
 subroutine comp_to_swe(swe, slo, shi, comp, clo, chi, lo, hi, xlo, dx, ignore_errors)
     use meth_params_module, only: QVAR, QRHO, QU, QV, QW, &
-         NVAR, URHO, UMX, UMY, UMZ, QTEMP, UTEMP, UFS, UEDEN, UEINT, UFA
+         NVAR, URHO, UMX, UMY, UMZ, QTEMP, UTEMP, UFS, UEDEN, UEINT, UFA, QFA
     use probdata_module, only : g, dens_incompressible
     use advection_util_module, only: compctoprim
     use network, only : nspec
@@ -594,7 +588,6 @@ subroutine comp_to_swe(swe, slo, shi, comp, clo, chi, lo, hi, xlo, dx, ignore_er
 #if BL_SPACEDIM <= 2
                 q_swe(QW) = 0.0_rt
 #endif
-
                 call swe_cons_state(q_swe, U_swe)
 
                 swe(i,j,k,1:NVAR) = U_swe(1:NVAR)

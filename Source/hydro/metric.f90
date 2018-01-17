@@ -16,6 +16,11 @@ contains
 
         W = 1.0e0_rt / sqrt(1.0e0_rt - sum(v**2))
 
+        ! nan check
+        if (W-1 .eq. W) then
+            W = 1.0e10_rt
+        endif
+
     end subroutine calculate_scalar_W
 
 end module metric_module

@@ -13,11 +13,11 @@ PROFILE    ?= FALSE
 
 DEBUG      ?= FALSE
 
-DIM        ?= 3
+DIM        ?= 2
 
 COMP	   ?= gnu
 
-USE_MPI    ?= FALSE
+USE_MPI    ?= TRUE
 USE_OMP    ?= FALSE
 
 DIMENSION_AGNOSTIC = TRUE

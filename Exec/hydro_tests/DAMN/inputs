@@ -4,7 +4,7 @@
 
 # ------------------  INPUTS TO MAIN PROGRAM  -------------------
 stop_time = 2
-max_step = 100
+max_step = 500
 
 # PROBLEM SIZE & GEOMETRY
 geometry.is_periodic = 0  0  0
@@ -14,7 +14,7 @@ geometry.prob_hi     = 2.0 2.0 1.0 #0.125
 castro.center        = 1.0 1.0 0.5 #0.0625
 
 amr.n_cell           = 32 32 16
-amr.max_level        = 2        # maximum level number allowed; base level is 0
+amr.max_level        = 3        # maximum level number allowed; base level is 0
 
 amr.max_grid_size    = 64
 
@@ -51,10 +51,10 @@ amr.v                 = 1       # verbosity in Amr.cpp
 amr.grid_log          = grid_diag.out   # name of grid logging file
 
 # REFINEMENT / REGRIDDING
-amr.ref_ratio       = 2 2 2 2   # refinement ratio
-amr.regrid_int      = 2 2 2 2   # how often to regrid
+amr.ref_ratio       = 2   # refinement ratio
+amr.regrid_int      = 200000   # how often to regrid
 amr.blocking_factor = 4         # block factor in grid generation
-amr.n_error_buf     = 4 4 4 4   # number of buffer cells in error est
+amr.n_error_buf     = 4   # number of buffer cells in error est
 
 # CHECKPOINT FILES
 amr.checkpoint_files_output = 0
