@@ -67,6 +67,14 @@ Castro::advance (Real time,
     advance_aux(time, dt);
 #endif
 
+#if (BL_SPACEDIM > 1)
+    // We do this again here because the solution will have changed
+    if (level == 0) {
+       int is_new = 1;
+       make_vertically_avgd_data(is_new);
+    }
+#endif
+
     finalize_advance(time, dt, amr_iteration, amr_ncycle);
 
     return dt_new;
@@ -146,6 +154,13 @@ Castro::do_advance (Real time,
 
       enforce_consistent_e(S_new); // not sure does anything
       clean_state(S_new);
+
+#if (BL_SPACEDIM > 1)
+      if (level == 0) {
+        int is_new = 1;
+        make_vertically_avgd_data(is_new);
+      }
+#endif
     }
 
     finalize_do_advance(time, dt, amr_iteration, amr_ncycle);
@@ -169,6 +184,14 @@ Castro::initialize_do_advance(Real time, Real dt, int amr_iteration, int amr_ncy
     if (track_grid_losses)
       for (int i = 0; i < n_lost; i++)
 	     material_lost_through_boundary_temp[i] = 0.0;
+
+#if (BL_SPACEDIM > 1)
+    if (level == 0) {
+        swap_outflow_data();
+        int is_new = 0;
+        make_vertically_avgd_data(is_new);
+    }
+#endif
 
     // For the hydrodynamics update we need to have NUM_GROW ghost zones available,
     // but the state data does not carry ghost zones. So we use a FillPatch

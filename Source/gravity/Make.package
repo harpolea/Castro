@@ -7,12 +7,8 @@ ifeq ($(USE_SELF_GRAV), TRUE)
   FEXE_headers += Gravity_F.H
 endif
 
-CEXE_sources += Castro_gravity.cpp
+#CEXE_sources += Castro_gravity.cpp
 
-ifeq ($(USE_POINTMASS), TRUE)
-  CEXE_sources += Castro_pointmass.cpp
-  ca_f90EXE_sources += pointmass_nd.f90
-endif
 
 ifeq ($(USE_GRAV), TRUE)
   ca_F90EXE_sources += prescribe_phi_nd.F90
@@ -21,8 +17,5 @@ ifeq ($(USE_GRAV), TRUE)
   ca_F90EXE_sources += gravity_sources_nd.F90
 endif
 
-ca_f90EXE_sources += Gravity_$(DIM)d.f90
-
-ifeq ($(USE_GR), TRUE)
-  ca_f90EXE_sources += GR_Gravity_$(DIM)d.f90
-endif
+FEXE_headers += Gravity_F.H
+ca_f90EXE_sources += Gravity_nd.f90

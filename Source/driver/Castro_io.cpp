@@ -295,6 +295,19 @@ Castro::restart (Amr&     papa,
     if (grown_factor > 1 && level == 1)
         getLevel(0).avgDown();
 
+#if (BL_SPACEDIM > 1)
+    if (level == 0) {
+       MultiFab& S_new = get_new_data(State_Type);
+       const int nc = S_new.nComp();
+       int ny, nz;
+       get_horizontal_numpts(&ny, &nz);
+       const int npoints = ny * nz;
+       allocate_outflow_data(&npoints,&nc);
+       int is_new = 1;
+       make_vertically_avgd_data(is_new);
+    }
+#endif
+
     // If we want, we can restart the checkpoint at a new time.
 
     if (reset_checkpoint_time > -1.e199) {

@@ -615,6 +615,20 @@ Castro::initData ()
     MultiFab& dSdt_new = get_new_data(Source_Type);
     dSdt_new.setVal(0.);
 
+    // set up outflow_data to record vertically averaged quantities
+#if (BL_SPACEDIM > 1)
+    if ( level == 0 ) {
+       const int nc = S_new.nComp();
+       int ny, nz;
+       get_horizontal_numpts(&ny, &nz);
+       const int npoints = ny * nz;
+       allocate_outflow_data(&npoints,&nc);
+       int is_new = 1;
+       make_vertically_avgd_data(is_new);
+    }
+#endif
+
+
     if (verbose && ParallelDescriptor::IOProcessor())
        std::cout << "Done initializing the level " << level << " data " << std::endl;
 }
