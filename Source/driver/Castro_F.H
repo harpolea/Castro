@@ -151,6 +151,31 @@ void ca_comp_to_swe_self
   void ca_find_center(amrex::Real* data, amrex::Real* center, int* icen,
 		      const amrex::Real* dx, const amrex::Real* problo);
 
+#if (BL_SPACEDIM > 1)
+void ca_compute_avgstate
+  (const int* lo, const int* hi,
+   const amrex::Real* dx, const amrex::Real* dr, const int* nc,
+   const BL_FORT_FAB_ARG_3D(S  ),  amrex::Real* avgden,
+   const BL_FORT_FAB_ARG_3D(Vol),  amrex::Real* avgvol,
+   const amrex::Real* problo, const int* numpts_1d);
+
+void ca_compute_vertical_avgstate
+ (const int* lo, const int* hi,
+  const amrex::Real* dx, const int* nc,
+  const BL_FORT_FAB_ARG_3D(S  ),  amrex::Real* avgden,
+  const BL_FORT_FAB_ARG_3D(Vol),  amrex::Real* avgvol,
+  const amrex::Real* problo, const int* ny, const int* nz);
+
+  void get_numpts_1d(int* numpts_1d);
+  void set_numpts_1d(int* numpts_1d);
+  void allocate_outflow_data(const int* n1d, const int* nc);
+  void set_old_outflow_data(const amrex::Real* radial, const amrex::Real* time,
+			    const int* numpts, const int* nc);
+  void set_new_outflow_data(const amrex::Real* radial, const amrex::Real* time,
+			    const int* numpts, const int* nc);
+  void swap_outflow_data();
+#endif
+
   void ca_compute_temp
     (const int* lo, const int* hi, BL_FORT_FAB_ARG_3D(state), const int* idx);
 

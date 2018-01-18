@@ -114,7 +114,6 @@ public:
     virtual void initData () override;
 
 
-
 #ifdef MAESTRO_INIT
     void MAESTRO_init ();
 #endif
@@ -368,6 +367,9 @@ public:
 
     void expand_state(amrex::MultiFab& S, amrex::Real time, int ng);
 
+	void make_radial_data (int is_new);
+	void make_vertically_avgd_data (int is_new);
+
 #ifdef AUX_UPDATE
     void advance_aux(amrex::Real time, amrex::Real dt);
 #endif
@@ -402,6 +404,10 @@ protected:
     //
     amrex::Array<std::unique_ptr<amrex::iMultiFab> > ib_mask;
     amrex::iMultiFab& build_interior_boundary_mask (int ng);
+
+	int get_numpts();
+
+	int get_horizontal_numpts (int * ny, int * nz);
 
     //
     // A state array with ghost zones.

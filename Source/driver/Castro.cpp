@@ -1925,3 +1925,246 @@ Castro::clean_state(MultiFab& state, MultiFab& state_old) {
     // the internal energy for consistency with the total energy).
     return frac_change;
 }
+
+void
+Castro::make_radial_data(int is_new)
+{
+#if (BL_SPACEDIM > 1)
+
+ // We only call this for level = 0
+   BL_ASSERT(level == 0);
+
+   int numpts_1d = get_numpts();
+
+   Vector<Real> radial_vol(numpts_1d,0);
+
+   const Real* dx = geom.CellSize();
+   Real  dr = dx[0];
+
+   if (is_new == 1) {
+      MultiFab& S = get_new_data(State_Type);
+      const int nc = S.nComp();
+      Vector<Real> radial_state(numpts_1d*nc,0);
+      for (MFIter mfi(S); mfi.isValid(); ++mfi)
+      {
+         Box bx(mfi.validbox());
+         ca_compute_avgstate(ARLIM_3D(bx.loVect()), ARLIM_3D(bx.hiVect()),ZFILL(dx),&dr,&nc,
+			     BL_TO_FORTRAN_3D(     S[mfi]),radial_state.dataPtr(),
+			     BL_TO_FORTRAN_3D(volume[mfi]),radial_vol.dataPtr(),
+			     ZFILL(geom.ProbLo()),&numpts_1d);
+      }
+
+      ParallelDescriptor::ReduceRealSum(radial_vol.dataPtr(),numpts_1d);
+      ParallelDescriptor::ReduceRealSum(radial_state.dataPtr(),numpts_1d*nc);
+
+      int first = 0;
+      int np_max = 0;
+      for (int i = 0; i < numpts_1d; i++) {
+         if (radial_vol[i] > 0.)
+         {
+            for (int j = 0; j < nc; j++) {
+              radial_state[nc*i+j] /= radial_vol[i];
+            }
+         } else if (first == 0) {
+            np_max = i;
+            first  = 1;
+         }
+      }
+
+      Vector<Real> radial_state_short(np_max*nc,0);
+
+      for (int i = 0; i < np_max; i++) {
+         for (int j = 0; j < nc; j++) {
+           radial_state_short[nc*i+j] = radial_state[nc*i+j];
+         }
+      }
+
+      const Real new_time = state[State_Type].curTime();
+      set_new_outflow_data(radial_state_short.dataPtr(),&new_time,&np_max,&nc);
+   }
+   else
+   {
+      MultiFab& S = get_old_data(State_Type);
+      const int nc = S.nComp();
+      Vector<Real> radial_state(numpts_1d*nc,0);
+      for (MFIter mfi(S); mfi.isValid(); ++mfi)
+      {
+         Box bx(mfi.validbox());
+         ca_compute_avgstate(ARLIM_3D(bx.loVect()), ARLIM_3D(bx.hiVect()),ZFILL(dx),&dr,&nc,
+			     BL_TO_FORTRAN_3D(     S[mfi]),radial_state.dataPtr(),
+			     BL_TO_FORTRAN_3D(volume[mfi]),radial_vol.dataPtr(),
+			     ZFILL(geom.ProbLo()),&numpts_1d);
+      }
+
+      ParallelDescriptor::ReduceRealSum(radial_vol.dataPtr(),numpts_1d);
+      ParallelDescriptor::ReduceRealSum(radial_state.dataPtr(),numpts_1d*nc);
+
+      int first = 0;
+      int np_max = 0;
+      for (int i = 0; i < numpts_1d; i++) {
+         if (radial_vol[i] > 0.)
+         {
+            for (int j = 0; j < nc; j++) {
+              radial_state[nc*i+j] /= radial_vol[i];
+            }
+         } else if (first == 0) {
+            np_max = i;
+            first  = 1;
+         }
+      }
+
+      Vector<Real> radial_state_short(np_max*nc,0);
+
+      for (int i = 0; i < np_max; i++) {
+         for (int j = 0; j < nc; j++) {
+           radial_state_short[nc*i+j] = radial_state[nc*i+j];
+         }
+      }
+
+      const Real old_time = state[State_Type].prevTime();
+      set_old_outflow_data(radial_state_short.dataPtr(),&old_time,&np_max,&nc);
+   }
+
+#endif
+}
+
+void
+Castro::make_vertically_avgd_data(int is_new)
+{
+#if (BL_SPACEDIM > 1)
+
+ // We only call this for level = 0
+   BL_ASSERT(level == 0);
+
+   int ny, nz;
+   get_horizontal_numpts(&ny, &nz);
+
+   Vector<Real> radial_vol(ny*nz, 0);
+   const int npoints = ny*nz;
+
+   const Real* dx = geom.CellSize();
+   Real dy = dx[1];
+   Real dz = dx[2];
+
+   if (is_new == 1) {
+      MultiFab& S = get_new_data(State_Type);
+      const int nc = S.nComp();
+      Vector<Real> radial_state(ny*nz*nc,0);
+      for (MFIter mfi(S); mfi.isValid(); ++mfi)
+      {
+         Box bx(mfi.validbox());
+         ca_compute_vertical_avgstate(ARLIM_3D(bx.loVect()), ARLIM_3D(bx.hiVect()),ZFILL(dx),&nc,
+			     BL_TO_FORTRAN_3D(     S[mfi]),radial_state.dataPtr(),
+			     BL_TO_FORTRAN_3D(volume[mfi]),radial_vol.dataPtr(),
+			     ZFILL(geom.ProbLo()),&ny,&nz);
+      }
+
+      ParallelDescriptor::ReduceRealSum(radial_vol.dataPtr(),npoints);
+      ParallelDescriptor::ReduceRealSum(radial_state.dataPtr(),npoints*nc);
+
+      for (int i = 0; i < npoints; i++) {
+         if (radial_vol[i] > 0.)
+         {
+            for (int j = 0; j < nc; j++) {
+              radial_state[nc*i+j] /= radial_vol[i];
+            }
+        }
+      }
+      //
+      // Vector<Real> radial_state_short(np_max*nc,0);
+      //
+      // for (int i = 0; i < np_max; i++) {
+      //    for (int j = 0; j < nc; j++) {
+      //      radial_state_short[nc*i+j] = radial_state[nc*i+j];
+      //    }
+      // }
+
+      const Real new_time = state[State_Type].curTime();
+      set_new_outflow_data(radial_state.dataPtr(),&new_time,&npoints,&nc);
+   }
+   else
+   {
+      MultiFab& S = get_old_data(State_Type);
+      const int nc = S.nComp();
+      Vector<Real> radial_state(ny*nz*nc,0);
+      for (MFIter mfi(S); mfi.isValid(); ++mfi)
+      {
+         Box bx(mfi.validbox());
+         ca_compute_vertical_avgstate(ARLIM_3D(bx.loVect()), ARLIM_3D(bx.hiVect()),ZFILL(dx),&nc,
+			     BL_TO_FORTRAN_3D(     S[mfi]),radial_state.dataPtr(),
+			     BL_TO_FORTRAN_3D(volume[mfi]),radial_vol.dataPtr(),
+			     ZFILL(geom.ProbLo()),&ny,&nz);
+      }
+
+      ParallelDescriptor::ReduceRealSum(radial_vol.dataPtr(),npoints);
+      ParallelDescriptor::ReduceRealSum(radial_state.dataPtr(),npoints*nc);
+
+      for (int i = 0; i < npoints; i++) {
+         if (radial_vol[i] > 0.)
+         {
+            for (int j = 0; j < nc; j++) {
+              radial_state[nc*i+j] /= radial_vol[i];
+            }
+        }
+      }
+      //
+      // Vector<Real> radial_state_short(np_max*nc,0);
+      //
+      // for (int i = 0; i < np_max; i++) {
+      //    for (int j = 0; j < nc; j++) {
+      //      radial_state_short[nc*i+j] = radial_state[nc*i+j];
+      //    }
+      // }
+
+      const Real old_time = state[State_Type].prevTime();
+      set_old_outflow_data(radial_state.dataPtr(),&old_time,&npoints,&nc);
+   }
+
+#endif
+}
+
+int
+Castro::get_numpts ()
+{
+     int numpts_1d;
+
+     Box bx(geom.Domain());
+     long nx = bx.size()[0];
+
+#if (BL_SPACEDIM == 1)
+     numpts_1d = nx;
+#elif (BL_SPACEDIM == 2)
+     long ny = bx.size()[1];
+     Real ndiagsq = Real(nx*nx + ny*ny);
+     numpts_1d = int(sqrt(ndiagsq))+2*NUM_GROW;
+#elif (BL_SPACEDIM == 3)
+     long ny = bx.size()[1];
+     long nz = bx.size()[2];
+     Real ndiagsq = Real(nx*nx + ny*ny + nz*nz);
+     numpts_1d = int(sqrt(ndiagsq))+2*NUM_GROW;
+#endif
+
+     if (verbose && ParallelDescriptor::IOProcessor())
+         std::cout << "Castro::numpts_1d at level  " << level << " is " << numpts_1d << std::endl;
+
+     return numpts_1d;
+}
+
+int
+Castro::get_horizontal_numpts (int * ny, int* nz)
+{
+     int numpts_1d;
+
+     Box bx(geom.Domain());
+
+     *ny = 0;
+     *nz = 0;
+
+#if (BL_SPACEDIM >= 2)
+     *ny = bx.size()[1];
+#endif
+#if (BL_SPACEDIM == 3)
+     *nz = bx.size()[2];
+#endif
+
+}
