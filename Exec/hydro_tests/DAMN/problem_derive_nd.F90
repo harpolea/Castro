@@ -123,12 +123,13 @@ subroutine ca_derprimrho(rho,r_lo,r_hi,nr, &
     real(rt) :: q(lo(1):hi(1), lo(2):hi(2), lo(3):hi(3), NQ)
     real(rt) :: qaux(lo(1):hi(1), lo(2):hi(2), lo(3):hi(3),NQAUX)
     real(rt) :: comp(lo(1):hi(1), lo(2):hi(2), lo(3):hi(3), NVAR)
-    integer :: i,j,k
+    real(rt) :: vertically_avgd_swe(1, lo(2):hi(2), lo(3):hi(3), NVAR)
+    integer :: i,j,k, vlo(3), vhi(3)
 
     if (level > swe_to_comp_level) then
         call compctoprim(lo, hi, u(:,:,:,1:NVAR), d_lo, d_hi, q, lo, hi, qaux, lo, hi, xlo, dx, .false.)
     else
-        call swe_to_comp(u(:,:,:,1:NVAR), d_lo, d_hi, comp, lo, hi, lo, hi, dx, xlo, .false.)
+        call swe_to_comp(u(:,:,:,1:NVAR), d_lo, d_hi, vertically_avgd_swe, vlo, vhi, comp, lo, hi, lo, hi, dx, xlo, .false.)
 
         call compctoprim(lo, hi, comp(:,:,:,1:NVAR), lo, hi, q, lo, hi, qaux, lo, hi, xlo, dx, .false.)
     endif
@@ -214,12 +215,13 @@ subroutine ca_dereint(e,e_lo,e_hi,ncomp_e, &
   real(rt) :: q(lo(1):hi(1), lo(2):hi(2), lo(3):hi(3), NQ)
   real(rt) :: qaux(lo(1):hi(1), lo(2):hi(2), lo(3):hi(3),NQAUX)
   real(rt) :: comp(lo(1):hi(1), lo(2):hi(2), lo(3):hi(3), NVAR)
-  integer :: i,j,k
+  real(rt) :: vertically_avgd_swe(1, lo(2):hi(2), lo(3):hi(3), NVAR)
+  integer :: i,j,k, vlo(3), vhi(3)
 
   if (level > swe_to_comp_level) then
       call compctoprim(lo, hi, u(:,:,:,1:NVAR), u_lo, u_hi, q, lo, hi, qaux, lo, hi, xlo, dx, .false.)
   else
-      call swe_to_comp(u(:,:,:,1:NVAR), u_lo, u_hi, comp, lo, hi, lo, hi, dx, xlo, .false.)
+      call swe_to_comp(u(:,:,:,1:NVAR), u_lo, u_hi, vertically_avgd_swe, vlo, vhi, comp, lo, hi, lo, hi, dx, xlo, .false.)
 
       call compctoprim(lo, hi, comp(:,:,:,1:NVAR), lo, hi, q, lo, hi, qaux, lo, hi, xlo, dx, .false.)
   endif

@@ -44,7 +44,7 @@ module meth_params_module
   ! as in the primitive variable array
   integer, save :: NGDNV, GDRHO, GDU, GDV, GDW, GDPRES, GDGAME
 
-  integer         , save :: numpts_1d
+  integer         , save :: numpts_1d, ny, nz, n_outflow_cpts
 
   real(rt)        , save, allocatable :: outflow_data_old(:,:)
   real(rt)        , save, allocatable :: outflow_data_new(:,:)

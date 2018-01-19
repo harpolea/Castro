@@ -67,6 +67,21 @@ contains
        enddo
     enddo
 
+    ! If it's the swe_to_comp_level or coarser, need to make sure that
+    ! any refinement happens uniformly in vertical direction
+    if (level <= swe_to_comp_level) then
+        do k = lo(3), hi(3)
+           do j = lo(2), hi(2)
+              do i = lo(1), hi(1)
+                  if (tag(i,j,k) .eq. set) then
+                      tag(lo(1):hi(1),j,k) = set
+                      exit
+                  endif
+              enddo
+           enddo
+        enddo
+    endif
+
   end subroutine set_problem_tags
 
 end module problem_tagging_module

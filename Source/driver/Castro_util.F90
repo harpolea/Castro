@@ -888,9 +888,8 @@ end subroutine compute_temp
   end subroutine ca_compute_avgstate
 
   subroutine ca_compute_vertical_avgstate(lo,hi,dx,nc,&
-                                 state,s_lo,s_hi,radial_state, &
-                                 vol,v_lo,v_hi,radial_vol, &
-                                 problo,ny,nz) &
+                                 state,s_lo,s_hi,horizontal_state, &
+                                 problo,nx) &
                                  bind(C, name="ca_compute_vertical_avgstate")
 
     use meth_params_module, only: URHO, UMX, UMY, UMZ
@@ -903,46 +902,67 @@ end subroutine compute_temp
     integer,  intent(in   ) :: lo(3),hi(3),nc
     real(rt), intent(in   ) :: dx(3),problo(3)
 
-    integer,  intent(in   ) :: ny, nz
-    real(rt), intent(inout) :: radial_state(nc,0:ny*nz-1)
-    real(rt), intent(inout) :: radial_vol(0:ny*nz-1)
-
+    integer,  intent(in   ) :: nx(3)
+#if BL_SPACEDIM == 2
+    real(rt), intent(inout) :: horizontal_state(nc,0:nx(2)-1)
+#elif BL_SPACEDIM == 3
+    real(rt), intent(inout) :: horizontal_state(nc,0:nx(2)*nx(3)-1)
+#endif
     integer,  intent(in   ) :: s_lo(3), s_hi(3)
     real(rt), intent(in   ) :: state(s_lo(1):s_hi(1),s_lo(2):s_hi(2),s_lo(3):s_hi(3),nc)
 
-    integer,  intent(in   ) :: v_lo(3), v_hi(3)
-    real(rt), intent(in   ) :: vol(v_lo(1):v_hi(1),v_lo(2):v_hi(2),v_lo(3):v_hi(3))
-
     integer  :: i,j,k,n,index
-    real(rt) :: x_mom,y_mom,z_mom,radial_mom
+    real(rt) :: cell_volume
 
-    if (dim .eq. 1) call bl_error("Error: cannot do ca_compute_avgstate in 1D.")
+    if (dim .eq. 1) call bl_error("Error: cannot do ca_compute_vertical_avgstate in 1D.")
 
     !
     ! Do not OMP this.
     !
+#if BL_SPACEDIM == 2
+    cell_volume = dx(1) * dx(2)
+#elif BL_SPACEDIM == 3
+    cell_volume = dx(2) * dx(3)
+#endif
     do k = lo(3), hi(3)
        do j = lo(2), hi(2)
           do i = lo(1), hi(1)
 
-             index = k*nz + j
-             if (index .gt. ny*nz-1) then
-                print *,'COMPUTE_AVGSTATE: INDEX TOO BIG ',index,' > ',nz*ny-1
+             index = k*nx(3) + j
+#if BL_SPACEDIM == 2
+             if (index .gt. nx(2)-1) then
+                print *,'COMPUTE_vertical_AVGSTATE: INDEX TOO BIG ',index,' > ',nx(2)-1
+                print *, 'ny = ', nx(2)
+#elif BL_SPACEDIM == 3
+             if (index .gt. nx(2)*nx(3)-1) then
+                print *,'COMPUTE_vertical_AVGSTATE: INDEX TOO BIG ',index,' > ',nx(2)*nx(3)-1
+                print *, 'ny = ', nx(2), 'nz = ', nx(3)
+#endif
                 print *,'AT (i,j,k) ',i,j,k
-                call bl_error("Error:: Castro_util.F90 :: ca_compute_avgstate")
+                call bl_error("Error:: Castro_util.F90 :: ca_compute_vertical_avgstate")
              end if
              ! radial_state(URHO,index) = radial_state(URHO,index) &
              !                          + vol(i,j,k)*state(i,j,k,URHO)
              do n = 1,nc
-                radial_state(n,index) = radial_state(n,index) + vol(i,j,k)*state(i,j,k,n)
+                horizontal_state(n,index) = horizontal_state(n,index) + state(i,j,k,n) / nx(1)
              end do
-             radial_vol(index) = radial_vol(index) + vol(i,j,k)
           enddo
        enddo
     enddo
 
   end subroutine ca_compute_vertical_avgstate
 
+  subroutine set_nynz(nyy,nzz) bind(C, name="set_nynz")
+      use meth_params_module, only: ny,nz
+
+      implicit none
+
+      integer, intent(in) :: nyy, nzz
+
+      ny = nyy
+      nz = nzz
+
+  end subroutine set_nynz
 
 
   function linear_to_angular_momentum(loc, mom) result(ang_mom)

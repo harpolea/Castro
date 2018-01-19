@@ -616,17 +616,24 @@ Castro::initData ()
     dSdt_new.setVal(0.);
 
     // set up outflow_data to record vertically averaged quantities
-#if (BL_SPACEDIM > 1)
-    if ( level == 0 ) {
-       const int nc = S_new.nComp();
-       int ny, nz;
-       get_horizontal_numpts(&ny, &nz);
-       const int npoints = ny * nz;
-       allocate_outflow_data(&npoints,&nc);
-       int is_new = 1;
-       make_vertically_avgd_data(is_new);
-    }
-#endif
+// #if (BL_SPACEDIM > 1)
+//     int swe_to_comp_level;
+//     ca_get_swe_to_comp_level(&swe_to_comp_level);
+//
+//     if ( level == swe_to_comp_level ) {
+//        const int nc = S_new.nComp();
+//        int ny, nz;
+//        get_horizontal_numpts(geom, &ny, &nz);
+// #if (BL_SPACEDIM == 2)
+//        const int npoints = ny;
+// #elif (BL_SPACEDIM == 3)
+//        const int npoints = ny * nz;
+// #endif
+//        allocate_outflow_data(&npoints,&nc);
+//        Vector<Real> horizontal_state(npoints*nc,0);
+//        make_vertically_avgd_data(S_new, geom, horizontal_state);
+//     }
+// #endif
 
 
     if (verbose && ParallelDescriptor::IOProcessor())
@@ -1433,8 +1440,19 @@ Castro::avgDown (int state_indx)
 			 fgeom, cgeom,
 			 0, S_fine.nComp(), fine_ratio);
 
-    if ((level == swe_to_comp_level)){
-        // std::cout << "Calling ca_swe_to_comp\n";
+    if (level == swe_to_comp_level) {
+        const int nc = S_fine.nComp();
+        Vector<int> nx = get_horizontal_numpts(fine_lev.geom);
+
+#if (BL_SPACEDIM == 2)
+        const int npoints = nx[1];
+#elif (BL_SPACEDIM == 3)
+        const int npoints = nx[1] * nx[2];
+#endif
+        allocate_outflow_data(&npoints,&nc);
+        Vector<Real> horizontal_state(npoints*nc,0);
+        make_vertically_avgd_data(S_fine, fine_lev.geom, horizontal_state);
+
          const Real* dx        = fgeom.CellSize();
          for (MFIter mfi(S_fine); mfi.isValid(); ++mfi)
          {
@@ -1442,7 +1460,7 @@ Castro::avgDown (int state_indx)
              bool f = false;
              RealBox gridloc = RealBox(fine_lev.grids[mfi.index()],fgeom.CellSize(),fgeom.ProbLo());
 
-             ca_swe_to_comp_self(BL_TO_FORTRAN_3D(S_fine[mfi]),
+             ca_swe_to_comp_self(BL_TO_FORTRAN_3D(S_fine[mfi]), horizontal_state.dataPtr(), nx.dataPtr(),
                  ARLIM_3D(bx.loVect()), ARLIM_3D(bx.hiVect()), ZFILL(dx), ZFILL(gridloc.lo()), &f);
          }
     }
@@ -2043,96 +2061,67 @@ Castro::make_radial_data(int is_new)
 }
 
 void
-Castro::make_vertically_avgd_data(int is_new)
+Castro::make_vertically_avgd_data(MultiFab & S, const Geometry & lev_geom)
+{
+
+#if (BL_SPACEDIM > 1)
+
+    int swe_to_comp_level;
+    ca_get_swe_to_comp_level(&swe_to_comp_level);
+
+    // We only call this for level = 0
+    BL_ASSERT(level == swe_to_comp_level);
+
+    Vector<int> nx = get_horizontal_numpts(lev_geom);
+
+#if (BL_SPACEDIM == 2)
+    const int npoints = nx[1];
+#elif (BL_SPACEDIM == 3)
+    const int npoints = nx[1] * nx[2];
+#endif
+
+    const int nc = S.nComp();
+    Vector<Real> horizontal_state(npoints*nc,0);
+
+    make_vertically_avgd_data(S, lev_geom, horizontal_state);
+#endif
+}
+
+void
+Castro::make_vertically_avgd_data(MultiFab & S, const Geometry & lev_geom, Vector<Real> & horizontal_state)
 {
 #if (BL_SPACEDIM > 1)
 
- // We only call this for level = 0
-   BL_ASSERT(level == 0);
+    int swe_to_comp_level;
+    ca_get_swe_to_comp_level(&swe_to_comp_level);
 
-   int ny, nz;
-   get_horizontal_numpts(&ny, &nz);
+    // We only call this for level = 0
+    BL_ASSERT(level == swe_to_comp_level);
 
-   Vector<Real> radial_vol(ny*nz, 0);
-   const int npoints = ny*nz;
+    Vector<int> nx = get_horizontal_numpts(lev_geom);
 
-   const Real* dx = geom.CellSize();
-   Real dy = dx[1];
-   Real dz = dx[2];
+#if (BL_SPACEDIM == 2)
+    const int npoints = nx[1];
+#elif (BL_SPACEDIM == 3)
+    const int npoints = nx[1] * nx[2];
+#endif
 
-   if (is_new == 1) {
-      MultiFab& S = get_new_data(State_Type);
-      const int nc = S.nComp();
-      Vector<Real> radial_state(ny*nz*nc,0);
-      for (MFIter mfi(S); mfi.isValid(); ++mfi)
-      {
-         Box bx(mfi.validbox());
-         ca_compute_vertical_avgstate(ARLIM_3D(bx.loVect()), ARLIM_3D(bx.hiVect()),ZFILL(dx),&nc,
-			     BL_TO_FORTRAN_3D(     S[mfi]),radial_state.dataPtr(),
-			     BL_TO_FORTRAN_3D(volume[mfi]),radial_vol.dataPtr(),
-			     ZFILL(geom.ProbLo()),&ny,&nz);
-      }
+    const Real* dx = lev_geom.CellSize();
 
-      ParallelDescriptor::ReduceRealSum(radial_vol.dataPtr(),npoints);
-      ParallelDescriptor::ReduceRealSum(radial_state.dataPtr(),npoints*nc);
+    const int nc = S.nComp();
+    for (MFIter mfi(S); mfi.isValid(); ++mfi)
+    {
+        Box bx(mfi.validbox());
+        ca_compute_vertical_avgstate(ARLIM_3D(bx.loVect()),
+             ARLIM_3D(bx.hiVect()), ZFILL(dx), &nc,
+             BL_TO_FORTRAN_3D(S[mfi]), horizontal_state.dataPtr(),
+             ZFILL(lev_geom.ProbLo()), nx.dataPtr());
+    }
 
-      for (int i = 0; i < npoints; i++) {
-         if (radial_vol[i] > 0.)
-         {
-            for (int j = 0; j < nc; j++) {
-              radial_state[nc*i+j] /= radial_vol[i];
-            }
-        }
-      }
-      //
-      // Vector<Real> radial_state_short(np_max*nc,0);
-      //
-      // for (int i = 0; i < np_max; i++) {
-      //    for (int j = 0; j < nc; j++) {
-      //      radial_state_short[nc*i+j] = radial_state[nc*i+j];
-      //    }
-      // }
+    ParallelDescriptor::ReduceRealSum(horizontal_state.dataPtr(),npoints*nc);
 
-      const Real new_time = state[State_Type].curTime();
-      set_new_outflow_data(radial_state.dataPtr(),&new_time,&npoints,&nc);
-   }
-   else
-   {
-      MultiFab& S = get_old_data(State_Type);
-      const int nc = S.nComp();
-      Vector<Real> radial_state(ny*nz*nc,0);
-      for (MFIter mfi(S); mfi.isValid(); ++mfi)
-      {
-         Box bx(mfi.validbox());
-         ca_compute_vertical_avgstate(ARLIM_3D(bx.loVect()), ARLIM_3D(bx.hiVect()),ZFILL(dx),&nc,
-			     BL_TO_FORTRAN_3D(     S[mfi]),radial_state.dataPtr(),
-			     BL_TO_FORTRAN_3D(volume[mfi]),radial_vol.dataPtr(),
-			     ZFILL(geom.ProbLo()),&ny,&nz);
-      }
-
-      ParallelDescriptor::ReduceRealSum(radial_vol.dataPtr(),npoints);
-      ParallelDescriptor::ReduceRealSum(radial_state.dataPtr(),npoints*nc);
-
-      for (int i = 0; i < npoints; i++) {
-         if (radial_vol[i] > 0.)
-         {
-            for (int j = 0; j < nc; j++) {
-              radial_state[nc*i+j] /= radial_vol[i];
-            }
-        }
-      }
-      //
-      // Vector<Real> radial_state_short(np_max*nc,0);
-      //
-      // for (int i = 0; i < np_max; i++) {
-      //    for (int j = 0; j < nc; j++) {
-      //      radial_state_short[nc*i+j] = radial_state[nc*i+j];
-      //    }
-      // }
-
-      const Real old_time = state[State_Type].prevTime();
-      set_old_outflow_data(radial_state.dataPtr(),&old_time,&npoints,&nc);
-   }
+    const Real new_time = state[State_Type].curTime();
+    set_new_outflow_data(horizontal_state.dataPtr(),&new_time,&npoints,&nc);
 
 #endif
 }
@@ -2164,21 +2153,24 @@ Castro::get_numpts ()
      return numpts_1d;
 }
 
-int
-Castro::get_horizontal_numpts (int * ny, int* nz)
+Vector<int>
+Castro::get_horizontal_numpts (const Geometry& lev_geom)
 {
-     int numpts_1d;
+     Box bx(lev_geom.Domain());
 
-     Box bx(geom.Domain());
+     Vector<int> nx(3,0);
 
-     *ny = 0;
-     *nz = 0;
+     nx[0] = bx.size()[0];
 
 #if (BL_SPACEDIM >= 2)
-     *ny = bx.size()[1];
-#endif
+     nx[1] = bx.size()[1];
 #if (BL_SPACEDIM == 3)
-     *nz = bx.size()[2];
+     nx[2] = bx.size()[2];
 #endif
+#endif
+
+    set_nynz(&nx[1], &nx[2]);
+
+    return nx;
 
 }

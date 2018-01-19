@@ -458,19 +458,20 @@ contains
 end subroutine swe_HLL
 
 
-subroutine swe_to_comp(swe, slo, shi, comp, clo, chi, lo, hi, dx, xlo, ignore_errors)
+subroutine swe_to_comp(swe, slo, shi, vertically_avgd_swe, vlo, vhi, comp, clo, chi, lo, hi, dx, xlo, ignore_errors)
     use meth_params_module, only: NQ, QVAR, QRHO, QU, QV, QW, &
          NVAR, URHO, UMX, UMY, UMZ, NQAUX, QTEMP, UTEMP, UEDEN, UEINT, &
-         QPRES, UFS, UFA, QFA
+         QPRES, UFS, UFA, QFA, outflow_data_new, ny, nz, n_outflow_cpts
     use probdata_module, only : g, dens_incompressible
     use eos_module, only : eos
     use eos_type_module, only : eos_t, eos_input_rp
     use advection_util_module, only: swectoprim, compctoprim
     use network, only : nspec
 
-    integer, intent(in)   :: slo(3), shi(3), clo(3), chi(3), lo(3), hi(3)
+    integer, intent(in)   :: slo(3), shi(3), clo(3), chi(3), lo(3), hi(3), vlo(3), vhi(3)
     real(rt), intent(in)  :: swe(slo(1):shi(1), slo(2):shi(2), slo(3):shi(3), NVAR)
     real(rt), intent(out) :: comp(clo(1):chi(1), clo(2):chi(2), clo(3):chi(3), NVAR)
+    real(rt), intent(inout) :: vertically_avgd_swe(vlo(1):vhi(1), vlo(2):vhi(2), vlo(3):vhi(3), NVAR)
     real(rt), intent(in) :: dx(3), xlo(3)
     logical, optional, intent(in) :: ignore_errors
 
@@ -478,9 +479,10 @@ subroutine swe_to_comp(swe, slo, shi, comp, clo, chi, lo, hi, dx, xlo, ignore_er
     real(rt) :: q_comp(NQ), U_comp(NVAR)
     real(rt) :: qaux(slo(1):shi(1), slo(2):shi(2), slo(3):shi(3),NQAUX)
     type (eos_t)     :: eos_state
+    real(rt) :: vertically_avgd_q_swe(1, lo(2):hi(2), lo(3):hi(3), NQ)
 
-    integer i, j, k, n
-    logical ignore_errs
+    integer :: i, j, k, n, lo2d(3), hi2d(3)
+    logical :: ignore_errs
     real(rt) :: xx, rho
 
     if (present(ignore_errors)) then
@@ -490,22 +492,39 @@ subroutine swe_to_comp(swe, slo, shi, comp, clo, chi, lo, hi, dx, xlo, ignore_er
     endif
     ! write(*,*) "swe_to_comp"
 
+    ! do k = lo(3), hi(3)
+    !     do j = lo(2), hi(2)
+    !         write(*,*) j, k,  vertically_avgd_swe(1, j, k, URHO)
+    !     enddo
+    ! enddo
+
+    ! write(*,*) vertically_avgd_swe(1, lo(2):hi(2), lo(3):hi(3), URHO)
+    ! call exit(0)
+
+    lo2d = [1, lo(2), lo(3)]
+    hi2d = [1, hi(2), hi(3)]
+
     ! phi = gh
     call swectoprim(lo, hi, swe, slo, shi, q_swe, slo, shi, qaux, slo, shi, ignore_errs)
+
+    ! NOTE: hack because for some reason this is always 0??
+    vertically_avgd_swe(1, vlo(2), :, :) = vertically_avgd_swe(1, vlo(2)+1, :, :)
+
+    call swectoprim(lo2d, hi2d, vertically_avgd_swe, vlo, vhi, vertically_avgd_q_swe, lo2d, hi2d, qaux, slo, shi, .true.)
 
     ! INCOMPRESSIBLE
     rho = dens_incompressible
 
     do k = lo(3), hi(3)
         do j = lo(2), hi(2)
-            q_comp(1:NQ) = q_swe(lo(1),j,k,1:NQ)
+            q_comp(1:NQ) = vertically_avgd_q_swe(1,j,k,1:NQ)
             ! NOTE: incompressible for now
             q_comp(QRHO) = rho
 
             do i = lo(1), hi(1)
                 U_comp(1:NVAR) = 0.0_rt
                 xx = xlo(1) + dx(1)*dble(i-lo(1)+HALF)
-                q_comp(QPRES) = 0.5_rt * dens_incompressible * g * (q_swe(i,j,k,QRHO) - xx)**2
+                q_comp(QPRES) = 0.5_rt * dens_incompressible * g * (vertically_avgd_q_swe(1,j,k,QRHO) - xx)**2
 
                 eos_state % rho = q_comp(QRHO)
                 eos_state % p   = q_comp(QPRES)

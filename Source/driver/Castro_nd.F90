@@ -237,10 +237,10 @@ end subroutine ca_get_method_params
 ! ::: ----------------------------------------------------------------
 ! :::
 
-subroutine allocate_outflow_data(np,nc) &
+subroutine allocate_outflow_data(np, nc) &
      bind(C, name="allocate_outflow_data")
 
-  use meth_params_module, only: outflow_data_old, outflow_data_new, outflow_data_allocated
+  use meth_params_module, only: outflow_data_old, outflow_data_new, outflow_data_allocated, n_outflow_cpts
   use amrex_fort_module, only: rt => amrex_real
 
   implicit none
@@ -250,6 +250,8 @@ subroutine allocate_outflow_data(np,nc) &
   if (.not. outflow_data_allocated) then
      allocate(outflow_data_old(nc,np))
      allocate(outflow_data_new(nc,np))
+
+     n_outflow_cpts = nc
   end if
 
   outflow_data_allocated = .true.

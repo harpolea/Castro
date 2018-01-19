@@ -132,14 +132,14 @@ extern "C"
     (BL_FORT_FAB_ARG_3D(S_new), const int* lo, const int* hi, const int* idx);
 
   void ca_swe_to_comp
-    (BL_FORT_FAB_ARG_3D(S_swe), BL_FORT_FAB_ARG_3D(S_comp), const int* lo, const int* hi, const amrex::Real* dx, const amrex::Real* xlo);
+    (BL_FORT_FAB_ARG_3D(S_swe), amrex::Real* horizontal_swe, int * nx, BL_FORT_FAB_ARG_3D(S_comp), const int* lo, const int* hi, const amrex::Real* dx, const amrex::Real* xlo);
 
   void ca_comp_to_swe
     (BL_FORT_FAB_ARG_3D(S_swe), BL_FORT_FAB_ARG_3D(S_comp), const int* lo, const int* hi, const amrex::Real* xlo, const amrex::Real* dx);
 
 // NOTE: ignore_errors flag is a very dangerous argument that should only be set to true if no other option is available (e.g. for regridding where cannot work out how to fill entire grids with valid data)
 void ca_swe_to_comp_self
-  (BL_FORT_FAB_ARG_3D(S_swe), const int* lo, const int* hi, const amrex::Real* dx, const amrex::Real* xlo, bool* ignore_errors);
+  (BL_FORT_FAB_ARG_3D(S_swe), amrex::Real* horizontal_swe, int * nx, const int* lo, const int* hi, const amrex::Real* dx, const amrex::Real* xlo, bool* ignore_errors);
 
 void ca_comp_to_swe_self
   (BL_FORT_FAB_ARG_3D(S_comp), const int* lo, const int* hi, const amrex::Real* xlo, const amrex::Real* dx, bool* ignore_errors);
@@ -163,12 +163,12 @@ void ca_compute_vertical_avgstate
  (const int* lo, const int* hi,
   const amrex::Real* dx, const int* nc,
   const BL_FORT_FAB_ARG_3D(S  ),  amrex::Real* avgden,
-  const BL_FORT_FAB_ARG_3D(Vol),  amrex::Real* avgvol,
-  const amrex::Real* problo, const int* ny, const int* nz);
+  const amrex::Real* problo, const int* nx);
 
   void get_numpts_1d(int* numpts_1d);
   void set_numpts_1d(int* numpts_1d);
-  void allocate_outflow_data(const int* n1d, const int* nc);
+  void set_nynz(int* ny, int* nz);
+  void allocate_outflow_data(const int* np1d, const int* nc);
   void set_old_outflow_data(const amrex::Real* radial, const amrex::Real* time,
 			    const int* numpts, const int* nc);
   void set_new_outflow_data(const amrex::Real* radial, const amrex::Real* time,

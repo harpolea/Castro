@@ -368,7 +368,8 @@ public:
     void expand_state(amrex::MultiFab& S, amrex::Real time, int ng);
 
 	void make_radial_data (int is_new);
-	void make_vertically_avgd_data (int is_new);
+	void make_vertically_avgd_data (amrex::MultiFab& S, const amrex::Geometry & lev_geom);
+	void make_vertically_avgd_data (amrex::MultiFab& S, const amrex::Geometry & lev_geom, amrex::Vector<amrex::Real> & horizontal_state);
 
 #ifdef AUX_UPDATE
     void advance_aux(amrex::Real time, amrex::Real dt);
@@ -407,7 +408,7 @@ protected:
 
 	int get_numpts();
 
-	int get_horizontal_numpts (int * ny, int * nz);
+	amrex::Vector<int> get_horizontal_numpts (const amrex::Geometry& lev_geom);
 
     //
     // A state array with ghost zones.
