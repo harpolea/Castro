@@ -29,10 +29,11 @@ subroutine ca_derheight(h,h_lo,h_hi,nh, &
     real(rt) :: q(lo(1):hi(1), lo(2):hi(2), lo(3):hi(3), NQ)
     real(rt) :: qaux(lo(1):hi(1), lo(2):hi(2), lo(3):hi(3),NQAUX)
     real(rt) :: swe(lo(1):hi(1), lo(2):hi(2), lo(3):hi(3), NVAR)
-    integer :: i,j,k
+    real(rt) :: vertically_avgd_comp(1, lo(2):hi(2), lo(3):hi(3), NVAR)
+    integer :: i,j,k, vlo(3), vhi(3)
 
     if (level > swe_to_comp_level) then
-        call comp_to_swe(swe, lo, hi, u(:,:,:,1:NVAR), d_lo, d_hi, lo, hi, xlo, dx, .false.)
+        call comp_to_swe(swe, lo, hi, u(:,:,:,1:NVAR), d_lo, d_hi, vertically_avgd_comp, vlo, vhi, lo, hi, xlo, dx, .false.)
 
         call swectoprim(lo, hi, swe, lo, hi, q, lo, hi, qaux, lo, hi, .false.)
     else

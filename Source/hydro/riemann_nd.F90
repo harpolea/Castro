@@ -551,7 +551,7 @@ subroutine swe_to_comp(swe, slo, shi, vertically_avgd_swe, vlo, vhi, comp, clo, 
 end subroutine swe_to_comp
 
 
-subroutine comp_to_swe(swe, slo, shi, comp, clo, chi, lo, hi, xlo, dx, ignore_errors)
+subroutine comp_to_swe(swe, slo, shi, comp, clo, chi, vertically_avgd_comp, vlo, vhi, lo, hi, xlo, dx, ignore_errors)
     use meth_params_module, only: QVAR, QRHO, QU, QV, QW, &
          NVAR, URHO, UMX, UMY, UMZ, QTEMP, UTEMP, UFS, UEDEN, UEINT, UFA, QFA
     use probdata_module, only : g, dens_incompressible
@@ -560,17 +560,19 @@ subroutine comp_to_swe(swe, slo, shi, comp, clo, chi, lo, hi, xlo, dx, ignore_er
 
     implicit none
 
-    integer, intent(in)   :: slo(3), shi(3), clo(3), chi(3), lo(3), hi(3)
+    integer, intent(in)   :: slo(3), shi(3), clo(3), chi(3), lo(3), hi(3), vlo(3), vhi(3)
     real(rt), intent(inout)  :: swe(slo(1):shi(1), slo(2):shi(2), slo(3):shi(3), NVAR)
     real(rt), intent(in) :: comp(clo(1):chi(1), clo(2):chi(2), clo(3):chi(3), NVAR)
+    real(rt), intent(inout) :: vertically_avgd_comp(vlo(1):vhi(1), vlo(2):vhi(2), vlo(3):vhi(3), NVAR)
     real(rt), intent(in) :: xlo(3), dx(3)
     logical, optional, intent(in) :: ignore_errors
 
     real(rt) :: q_swe(NQ), U_swe(NVAR), xx
     real(rt) :: q_comp(clo(1):chi(1), clo(2):chi(2), clo(3):chi(3), NQ)
     real(rt) :: qaux(clo(1):chi(1), clo(2):chi(2), clo(3):chi(3), NQAUX)
+    real(rt) :: vertically_avgd_q_comp(1, lo(2):hi(2), lo(3):hi(3), NQ)
 
-    integer i, j, k
+    integer i, j, k, lo2d(3), hi2d(3)
     logical ignore_errs
 
     if (present(ignore_errors)) then
@@ -581,6 +583,9 @@ subroutine comp_to_swe(swe, slo, shi, comp, clo, chi, lo, hi, xlo, dx, ignore_er
 
     ! write(*,*) "comp to swe"
 
+    lo2d = [1, lo(2), lo(3)]
+    hi2d = [1, hi(2), hi(3)]
+
     ! phi = gh
 
     ! NOTE: DON'T DO THIS IS CAUSES ALL OF COMP TO BE SET TO ZERO AS WELL
@@ -588,27 +593,33 @@ subroutine comp_to_swe(swe, slo, shi, comp, clo, chi, lo, hi, xlo, dx, ignore_er
 
     call compctoprim(lo, hi, comp, clo, chi, q_comp, clo, chi, qaux, clo, chi, xlo, dx, ignore_errs)
 
+    ! NOTE: hack because for some reason this is always 0??
+    vertically_avgd_comp(1, vlo(2), :, :) = vertically_avgd_comp(1, vlo(2)+1, :, :)
+
+    call compctoprim(lo2d, hi2d, vertically_avgd_comp, vlo, vhi, vertically_avgd_q_comp, lo2d, hi2d, qaux, clo, chi, xlo, dx, ignore_errs)
+
     xx = xlo(1) + dx(1)*HALF
 
     do k = lo(3), hi(3)
         do j = lo(2), hi(2)
-            do i = lo(1), hi(1)
-                U_swe(1:NVAR) = 0.0_rt
-                ! look at pressure at bottom and invert to get height
-                ! using p = 0.5 * g * h**2
-                q_swe(1:NQ) = q_comp(i,j,k,1:NQ)
-                q_swe(QRHO) = sqrt(2.0_rt * q_comp(lo(1),j,k,QPRES) / (dens_incompressible * g)) + xx
-                q_swe(QPRES) = 0.5_rt * dens_incompressible * g * q_swe(QRHO)**2
+            ! do i = lo(1), hi(1)
+            U_swe(1:NVAR) = 0.0_rt
+            ! look at pressure at bottom and invert to get height
+            ! using p = 0.5 * g * h**2
+            q_swe(1:NQ) = vertically_avgd_q_comp(1,j,k,1:NQ)
+            q_swe(QRHO) = sqrt(2.0_rt * q_comp(lo(1),j,k,QPRES) / (dens_incompressible * g)) + xx
+            q_swe(QPRES) = 0.5_rt * dens_incompressible * g * q_swe(QRHO)**2
 
-                q_swe(QU) = 0.0_rt
+            q_swe(QU) = 0.0_rt
 #if BL_SPACEDIM == 1
-                q_swe(QV) = 0.0_rt
+            q_swe(QV) = 0.0_rt
 #endif
 #if BL_SPACEDIM <= 2
-                q_swe(QW) = 0.0_rt
+            q_swe(QW) = 0.0_rt
 #endif
-                call swe_cons_state(q_swe, U_swe)
+            call swe_cons_state(q_swe, U_swe)
 
+            do i = lo(1), hi(1)
                 swe(i,j,k,1:NVAR) = U_swe(1:NVAR)
             enddo
         enddo

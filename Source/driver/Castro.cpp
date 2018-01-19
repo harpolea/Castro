@@ -1417,6 +1417,18 @@ Castro::avgDown (int state_indx)
         int np = S_fine.nComp();
         // MultiFab::Copy(base, S_fine, 0, 0, S_fine.nComp());
 
+        const int nc = S_fine.nComp();
+        Vector<int> nx = get_horizontal_numpts(fine_lev.geom);
+
+#if (BL_SPACEDIM == 2)
+        const int npoints = nx[1];
+#elif (BL_SPACEDIM == 3)
+        const int npoints = nx[1] * nx[2];
+#endif
+        allocate_outflow_data(&npoints,&nc);
+        Vector<Real> horizontal_state(npoints*nc,0);
+        make_vertically_avgd_data(S_fine, fine_lev.geom, horizontal_state);
+
         for (MFIter mfi(base); mfi.isValid(); ++mfi)
         {
             const Box& bx = mfi.tilebox();
@@ -1431,7 +1443,7 @@ Castro::avgDown (int state_indx)
             const Box& bx = mfi.tilebox();//growntilebox(S_fine.nGrow());
             RealBox gridloc = RealBox(fine_lev.grids[mfi.index()],fgeom.CellSize(),fgeom.ProbLo());
 
-            ca_comp_to_swe(BL_TO_FORTRAN_3D(S_fine[mfi]), BL_TO_FORTRAN_3D(base[mfi]),
+            ca_comp_to_swe(BL_TO_FORTRAN_3D(S_fine[mfi]), BL_TO_FORTRAN_3D(base[mfi]), horizontal_state.dataPtr(), nx.dataPtr(),
                 ARLIM_3D(bx.loVect()), ARLIM_3D(bx.hiVect()), ZFILL(gridloc.lo()), ZFILL(dx));
         }
     }

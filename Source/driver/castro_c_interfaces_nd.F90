@@ -94,6 +94,7 @@ end subroutine ca_reset_internal_e
 #endif
     real(rt), intent(inout) :: comp(clo(1):chi(1), clo(2):chi(2), clo(3):chi(3), NVAR)
     real(rt), intent(in) :: dx(3), xlo(3)
+
     real(rt) :: vertically_avgd_swe(1, slo(2):shi(2), slo(3):shi(3), NVAR)
     integer :: i,j,k,n, vlo(3), vhi(3)
 
@@ -165,14 +166,14 @@ end subroutine ca_reset_internal_e
         return
     else
         ! write(*,*) "ca_swe_to_comp_self", sum(swe(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),URHO))
-        call swe_to_comp(swe, slo, shi, vertically_avgd_swe, vlo, vhi, comp, slo, shi, lo, hi, dx, xlo,  ignore_errors)
+        call swe_to_comp(swe, slo, shi, vertically_avgd_swe, vlo, vhi, comp, slo, shi, lo, hi, dx, xlo, ignore_errors)
 
         swe(slo(1):shi(1), slo(2):shi(2), slo(3):shi(3), 1:NVAR) = comp(slo(1):shi(1), slo(2):shi(2), slo(3):shi(3), 1:NVAR)
     endif
 
 end subroutine ca_swe_to_comp_self
 
-  subroutine ca_comp_to_swe(swe, slo, shi, comp, clo, chi, lo, hi, xlo, dx) &
+  subroutine ca_comp_to_swe(swe, slo, shi, comp, clo, chi, horizontal_comp, nx, lo, hi, xlo, dx) &
        bind(C, name="ca_comp_to_swe")
 
     use riemann_module, only: comp_to_swe
@@ -180,22 +181,42 @@ end subroutine ca_swe_to_comp_self
 
     implicit none
 
-    integer, intent(in)   :: slo(3), shi(3), clo(3), chi(3), lo(3), hi(3)
+    integer, intent(in)   :: slo(3), shi(3), clo(3), chi(3), lo(3), hi(3), nx(3)
     real(rt), intent(out)  :: swe(slo(1):shi(1), slo(2):shi(2), slo(3):shi(3), NVAR)
     real(rt), intent(inout) :: comp(clo(1):chi(1), clo(2):chi(2), clo(3):chi(3), NVAR)
+#if BL_SPACEDIM == 2
+    real(rt), intent(in)  :: horizontal_comp(NVAR, 1:nx(2))
+#elif BL_SPACEDIM == 3
+    real(rt), intent(in)  :: horizontal_comp(NVAR, 1:nx(2)*nx(3))
+#endif
     real(rt), intent(in) :: xlo(3), dx(3)
+
+    real(rt) :: vertically_avgd_comp(1, slo(2):shi(2), slo(3):shi(3), NVAR)
+    integer :: i,j,k,n, vlo(3), vhi(3)
     !
     ! write(*,*) "calling ca_comp_to_swe"
+
+    do k = slo(3), shi(3)
+        do j = slo(2), shi(2)
+            i = k*nx(3) + j
+            do n = 1, NVAR
+                vertically_avgd_comp(1, j, k, n) = horizontal_comp(n, i)
+            enddo
+        enddo
+    enddo
+
+    vlo = [1, slo(2), slo(3)]
+    vhi = [1, shi(2), shi(3)]
 
     if (sum(comp(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),URHO)) == 0.0e0_rt) then
         swe(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),1:NVAR) = comp(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),1:NVAR)
     else
-        call comp_to_swe(swe, slo, shi, comp, clo, chi, lo, hi, xlo, dx)
+        call comp_to_swe(swe, slo, shi, comp, clo, chi, vertically_avgd_comp, vlo, vhi, lo, hi, xlo, dx)
     endif
 
   end subroutine ca_comp_to_swe
 
-  subroutine ca_comp_to_swe_self(comp, clo, chi, lo, hi, xlo, dx, ignore_errors) &
+  subroutine ca_comp_to_swe_self(comp, clo, chi, horizontal_comp, nx, lo, hi, xlo, dx, ignore_errors) &
        bind(C, name="ca_comp_to_swe_self")
 
     use riemann_module, only: comp_to_swe
@@ -203,20 +224,39 @@ end subroutine ca_swe_to_comp_self
 
     implicit none
 
-    integer, intent(in)   :: clo(3), chi(3), lo(3), hi(3)
+    integer, intent(in)   :: clo(3), chi(3), lo(3), hi(3), nx(3)
     real(rt), intent(inout) :: comp(clo(1):chi(1), clo(2):chi(2), clo(3):chi(3), NVAR)
+#if BL_SPACEDIM == 2
+    real(rt), intent(in)  :: horizontal_comp(NVAR, 1:nx(2))
+#elif BL_SPACEDIM == 3
+    real(rt), intent(in)  :: horizontal_comp(NVAR, 1:nx(2)*nx(3))
+#endif
     logical, intent(in) :: ignore_errors
     real(rt), intent(in) :: xlo(3), dx(3)
 
     real(rt) :: swe(clo(1):chi(1), clo(2):chi(2), clo(3):chi(3), NVAR)
+    real(rt) :: vertically_avgd_comp(1, clo(2):chi(2), clo(3):chi(3), NVAR)
+    integer :: i,j,k,n, vlo(3), vhi(3)
 
     ! write(*,*) "calling ca_comp_to_swe_self"
+
+    do k = clo(3), chi(3)
+        do j = clo(2), chi(2)
+            i = k*nx(3) + j
+            do n = 1, NVAR
+                vertically_avgd_comp(1, j, k, n) = horizontal_comp(n, i)
+            enddo
+        enddo
+    enddo
+
+    vlo = [1, clo(2), clo(3)]
+    vhi = [1, chi(2), chi(3)]
 
     if (sum(comp(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),URHO)) == 0.0e0_rt) then
         !write(*,*) "ca_comp_to_swe_self, sum of rhos is zero :("
         return
     else
-        call comp_to_swe(swe, clo, chi, comp, clo, chi, lo, hi, xlo, dx,  ignore_errors)
+        call comp_to_swe(swe, clo, chi, comp, clo, chi, vertically_avgd_comp, vlo, vhi, lo, hi, xlo, dx, ignore_errors)
 
         comp(clo(1):chi(1), clo(2):chi(2), clo(3):chi(3), 1:NVAR) = swe(clo(1):chi(1), clo(2):chi(2), clo(3):chi(3), 1:NVAR)
     endif
