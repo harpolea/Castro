@@ -1418,7 +1418,7 @@ Castro::avgDown (int state_indx)
         // MultiFab::Copy(base, S_fine, 0, 0, S_fine.nComp());
 
         const int nc = S_fine.nComp();
-        Vector<int> nx = get_horizontal_numpts(fine_lev.geom);
+        Vector<int> nx = amrex::get_horizontal_numpts(fine_lev.geom);
 
 #if (BL_SPACEDIM == 2)
         const int npoints = nx[1];
@@ -1426,9 +1426,9 @@ Castro::avgDown (int state_indx)
         const int npoints = nx[1] * nx[2];
 #endif
         allocate_outflow_data(&npoints,&nc);
-        Vector<Real> horizontal_state(npoints*nc,0);
+        Vector<Real> floor_state(npoints*nc,0);
         Real new_time = state[State_Type].curTime();
-        amrex::make_vertically_avgd_data(S_fine, fine_lev.geom, horizontal_state, new_time);
+        amrex::make_floor_data(S_fine, fine_lev.geom, floor_state, new_time);
 
         for (MFIter mfi(base); mfi.isValid(); ++mfi)
         {
@@ -1444,7 +1444,7 @@ Castro::avgDown (int state_indx)
             const Box& bx = mfi.tilebox();//growntilebox(S_fine.nGrow());
             RealBox gridloc = RealBox(fine_lev.grids[mfi.index()],fgeom.CellSize(),fgeom.ProbLo());
 
-            ca_comp_to_swe(BL_TO_FORTRAN_3D(S_fine[mfi]), BL_TO_FORTRAN_3D(base[mfi]), horizontal_state.dataPtr(), nx.dataPtr(),
+            ca_comp_to_swe(BL_TO_FORTRAN_3D(S_fine[mfi]), BL_TO_FORTRAN_3D(base[mfi]), floor_state.dataPtr(), nx.dataPtr(),
                 ARLIM_3D(bx.loVect()), ARLIM_3D(bx.hiVect()), ZFILL(gridloc.lo()), ZFILL(dx));
         }
     }
@@ -1455,7 +1455,7 @@ Castro::avgDown (int state_indx)
 
     if (level == swe_to_comp_level) {
         const int nc = S_fine.nComp();
-        Vector<int> nx = get_horizontal_numpts(fine_lev.geom);
+        Vector<int> nx = amrex::get_horizontal_numpts(fine_lev.geom);
 
 #if (BL_SPACEDIM == 2)
         const int npoints = nx[1];
@@ -2086,7 +2086,7 @@ Castro::make_vertically_avgd_data(MultiFab & S, const Geometry & lev_geom)
     // We only call this for level = 0
     BL_ASSERT(level == swe_to_comp_level);
 
-    Vector<int> nx = get_horizontal_numpts(lev_geom);
+    Vector<int> nx = amrex::get_horizontal_numpts(lev_geom);
 
 #if (BL_SPACEDIM == 2)
     const int npoints = nx[1];
@@ -2128,26 +2128,4 @@ Castro::get_numpts ()
          std::cout << "Castro::numpts_1d at level  " << level << " is " << numpts_1d << std::endl;
 
      return numpts_1d;
-}
-
-Vector<int>
-Castro::get_horizontal_numpts (const Geometry& lev_geom)
-{
-     Box bx(lev_geom.Domain());
-
-     Vector<int> nx(3,0);
-
-     nx[0] = bx.size()[0];
-
-#if (BL_SPACEDIM >= 2)
-     nx[1] = bx.size()[1];
-#if (BL_SPACEDIM == 3)
-     nx[2] = bx.size()[2];
-#endif
-#endif
-
-    set_nynz(&nx[1], &nx[2]);
-
-    return nx;
-
 }

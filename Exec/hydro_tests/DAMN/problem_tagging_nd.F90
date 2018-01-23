@@ -35,20 +35,21 @@ contains
 
     integer :: i, j, k
     real(rt) :: yy
-    ! real(rt) :: q(lo(1):hi(1), lo(2):hi(2), lo(3):hi(3), NQ)
-    ! real(rt) :: qaux(lo(1):hi(1), lo(2):hi(2), lo(3):hi(3),NQAUX)
-    ! real(rt) :: speed
-    !
-    ! if (level > swe_to_comp_level) then
-    !     call compctoprim(lo, hi, state, state_lo, state_hi, q, lo, hi, qaux, lo, hi, xlo, dx, .false.)
-    ! else
-    !     call swectoprim(lo, hi, state, state_lo, state_hi, q, lo, hi, qaux, lo, hi, .false.)
-    ! endif
-    !
+    real(rt) :: q(lo(1):hi(1), lo(2):hi(2), lo(3):hi(3), NQ)
+    real(rt) :: qaux(lo(1):hi(1), lo(2):hi(2), lo(3):hi(3),NQAUX)
+    real(rt) :: speed
+
+    if (level > swe_to_comp_level) then
+        call compctoprim(lo, hi, state, state_lo, state_hi, q, lo, hi, qaux, lo, hi, xlo, dx, .true.)
+    else
+        call swectoprim(lo, hi, state, state_lo, state_hi, q, lo, hi, qaux, lo, hi, .true.)
+    endif
+
     ! do k = lo(3), hi(3)
     !    do j = lo(2), hi(2)
     !       do i = lo(1), hi(1)
     !           speed = sqrt(sum(q(i,j,k,QU:QW)**2))
+    !           write(*,*) "speed = ", speed
     !           if (speed .ge. speederr) then
     !               tag(i,j,k) = set
     !           endif
@@ -72,12 +73,9 @@ contains
     if (level <= swe_to_comp_level) then
         do k = lo(3), hi(3)
            do j = lo(2), hi(2)
-              do i = lo(1), hi(1)
-                  if (tag(i,j,k) .eq. set) then
-                      tag(lo(1):hi(1),j,k) = set
-                      exit
-                  endif
-              enddo
+              if (any(tag(lo(1):hi(1),j,k) .eq. set)) then
+                  tag(lo(1):hi(1),j,k) = set
+              endif
            enddo
         enddo
     endif

@@ -165,6 +165,12 @@ void ca_compute_vertical_avgstate
   const BL_FORT_FAB_ARG_3D(S  ),  amrex::Real* avgden,
   const amrex::Real* problo, const int* nx);
 
+void ca_compute_floor_state
+    (const int* lo, const int* hi,
+    const amrex::Real* dx, const int* nc,
+    const BL_FORT_FAB_ARG_3D(S  ),  amrex::Real* avgden,
+    const amrex::Real* problo, const int* nx);
+
   void get_numpts_1d(int* numpts_1d);
   void set_numpts_1d(int* numpts_1d);
   void set_nynz(int* ny, int* nz);

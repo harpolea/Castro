@@ -173,7 +173,7 @@ end subroutine ca_reset_internal_e
 
 end subroutine ca_swe_to_comp_self
 
-  subroutine ca_comp_to_swe(swe, slo, shi, comp, clo, chi, horizontal_comp, nx, lo, hi, xlo, dx) &
+  subroutine ca_comp_to_swe(swe, slo, shi, comp, clo, chi, floor_comp, nx, lo, hi, xlo, dx) &
        bind(C, name="ca_comp_to_swe")
 
     use riemann_module, only: comp_to_swe
@@ -185,9 +185,9 @@ end subroutine ca_swe_to_comp_self
     real(rt), intent(out)  :: swe(slo(1):shi(1), slo(2):shi(2), slo(3):shi(3), NVAR)
     real(rt), intent(inout) :: comp(clo(1):chi(1), clo(2):chi(2), clo(3):chi(3), NVAR)
 #if BL_SPACEDIM == 2
-    real(rt), intent(in)  :: horizontal_comp(NVAR, 1:nx(2))
+    real(rt), intent(in)  :: floor_comp(NVAR, 1:nx(2))
 #elif BL_SPACEDIM == 3
-    real(rt), intent(in)  :: horizontal_comp(NVAR, 1:nx(2)*nx(3))
+    real(rt), intent(in)  :: floor_comp(NVAR, 1:nx(2)*nx(3))
 #endif
     real(rt), intent(in) :: xlo(3), dx(3)
 
@@ -200,7 +200,7 @@ end subroutine ca_swe_to_comp_self
         do j = slo(2), shi(2)
             i = k*nx(3) + j
             do n = 1, NVAR
-                vertically_avgd_comp(1, j, k, n) = horizontal_comp(n, i)
+                vertically_avgd_comp(1, j, k, n) = floor_comp(n, i)
             enddo
         enddo
     enddo

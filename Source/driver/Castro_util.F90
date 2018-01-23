@@ -952,6 +952,67 @@ end subroutine compute_temp
 
   end subroutine ca_compute_vertical_avgstate
 
+  subroutine ca_compute_floor_state(lo,hi,dx,nc,&
+                                 state,s_lo,s_hi,horizontal_state, &
+                                 problo,nx) &
+                                 bind(C, name="ca_compute_floor_state")
+
+    use meth_params_module, only: URHO, UMX, UMY, UMZ
+    use prob_params_module, only: center, dim
+    use bl_constants_module, only: HALF
+    use amrex_fort_module, only: rt => amrex_real
+
+    implicit none
+
+    integer,  intent(in   ) :: lo(3),hi(3),nc
+    real(rt), intent(in   ) :: dx(3),problo(3)
+
+    integer,  intent(in   ) :: nx(3)
+#if BL_SPACEDIM == 2
+    real(rt), intent(inout) :: horizontal_state(nc,0:nx(2)-1)
+#elif BL_SPACEDIM == 3
+    real(rt), intent(inout) :: horizontal_state(nc,0:nx(2)*nx(3)-1)
+#endif
+    integer,  intent(in   ) :: s_lo(3), s_hi(3)
+    real(rt), intent(in   ) :: state(s_lo(1):s_hi(1),s_lo(2):s_hi(2),s_lo(3):s_hi(3),nc)
+
+    integer  :: j,k,n,index
+
+    if (dim .eq. 1) call bl_error("Error: cannot do ca_compute_vertical_avgstate in 1D.")
+
+    ! write(*,*) "lo, hi", lo, hi
+
+    if ((lo(1) .le. 0) .and. (hi(1) .ge. 0)) then
+        !
+        ! Do not OMP this.
+        !
+        do k = lo(3), hi(3)
+           do j = lo(2), hi(2)
+
+             index = k*nx(3) + j
+#if BL_SPACEDIM == 2
+             if (index .gt. nx(2)-1) then
+                print *,'COMPUTE_FLOOR_STATE: INDEX TOO BIG ',index,' > ',nx(2)-1
+                print *, 'ny = ', nx(2)
+#elif BL_SPACEDIM == 3
+             if (index .gt. nx(2)*nx(3)-1) then
+                print *,'COMPUTE_FLOOR_STATE: INDEX TOO BIG ',index,' > ',nx(2)*nx(3)-1
+                print *, 'ny = ', nx(2), 'nz = ', nx(3)
+#endif
+                print *,'AT (j,k) ',j,k
+                call bl_error("Error:: Castro_util.F90 :: ca_compute_floor_state")
+             end if
+             ! radial_state(URHO,index) = radial_state(URHO,index) &
+             !                          + vol(i,j,k)*state(i,j,k,URHO)
+             do n = 1,nc
+                horizontal_state(n,index) = state(0,j,k,n)
+             enddo
+           enddo
+        enddo
+    endif
+
+  end subroutine ca_compute_floor_state
+
   subroutine set_nynz(nyy,nzz) bind(C, name="set_nynz")
       use meth_params_module, only: ny,nz
 

@@ -407,8 +407,6 @@ protected:
 
 	int get_numpts();
 
-	amrex::Vector<int> get_horizontal_numpts (const amrex::Geometry& lev_geom);
-
     //
     // A state array with ghost zones.
     //
