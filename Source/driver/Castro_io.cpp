@@ -785,7 +785,7 @@ Castro::plotFileOutput(const std::string& dir,
     	      it != derive_names.end(); ++it)
         {
     	    const DeriveRec* rec = derive_lst.get(*it);
-                os << rec->variableName(0) << '\n';
+            os << rec->variableName(0) << '\n';
         }
 
         os << BL_SPACEDIM << '\n';

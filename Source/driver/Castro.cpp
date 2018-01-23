@@ -1427,7 +1427,8 @@ Castro::avgDown (int state_indx)
 #endif
         allocate_outflow_data(&npoints,&nc);
         Vector<Real> horizontal_state(npoints*nc,0);
-        make_vertically_avgd_data(S_fine, fine_lev.geom, horizontal_state);
+        Real new_time = state[State_Type].curTime();
+        amrex::make_vertically_avgd_data(S_fine, fine_lev.geom, horizontal_state, new_time);
 
         for (MFIter mfi(base); mfi.isValid(); ++mfi)
         {
@@ -1463,7 +1464,8 @@ Castro::avgDown (int state_indx)
 #endif
         allocate_outflow_data(&npoints,&nc);
         Vector<Real> horizontal_state(npoints*nc,0);
-        make_vertically_avgd_data(S_fine, fine_lev.geom, horizontal_state);
+        Real new_time = state[State_Type].curTime();
+        amrex::make_vertically_avgd_data(S_fine, fine_lev.geom, horizontal_state, new_time);
 
          const Real* dx        = fgeom.CellSize();
          for (MFIter mfi(S_fine); mfi.isValid(); ++mfi)
@@ -2095,46 +2097,9 @@ Castro::make_vertically_avgd_data(MultiFab & S, const Geometry & lev_geom)
     const int nc = S.nComp();
     Vector<Real> horizontal_state(npoints*nc,0);
 
-    make_vertically_avgd_data(S, lev_geom, horizontal_state);
-#endif
-}
-
-void
-Castro::make_vertically_avgd_data(MultiFab & S, const Geometry & lev_geom, Vector<Real> & horizontal_state)
-{
-#if (BL_SPACEDIM > 1)
-
-    int swe_to_comp_level;
-    ca_get_swe_to_comp_level(&swe_to_comp_level);
-
-    // We only call this for level = 0
-    BL_ASSERT(level == swe_to_comp_level);
-
-    Vector<int> nx = get_horizontal_numpts(lev_geom);
-
-#if (BL_SPACEDIM == 2)
-    const int npoints = nx[1];
-#elif (BL_SPACEDIM == 3)
-    const int npoints = nx[1] * nx[2];
-#endif
-
-    const Real* dx = lev_geom.CellSize();
-
-    const int nc = S.nComp();
-    for (MFIter mfi(S); mfi.isValid(); ++mfi)
-    {
-        Box bx(mfi.validbox());
-        ca_compute_vertical_avgstate(ARLIM_3D(bx.loVect()),
-             ARLIM_3D(bx.hiVect()), ZFILL(dx), &nc,
-             BL_TO_FORTRAN_3D(S[mfi]), horizontal_state.dataPtr(),
-             ZFILL(lev_geom.ProbLo()), nx.dataPtr());
-    }
-
-    ParallelDescriptor::ReduceRealSum(horizontal_state.dataPtr(),npoints*nc);
-
     const Real new_time = state[State_Type].curTime();
-    set_new_outflow_data(horizontal_state.dataPtr(),&new_time,&npoints,&nc);
 
+    amrex::make_vertically_avgd_data(S, lev_geom, horizontal_state, new_time);
 #endif
 }
 

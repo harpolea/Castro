@@ -13,6 +13,7 @@ extern "C"
 void ca_derheight
     (BL_FORT_FAB_ARG_3D(der),const int* nvar,
      const BL_FORT_FAB_ARG_3D(data),const int* ncomp,
+     amrex::Real* horizontal_swe, int * nx,
      const int* lo, const int* hi,
      const int* domain_lo, const int* domain_hi,
      const amrex::Real* delta, const amrex::Real* xlo,
@@ -31,6 +32,7 @@ void ca_derprimv
 void ca_derprimrho
     (BL_FORT_FAB_ARG_3D(der),const int* nvar,
     const BL_FORT_FAB_ARG_3D(data),const int* ncomp,
+    amrex::Real* horizontal_swe, int * nx,
     const int* lo, const int* hi,
     const int* domain_lo, const int* domain_hi,
     const amrex::Real* delta, const amrex::Real* xlo,
@@ -49,6 +51,7 @@ void ca_derW
 void ca_dereint
     (BL_FORT_FAB_ARG_3D(der),const int* nvar,
     const BL_FORT_FAB_ARG_3D(data),const int* ncomp,
+    amrex::Real* horizontal_swe, int * nx,
     const int* lo, const int* hi,
     const int* domain_lo, const int* domain_hi,
     const amrex::Real* delta, const amrex::Real* xlo,
