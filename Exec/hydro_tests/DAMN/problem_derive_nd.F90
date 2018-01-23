@@ -2,7 +2,7 @@
 
 subroutine ca_derheight(h,h_lo,h_hi,nh, &
                     u,d_lo,d_hi,nc, &
-                    horizontal_comp, nx, &
+                    horizontal_comp, nx, floor, &
                     lo,hi,domlo,domhi,dx, &
                     xlo,time,dt,bc,level,grid_no) &
                     bind(C, name="ca_derheight")
@@ -26,10 +26,11 @@ subroutine ca_derheight(h,h_lo,h_hi,nh, &
     real(rt), intent(in) ::    u(d_lo(1):d_hi(1),d_lo(2):d_hi(2),d_lo(3):d_hi(3),nc)
     integer, intent(in) :: level, grid_no
 #if BL_SPACEDIM == 2
-    real(rt), intent(in)  :: horizontal_comp(NVAR, 1:nx(2))
+    real(rt), intent(in)  :: horizontal_comp(NVAR, 0:nx(2)-1)
 #elif BL_SPACEDIM == 3
-    real(rt), intent(in)  :: horizontal_comp(NVAR, 1:nx(2)*nx(3))
+    real(rt), intent(in)  :: horizontal_comp(NVAR, 0:nx(2)*nx(3)-1)
 #endif
+    logical, intent(in) :: floor
 
     real(rt) :: xx, p
     real(rt) :: q(lo(1):hi(1), lo(2):hi(2), lo(3):hi(3), NQ)
@@ -48,6 +49,9 @@ subroutine ca_derheight(h,h_lo,h_hi,nh, &
     enddo
     vlo = [1, lo(2), lo(3)]
     vhi = [1, hi(2), hi(3)]
+
+    ! NOTE: hack because for some reason this is always 0??
+    vertically_avgd_comp(1, vlo(2), :, :) = vertically_avgd_comp(1, vlo(2)+1, :, :)
 
     if (level > swe_to_comp_level) then
         call comp_to_swe(swe, lo, hi, u(:,:,:,1:NVAR), d_lo, d_hi, vertically_avgd_comp, vlo, vhi, lo, hi, xlo, dx, .false.)
@@ -138,9 +142,9 @@ subroutine ca_derprimrho(rho,r_lo,r_hi,nr, &
     real(rt), intent(in) ::    u(d_lo(1):d_hi(1),d_lo(2):d_hi(2),d_lo(3):d_hi(3),nc)
     integer, intent(in) :: level, grid_no
 #if BL_SPACEDIM == 2
-    real(rt), intent(in)  :: horizontal_comp(NVAR, 1:nx(2))
+    real(rt), intent(in)  :: horizontal_comp(NVAR, 0:nx(2)-1)
 #elif BL_SPACEDIM == 3
-    real(rt), intent(in)  :: horizontal_comp(NVAR, 1:nx(2)*nx(3))
+    real(rt), intent(in)  :: horizontal_comp(NVAR, 0:nx(2)*nx(3)-1)
 #endif
 
 
@@ -250,9 +254,9 @@ subroutine ca_dereint(e,e_lo,e_hi,ncomp_e, &
   real(rt), intent(in) :: dx(3), xlo(3), time, dt
   integer, intent(in) :: bc(3,2,ncomp_u), level, grid_no
 #if BL_SPACEDIM == 2
-  real(rt), intent(in)  :: horizontal_comp(NVAR, 1:nx(2))
+  real(rt), intent(in)  :: horizontal_comp(NVAR, 0:nx(2)-1)
 #elif BL_SPACEDIM == 3
-  real(rt), intent(in)  :: horizontal_comp(NVAR, 1:nx(2)*nx(3))
+  real(rt), intent(in)  :: horizontal_comp(NVAR, 0:nx(2)*nx(3)-1)
 #endif
 
   real(rt) :: q(lo(1):hi(1), lo(2):hi(2), lo(3):hi(3), NQ)

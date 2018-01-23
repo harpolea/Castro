@@ -134,9 +134,9 @@ end subroutine ca_reset_internal_e
     integer, intent(in)   :: slo(3), shi(3), lo(3), hi(3), nx(3)
     real(rt), intent(inout)  :: swe(slo(1):shi(1), slo(2):shi(2), slo(3):shi(3), NVAR)
 #if BL_SPACEDIM == 2
-    real(rt), intent(in)  :: horizontal_swe(NVAR, 1:nx(2))
+    real(rt), intent(in)  :: horizontal_swe(NVAR, 0:nx(2)-1)
 #elif BL_SPACEDIM == 3
-    real(rt), intent(in)  :: horizontal_swe(NVAR, 1:nx(2)*nx(3))
+    real(rt), intent(in)  :: horizontal_swe(NVAR, 0:nx(2)*nx(3)-1)
 #endif
     real(rt), intent(in) :: dx(3), xlo(3)
     logical, intent(in) :: ignore_errors
@@ -185,9 +185,9 @@ end subroutine ca_swe_to_comp_self
     real(rt), intent(out)  :: swe(slo(1):shi(1), slo(2):shi(2), slo(3):shi(3), NVAR)
     real(rt), intent(inout) :: comp(clo(1):chi(1), clo(2):chi(2), clo(3):chi(3), NVAR)
 #if BL_SPACEDIM == 2
-    real(rt), intent(in)  :: floor_comp(NVAR, 1:nx(2))
+    real(rt), intent(in)  :: floor_comp(NVAR, 0:nx(2)-1)
 #elif BL_SPACEDIM == 3
-    real(rt), intent(in)  :: floor_comp(NVAR, 1:nx(2)*nx(3))
+    real(rt), intent(in)  :: floor_comp(NVAR, 0:nx(2)*nx(3)-1)
 #endif
     real(rt), intent(in) :: xlo(3), dx(3)
 
@@ -227,9 +227,9 @@ end subroutine ca_swe_to_comp_self
     integer, intent(in)   :: clo(3), chi(3), lo(3), hi(3), nx(3)
     real(rt), intent(inout) :: comp(clo(1):chi(1), clo(2):chi(2), clo(3):chi(3), NVAR)
 #if BL_SPACEDIM == 2
-    real(rt), intent(in)  :: horizontal_comp(NVAR, 1:nx(2))
+    real(rt), intent(in)  :: horizontal_comp(NVAR, 0:nx(2)-1)
 #elif BL_SPACEDIM == 3
-    real(rt), intent(in)  :: horizontal_comp(NVAR, 1:nx(2)*nx(3))
+    real(rt), intent(in)  :: horizontal_comp(NVAR, 0:nx(2)*nx(3)-1)
 #endif
     logical, intent(in) :: ignore_errors
     real(rt), intent(in) :: xlo(3), dx(3)

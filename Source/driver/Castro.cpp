@@ -1516,7 +1516,6 @@ Castro::errorEst (TagBoxArray& tags,
 
     // Apply each of the specified tagging functions.
 
-
     for (int j = 0; j < num_err_list_default; j++)
 	   apply_tagging_func(tags, clearval, tagval, t, j);
 
