@@ -41,7 +41,7 @@ subroutine ca_derheight(h,h_lo,h_hi,nh, &
 
     do k = lo(3), hi(3)
         do j = lo(2), hi(2)
-            i = k*nx(3) + j
+            i = k*nx(2) + j
             do n = 1, NVAR
                 vertically_avgd_comp(1, j, k, n) = horizontal_comp(n, i)
             enddo
@@ -157,7 +157,7 @@ subroutine ca_derprimrho(rho,r_lo,r_hi,nr, &
 
     do k = lo(3), hi(3)
         do j = lo(2), hi(2)
-            i = k*nx(3) + j
+            i = k*nx(2) + j
             do n = 1, NVAR
                 vertically_avgd_swe(1, j, k, n) = horizontal_comp(n, i)
             enddo
@@ -267,7 +267,7 @@ subroutine ca_dereint(e,e_lo,e_hi,ncomp_e, &
 
   do k = lo(3), hi(3)
       do j = lo(2), hi(2)
-          i = k*nx(3) + j
+          i = k*nx(2) + j
           do n = 1, NVAR
               vertically_avgd_swe(1, j, k, n) = horizontal_comp(n, i)
           enddo

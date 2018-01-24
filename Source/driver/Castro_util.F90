@@ -912,23 +912,23 @@ end subroutine compute_temp
     real(rt), intent(in   ) :: state(s_lo(1):s_hi(1),s_lo(2):s_hi(2),s_lo(3):s_hi(3),nc)
 
     integer  :: i,j,k,n,index
-    real(rt) :: cell_volume
+    ! real(rt) :: cell_volume
 
     if (dim .eq. 1) call bl_error("Error: cannot do ca_compute_vertical_avgstate in 1D.")
 
     !
     ! Do not OMP this.
     !
-#if BL_SPACEDIM == 2
-    cell_volume = dx(1) * dx(2)
-#elif BL_SPACEDIM == 3
-    cell_volume = dx(2) * dx(3)
-#endif
+! #if BL_SPACEDIM == 2
+!     cell_volume = dx(1) * dx(2)
+! #elif BL_SPACEDIM == 3
+!     cell_volume = dx(2) * dx(3)
+! #endif
     do k = lo(3), hi(3)
        do j = lo(2), hi(2)
           do i = lo(1), hi(1)
 
-             index = k*nx(3) + j
+             index = k*nx(2) + j
 #if BL_SPACEDIM == 2
              if (index .gt. nx(2)-1) then
                 print *,'COMPUTE_vertical_AVGSTATE: INDEX TOO BIG ',index,' > ',nx(2)-1
@@ -989,7 +989,7 @@ end subroutine compute_temp
         do k = lo(3), hi(3)
            do j = lo(2), hi(2)
 
-             index = k*nx(3) + j
+             index = k*nx(2) + j
 #if BL_SPACEDIM == 2
              if (index .gt. nx(2)-1) then
                 print *,'COMPUTE_FLOOR_STATE: INDEX TOO BIG ',index,' > ',nx(2)-1

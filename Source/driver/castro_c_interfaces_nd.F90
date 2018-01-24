@@ -104,7 +104,7 @@ end subroutine ca_reset_internal_e
 
     do k = slo(3), shi(3)
         do j = slo(2), shi(2)
-            i = k*nx(3) + j
+            i = k*nx(2) + j
             do n = 1, NVAR
                 vertically_avgd_swe(1, j, k, n) = horizontal_swe(n, i)
             enddo
@@ -147,7 +147,7 @@ end subroutine ca_reset_internal_e
 
     do k = slo(3), shi(3)
         do j = slo(2), shi(2)
-            i = k*nx(3) + j
+            i = k*nx(2) + j
             do n = 1, NVAR
                 vertically_avgd_swe(1, j, k, n) = horizontal_swe(n, i)
             enddo
@@ -198,7 +198,7 @@ end subroutine ca_swe_to_comp_self
 
     do k = slo(3), shi(3)
         do j = slo(2), shi(2)
-            i = k*nx(3) + j
+            i = k*nx(2) + j
             do n = 1, NVAR
                 vertically_avgd_comp(1, j, k, n) = floor_comp(n, i)
             enddo
@@ -242,7 +242,7 @@ end subroutine ca_swe_to_comp_self
 
     do k = clo(3), chi(3)
         do j = clo(2), chi(2)
-            i = k*nx(3) + j
+            i = k*nx(2) + j
             do n = 1, NVAR
                 vertically_avgd_comp(1, j, k, n) = horizontal_comp(n, i)
             enddo
