@@ -29,7 +29,3 @@ derive_lst.addComponent("primmom",desc_lst,State_Type,Density,NUM_STATE);
 // Pressure gradient magnitute
 derive_lst.add("pressgrad",IndexType::TheCellType(),1,ca_derpressgrad,the_same_box);
 derive_lst.addComponent("pressgrad",desc_lst,State_Type,Density,NUM_STATE);
-
-// Primitive advected quantity
-derive_lst.add("primadv",IndexType::TheCellType(),1,ca_derprimadv,the_same_box);
-derive_lst.addComponent("primadv",desc_lst,State_Type,Density,NUM_STATE);

@@ -102,12 +102,11 @@ contains
     use eos_module, only: eos, eos_init, initialized
     use eos_type_module, only: eos_input_re, eos_t, eos_input_rt, eos_input_rp
     use metric_module, only: calculate_scalar_W
-    use probdata_module, only: dens_incompressible
 
     real(rt)        , intent(in)  :: q(NQ)
     real(rt)        , intent(out) :: U(NVAR)
 
-    real(rt) :: W, rhoh, p, rho
+    real(rt) :: W, rhoh, p
     type(eos_t) :: eos_state
 
     if (.not. initialized) call eos_init(small_dens=small_dens, small_temp=small_temp)
@@ -115,19 +114,16 @@ contains
     call calculate_scalar_W(q(QU:QW), W)
     U(1:NVAR) = 0.0_rt
 
-    ! INCOMPRESSIBLE
-    rho = dens_incompressible
+    U(URHO) = q(QRHO) * W !q(QRHO)
 
-    U(URHO) = rho * W !q(QRHO)
-
-    eos_state % rho  = rho
-    eos_state % e    = q(QREINT) / rho
+    eos_state % rho  = q(QRHO)
+    eos_state % e    = q(QREINT) / q(QRHO)
     eos_state % p = q(QPRES)
     eos_state % T = q(QTEMP)
 
     call eos(eos_input_re, eos_state)
 
-    rhoh = eos_state % gam1 * q(QREINT) + rho
+    rhoh = eos_state % gam1 * q(QREINT) + q(QRHO)
     p = eos_state % p
 
     ! since we advect all 3 velocity components regardless of dimension, this
@@ -160,7 +156,7 @@ contains
     use meth_params_module, only: NQ, NVAR, URHO, UMX, UMY, UMZ, &
          npassive, upass_map, UEDEN, UEINT, UTEMP, UFS, UFA, &
          QU, QV, QW, QRHO, nadv, QFA
-    use probdata_module, only: g, dens_incompressible
+    use probdata_module, only: g
     use network, only : nspec
 
     integer, intent(in) :: idir, bnd_fac
@@ -268,20 +264,18 @@ contains
     use meth_params_module, only: NVAR, URHO, UMX, UMY, UMZ, UEDEN
     use eos_module, only: eos
     use eos_type_module, only: eos_input_re, eos_t
-    use probdata_module, only: dens_incompressible
 
     double precision, intent(in)  :: U(NVAR), p
     double precision, intent(out) :: f
 
-    double precision :: ss, tpd, rho
+    double precision :: ss, tpd
     type (eos_t)     :: eos_state
 
-    rho = dens_incompressible !INCOMPRESSIBLE
 
     tpd = U(UEDEN) + p + U(URHO)
     ss = sum(U(UMX:UMZ)**2) ! norm of S
 
-    eos_state % rho  = rho! U(URHO) * sqrt(tpd**2 - ss) / tpd
+    eos_state % rho  = U(URHO) * sqrt(tpd**2 - ss) / tpd
     eos_state % e    = (sqrt(tpd**2 - ss) - &
         p * tpd / sqrt(tpd**2 - ss) - U(URHO)) / U(URHO)
 

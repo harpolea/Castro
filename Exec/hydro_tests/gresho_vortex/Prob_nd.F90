@@ -16,7 +16,7 @@ subroutine amrex_probinit (init,name,namlen,problo,probhi) bind(c)
    integer :: i
 
    namelist /fortin/ g, swe_to_comp_level, &
-        nsub, dens_incompressible, t_r
+        nsub, eos_K, t_r
 
    integer, parameter :: maxlen = 127
    character :: probin*(maxlen)

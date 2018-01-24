@@ -9,7 +9,7 @@
    dens_ambient = 1.0
    nsub = 10
    swe_to_comp_level = 0
-   dens_incompressible = 1.0d-2
+   eos_K = 1.0
 
 /
 

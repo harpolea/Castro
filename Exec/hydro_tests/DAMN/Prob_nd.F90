@@ -19,7 +19,7 @@ subroutine amrex_probinit (init,name,namlen,problo,probhi) bind(c)
    integer :: i
 
    namelist /fortin/ h_in, h_out, damn_rad, g, swe_to_comp_level, p_ambient, dens_ambient, exp_energy, &
-        nsub, temp_ambient, dens_incompressible
+        nsub, temp_ambient, eos_K
 
    integer, parameter :: maxlen=127
    character :: probin*(maxlen)
@@ -55,7 +55,7 @@ subroutine amrex_probinit (init,name,namlen,problo,probhi) bind(c)
    exp_energy = 1.e0_rt        ! absolute energy of the explosion (in erg)
    nsub = 4
    temp_ambient = -1.e2_rt
-   dens_incompressible = 1.0e0_rt
+   eos_K = 1._rt
 
    swe_to_comp_level = 0
 
@@ -75,7 +75,7 @@ subroutine amrex_probinit (init,name,namlen,problo,probhi) bind(c)
    ! override the pressure iwth the temperature
    if (temp_ambient > ZERO) then
 
-      eos_state % rho = dens_incompressible
+      eos_state % rho = eos_K * p_ambient**(ONE / eos_state % gam1) !dens_incompressible
       eos_state % xn(:) = xn_zone(:)
       eos_state % T = temp_ambient
 
@@ -87,7 +87,7 @@ subroutine amrex_probinit (init,name,namlen,problo,probhi) bind(c)
 
    ! Calculate ambient state data
 
-   eos_state % rho = dens_incompressible
+   eos_state % rho = eos_K * p_ambient**(ONE / eos_state % gam1)
    eos_state % p   = p_ambient
    eos_state % T   = 1.e5_rt ! Initial guess for iterations
    eos_state % xn  = xn_zone
@@ -147,11 +147,17 @@ subroutine ca_initdata(level,time,lo,hi,nscal, &
 
   integer :: i, j, k, n, ii, jj, kk
 
-  real(rt)         :: dye, eint, a
+  real(rt)         :: dye, eint, a, gamma
   real(rt)         :: q(state_lo(1):state_hi(1),state_lo(2):state_hi(2),state_lo(3):state_hi(3),NQ)
   type(eos_t) :: eos_state
 
   if (.not. initialized) call eos_init(small_dens=small_dens, small_temp=small_temp)
+
+  eos_state % p = 0._rt
+  eos_state % rho = 0._rt
+
+  call eos(eos_input_rp, eos_state)
+  gamma = eos_state % gam1
 
   dye = ZERO
 
@@ -170,7 +176,6 @@ subroutine ca_initdata(level,time,lo,hi,nscal, &
      do j = lo(2), hi(2)
         yy = xlo(2) + delta(2)*dble(j-lo(2)+HALF)
 
-
         r = yy
 
         ! circular dam
@@ -185,13 +190,13 @@ subroutine ca_initdata(level,time,lo,hi,nscal, &
 
             xx = xlo(1) + delta(1)*dble(i-lo(1)+HALF)
 
-            q(i,j,k,QRHO) = dens_incompressible
+            eos_state % rho = eos_K**(gamma/(gamma-1._rt)) * ((gamma-1._rt)/gamma * g * (h-xx))**(1._rt / (gamma-1._rt))
 
-            eos_state % p = 0.5e0_rt * dens_incompressible * g * (h-xx)**2
+            eos_state % p = (eos_state % rho / eos_K)**gamma
+
             q(i,j,k,QPRES) = eos_state % p
+            q(i,j,k,QRHO) = eos_state % rho
 
-            !eos_state % e = e_zone
-            eos_state % rho = q(i,j,k, QRHO)
             eos_state % xn(:) = xn_zone(:)
             eos_state%T = 100000.e0_rt ! initial guess
 

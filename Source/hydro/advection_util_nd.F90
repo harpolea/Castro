@@ -483,7 +483,8 @@ contains
                                    small_dens, QFA, QFS, UFA, nadv
     use bl_constants_module, only: ZERO, HALF, ONE
     use castro_util_module, only: position
-    use probdata_module, only : g, dens_incompressible
+    use probdata_module, only : g, eos_K
+    use actual_eos_module, only: gamma_const
 
     use amrex_fort_module, only : rt => amrex_real
 
@@ -571,7 +572,7 @@ contains
 #if BL_SPACEDIM <= 2
               q(i,j,k,QW) = 0.0_rt
 #endif
-              q(i,j,k,QPRES) = 0.5_rt * dens_incompressible * g * q(i,j,k,QRHO)**2
+              q(i,j,k,QPRES) = (q(i,j,k,QRHO) / eos_K)**gamma_const
               q(i,j,k,QREINT) = uin(i,j,k,UEINT)
               q(i,j,k,QTEMP) = uin(i,j,k,UTEMP)
               q(i,j,k,QFS:QFS-1+nspec) = q(i,j,k,QRHO) / nspec
@@ -610,7 +611,7 @@ subroutine compctoprim(lo, hi, &
                                  small_dens, small_temp, UFA, QFA, nadv
   use bl_constants_module, only: ZERO, HALF, ONE
   use castro_util_module, only: position
-  use probdata_module, only : g, dens_incompressible
+  use probdata_module, only : g
   use riemann_util_module, only : zbrent, f_of_p
 
   use amrex_fort_module, only : rt => amrex_real
@@ -634,15 +635,17 @@ subroutine compctoprim(lo, hi, &
   integer          :: i, j, k
   integer          :: n, iq, ipassive
   real(rt)         :: xx, pmin, pmax, sq, W2, h, ssq, p, rhoh
-  real(rt)         :: fmin, fmax, eden, vel(3)
+  real(rt)         :: fmin, fmax, eden, vel(3), gamma
   type (eos_t)     :: eos_state
 
-  eos_state % rho = dens_incompressible
+  eos_state % rho = 1.0_rt
   eos_state % e = 1.0_rt
 
   if (.not. initialized) call eos_init(small_dens=small_dens, small_temp=small_temp)
 
   call eos(eos_input_re, eos_state)
+
+  gamma = eos_state % gam1
 
   do k = lo(3), hi(3)
      do j = lo(2), hi(2)
@@ -671,86 +674,86 @@ subroutine compctoprim(lo, hi, &
         do i = lo(1), hi(1)
             q(i,j,k,1:NQ) = 0.0_rt
 
-            ! if (uin(i,j,k,URHO) .le. ZERO) then
-            !     q(i,j,k,QRHO) = 1.0_rt
-            !     q(i,j,k,QU) = 0.1_rt * uin(i,j,k,UMX) !/ uin(i,j,k,URHO)
-            !     q(i,j,k,QV) = 0.1_rt * uin(i,j,k,UMY) !/ uin(i,j,k,URHO)
-            !     q(i,j,k,QW) = 0.1_rt * uin(i,j,k,UMZ) !/ uin(i,j,k,URHO)
-            ! else
-            !     ! Incompressible
-            !     q(i,j,k,QRHO) = 1.0_rt!uin(i,j,k,URHO)
-            !     q(i,j,k,QU) = uin(i,j,k,UMX) / uin(i,j,k,URHO)
-            !     q(i,j,k,QV) = uin(i,j,k,UMY) / uin(i,j,k,URHO)
-            !     q(i,j,k,QW) = uin(i,j,k,UMZ) / uin(i,j,k,URHO)
-            ! endif
+            if (uin(i,j,k,URHO) .le. ZERO) then
+                q(i,j,k,QRHO) = 1.0_rt
+                q(i,j,k,QU) = 0.1_rt * uin(i,j,k,UMX) !/ uin(i,j,k,URHO)
+                q(i,j,k,QV) = 0.1_rt * uin(i,j,k,UMY) !/ uin(i,j,k,URHO)
+                q(i,j,k,QW) = 0.1_rt * uin(i,j,k,UMZ) !/ uin(i,j,k,URHO)
+            else
+                ! Incompressible
+                q(i,j,k,QRHO) = 1.0_rt!uin(i,j,k,URHO)
+                q(i,j,k,QU) = uin(i,j,k,UMX) / uin(i,j,k,URHO)
+                q(i,j,k,QV) = uin(i,j,k,UMY) / uin(i,j,k,URHO)
+                q(i,j,k,QW) = uin(i,j,k,UMZ) / uin(i,j,k,URHO)
+            endif
 
-            ! eden = uin(i,j,k,UEDEN)
-            !
-            ! if (eden < ZERO) then
-            !     eden = abs(eden)
-            ! endif
-            !
-            ! ssq = sum(uin(i,j,k,UMX:UMZ)**2)
-            !
-            ! pmin = (gamma - 1.0_rt) * (eden + uin(i,j,k,URHO) - ssq / (eden + uin(i,j,k,URHO))**2 - uin(i,j,k,URHO))
-            !
-            ! pmax = (gamma - 1.0_rt) * (eden + uin(i,j,k,URHO) - ssq / (eden + uin(i,j,k,URHO)))
-            !
-            ! if (pmin < 0.0_rt) then
-            !       pmin = 0._rt
-            ! end if
-            !
-            ! call f_of_p(fmin, pmin, uin(i,j,k,:))
-            ! call f_of_p(fmax, pmax, uin(i,j,k,:))
-            !
-            ! if (fmin * fmax > 0.0_rt) then
-            !     pmin = pmin * 0.1_rt !0._rt
-            ! end if
-            !
-            ! call f_of_p(fmin, pmin, uin(i,j,k,:))
-            !
-            ! !write(*,*) "f = ", fmin, fmax, " p = ", pmin, pmax
-            !
-            ! if (fmin * fmax > 0.0_rt) then
-            !   pmax = pmax * 10._rt
-            ! end if
-            !
-            ! call zbrent(p, pmin, pmax, uin(i,j,k,:))
-            !
-            ! !write(*,*) "pressure = ", pmin, pmax
-            !
-            ! if (p /= p .or. p <= 0.0_rt) then! .or. p > 1.0_rt) then
-            !
-            !   p = abs((gamma - 1.0_rt) * ((eden + uin(i,j,k,URHO)) - ssq / (eden + uin(i,j,k,URHO))**2 - uin(i,j,k,URHO)))
-            !
-            !   !if (p > 1.0_rt) then
-            !       !p = 1.0_rt
-            !   !end if
-            ! end if
-            !
-            ! sq = sqrt((eden + p + uin(i,j,k,URHO))**2 - ssq)
-            !
-            ! if (sq /= sq) then
-            !   sq = eden + p + uin(i,j,k,URHO)
-            ! end if
-            !
-            ! h = 1.0_rt + gamma * &
-            ! (sq - p * (eden + p + uin(i,j,k,URHO)) / sq - uin(i,j,k,URHO)) / uin(i,j,k,URHO)
-            ! W2 = 1.0_rt + ssq / (uin(i,j,k,URHO) * h)**2
+            eden = uin(i,j,k,UEDEN)
+
+            if (eden < ZERO) then
+                eden = abs(eden)
+            endif
+
+            ssq = sum(uin(i,j,k,UMX:UMZ)**2)
+
+            pmin = (gamma - 1.0_rt) * (eden + uin(i,j,k,URHO) - ssq / (eden + uin(i,j,k,URHO))**2 - uin(i,j,k,URHO))
+
+            pmax = (gamma - 1.0_rt) * (eden + uin(i,j,k,URHO) - ssq / (eden + uin(i,j,k,URHO)))
+
+            if (pmin < 0.0_rt) then
+                  pmin = 0._rt
+            end if
+
+            call f_of_p(fmin, pmin, uin(i,j,k,:))
+            call f_of_p(fmax, pmax, uin(i,j,k,:))
+
+            if (fmin * fmax > 0.0_rt) then
+                pmin = pmin * 0.1_rt !0._rt
+            end if
+
+            call f_of_p(fmin, pmin, uin(i,j,k,:))
+
+            !write(*,*) "f = ", fmin, fmax, " p = ", pmin, pmax
+
+            if (fmin * fmax > 0.0_rt) then
+              pmax = pmax * 10._rt
+            end if
+
+            call zbrent(p, pmin, pmax, uin(i,j,k,:))
+
+            !write(*,*) "pressure = ", pmin, pmax
+
+            if (p /= p .or. p <= 0.0_rt) then! .or. p > 1.0_rt) then
+
+              p = abs((gamma - 1.0_rt) * ((eden + uin(i,j,k,URHO)) - ssq / (eden + uin(i,j,k,URHO))**2 - uin(i,j,k,URHO)))
+
+              !if (p > 1.0_rt) then
+                  !p = 1.0_rt
+              !end if
+            end if
+
+            sq = sqrt((eden + p + uin(i,j,k,URHO))**2 - ssq)
+
+            if (sq /= sq) then
+              sq = eden + p + uin(i,j,k,URHO)
+            end if
+
+            h = 1.0_rt + gamma * &
+            (sq - p * (eden + p + uin(i,j,k,URHO)) / sq - uin(i,j,k,URHO)) / uin(i,j,k,URHO)
+            W2 = 1.0_rt + ssq / (uin(i,j,k,URHO) * h)**2
 
             !write(*,*) "p, sq, eden, rho", p, sq, eden, uin(i,j,k,URHO)
             !return
 
-            q(i,j,k,QRHO) = dens_incompressible! INCOMPRESSIBLE uin(i,j,k,URHO) * sq / (eden + p + uin(i,j,k,URHO))
+            q(i,j,k,QRHO) = uin(i,j,k,URHO) * sq / (eden + p + uin(i,j,k,URHO))
 
             ! write(*,*) uin(i,j,k,URHO) * sq / (eden + p + uin(i,j,k,URHO))
 
-            W2 = (uin(i,j,k,URHO) / dens_incompressible)**2
+            W2 = (uin(i,j,k,URHO) / q(i,j,k,QRHO))**2
             ! if ((W2 - 1.0_rt) < 1.0e-8_rt) then
                 ! eden = uin(i,j,k,UEDEN)
                 ! p = (gamma - 1.0_rt) * (eden + uin(i,j,k,URHO) - ssq / (eden + uin(i,j,k,URHO))**2 - uin(i,j,k,URHO))
-            p = (uin(i,j,k,UEDEN) - dens_incompressible * W2 + uin(i,j,k,URHO)) / (eos_state % gam1 * W2 / (eos_state % gam1 - 1.0_rt) - 1.0_rt)
-            rhoh = dens_incompressible + eos_state % gam1 * p / (eos_state % gam1 - 1.0_rt)
+            p = (uin(i,j,k,UEDEN) - q(i,j,k,QRHO) * W2 + uin(i,j,k,URHO)) / (eos_state % gam1 * W2 / (eos_state % gam1 - 1.0_rt) - 1.0_rt)
+            rhoh = q(i,j,k,QRHO) + eos_state % gam1 * p / (eos_state % gam1 - 1.0_rt)
                 ! rhoh = uin(i,j,k,UEINT) * eos_state % gam1 + dens_incompressible
             ! else
             !     rhoh = ssq / (W2 - 1.0_rt)

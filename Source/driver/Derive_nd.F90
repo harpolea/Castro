@@ -471,7 +471,8 @@ contains
     use meth_params_module, only: URHO, UEINT, UTEMP, UFS, UFX
     use bl_constants_module
     use amrex_fort_module, only : rt => amrex_real
-    use probdata_module, only: swe_to_comp_level, g, dens_incompressible
+    use probdata_module, only: swe_to_comp_level, g, eos_K
+    use actual_eos_module, only: gamma_const
 
     implicit none
 
@@ -496,7 +497,7 @@ contains
              if (level <= swe_to_comp_level) then
 
                  xx = xlo(1) + dx(1)*dble(i-lo(1)+HALF)
-                 p(i,j,k,1) = 0.5d0 * dens_incompressible * g * (u(i,j,k,URHO) - xx)**2
+                 p(i,j,k,1) = ((gamma_const - 1._rt)/gamma_const * g * eos_K * (u(i,j,k,URHO) - xx)) ** (gamma_const / (gamma_const - 1._rt))
 
              else
 

@@ -462,7 +462,8 @@ subroutine swe_to_comp(swe, slo, shi, vertically_avgd_swe, vlo, vhi, comp, clo, 
     use meth_params_module, only: NQ, QVAR, QRHO, QU, QV, QW, &
          NVAR, URHO, UMX, UMY, UMZ, NQAUX, QTEMP, UTEMP, UEDEN, UEINT, &
          QPRES, UFS, UFA, QFA, outflow_data_new, ny, nz, n_outflow_cpts
-    use probdata_module, only : g, dens_incompressible
+    use probdata_module, only : g, eos_K
+    use actual_eos_module, only: gamma_const
     use eos_module, only : eos
     use eos_type_module, only : eos_t, eos_input_rp
     use advection_util_module, only: swectoprim, compctoprim
@@ -483,7 +484,7 @@ subroutine swe_to_comp(swe, slo, shi, vertically_avgd_swe, vlo, vhi, comp, clo, 
 
     integer :: i, j, k, n, lo2d(3), hi2d(3)
     logical :: ignore_errs
-    real(rt) :: xx, rho
+    real(rt) :: xx, h
 
     if (present(ignore_errors)) then
         ignore_errs = ignore_errors
@@ -509,19 +510,18 @@ subroutine swe_to_comp(swe, slo, shi, vertically_avgd_swe, vlo, vhi, comp, clo, 
 
     call swectoprim(lo2d, hi2d, vertically_avgd_swe, vlo, vhi, vertically_avgd_q_swe, lo2d, hi2d, qaux, slo, shi, .true.)
 
-    ! INCOMPRESSIBLE
-    rho = dens_incompressible
-
     do k = lo(3), hi(3)
         do j = lo(2), hi(2)
             q_comp(1:NQ) = vertically_avgd_q_swe(1,j,k,1:NQ)
-            ! NOTE: incompressible for now
-            q_comp(QRHO) = rho
+            h = vertically_avgd_q_swe(1,j,k,QRHO)
 
             do i = lo(1), hi(1)
                 U_comp(1:NVAR) = 0.0_rt
                 xx = xlo(1) + dx(1)*dble(i-lo(1)+HALF)
-                q_comp(QPRES) = 0.5_rt * dens_incompressible * g * (vertically_avgd_q_swe(1,j,k,QRHO) - xx)**2
+
+                q_comp(QRHO) = eos_K**(gamma_const/(gamma_const-1._rt)) * ((gamma_const-1._rt)/gamma_const * g * (h-xx))**(1._rt / (gamma_const-1._rt))
+
+                q_comp(QPRES) = (q_comp(QRHO) / eos_K)**gamma_const
 
                 eos_state % rho = q_comp(QRHO)
                 eos_state % p   = q_comp(QPRES)
@@ -551,7 +551,8 @@ end subroutine swe_to_comp
 subroutine comp_to_swe(swe, slo, shi, comp, clo, chi, floor_comp, vlo, vhi, lo, hi, xlo, dx, ignore_errors)
     use meth_params_module, only: QVAR, QRHO, QU, QV, QW, &
          NVAR, URHO, UMX, UMY, UMZ, QTEMP, UTEMP, UFS, UEDEN, UEINT, UFA, QFA
-    use probdata_module, only : g, dens_incompressible
+    use probdata_module, only : g, eos_K
+    use actual_eos_module, only: gamma_const
     use advection_util_module, only: compctoprim
     use network, only : nspec
 
@@ -601,8 +602,8 @@ subroutine comp_to_swe(swe, slo, shi, comp, clo, chi, floor_comp, vlo, vhi, lo, 
             ! look at pressure at bottom and invert to get height
             ! using p = 0.5 * g * h**2
             q_swe(1:NQ) = floor_q_comp(1,j,k,1:NQ)
-            q_swe(QRHO) = sqrt(2.0_rt * floor_q_comp(1,j,k,QPRES) / (dens_incompressible * g)) + xx
-            q_swe(QPRES) = 0.5_rt * dens_incompressible * g * q_swe(QRHO)**2
+            q_swe(QRHO) = sqrt(2.0_rt * floor_q_comp(1,j,k,QPRES) / (floor_q_comp(1,j,k,QRHO) * g)) + xx
+            q_swe(QPRES) = (floor_q_comp(1,j,k,QRHO) / eos_K)**gamma_const
 
             q_swe(QU) = 0.0_rt
 #if BL_SPACEDIM == 1
