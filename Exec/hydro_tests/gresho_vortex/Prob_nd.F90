@@ -137,7 +137,7 @@ subroutine ca_initdata(level,time,lo,hi,nscal, &
   call eos(eos_input_re, eos_state)
 
   ! M = 0.1, uphi = 0.25
-  p0 = (0.1_rt / 0.25_rt)**2 / eos_state % gam1 + dens_incompressible * (2.0_rt - 4.0_rt*log(2.0_rt))
+  p0 = (0.1_rt / 0.5_rt)**2 / eos_state % gam1 + dens_incompressible * (2.0_rt - 4.0_rt*log(2.0_rt))
 
   !$OMP PARALLEL DO PRIVATE(i, j, k, xx, yy, zz, r, h)
   do k = lo(3), hi(3)
@@ -231,7 +231,7 @@ subroutine ca_initdata(level,time,lo,hi,nscal, &
            ! if (((z - 0.25_rt)**2 + (y - 0.25_rt)**2) < (0.25_rt)**2) then
            !     q(i,j,k,QFA:QFA-1+nadv)  = 1.0_rt
            ! else
-               q(i,j,k,QFA:QFA-1+nadv)  = 0.0_rt
+           q(i,j,k,QFA:QFA-1+nadv)  = 0.0_rt
            ! endif
            q(i,j,k,QFS:QFS-1+nspec) = q(i,j,k,QRHO) / nspec
 

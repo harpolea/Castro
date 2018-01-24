@@ -2,6 +2,7 @@
 
 subroutine ca_derheight(h,h_lo,h_hi,nh, &
                     u,d_lo,d_hi,nc, &
+                    horizontal_comp, nx, floor, &
                     lo,hi,domlo,domhi,dx, &
                     xlo,time,dt,bc,level,grid_no) &
                     bind(C, name="ca_derheight")
@@ -15,7 +16,7 @@ subroutine ca_derheight(h,h_lo,h_hi,nh, &
     use riemann_module, only: comp_to_swe
     implicit none
 
-    integer, intent(in) :: lo(3), hi(3)
+    integer, intent(in) :: lo(3), hi(3), nx(3)
     integer, intent(in) :: h_lo(3), h_hi(3), nh
     integer, intent(in) :: d_lo(3), d_hi(3), nc
     integer, intent(in) :: domlo(3), domhi(3)
@@ -24,15 +25,36 @@ subroutine ca_derheight(h,h_lo,h_hi,nh, &
     real(rt), intent(inout) :: h(h_lo(1):h_hi(1),h_lo(2):h_hi(2),h_lo(3):h_hi(3),nh)
     real(rt), intent(in) ::    u(d_lo(1):d_hi(1),d_lo(2):d_hi(2),d_lo(3):d_hi(3),nc)
     integer, intent(in) :: level, grid_no
+#if BL_SPACEDIM == 2
+    real(rt), intent(in)  :: horizontal_comp(NVAR, 0:nx(2)-1)
+#elif BL_SPACEDIM == 3
+    real(rt), intent(in)  :: horizontal_comp(NVAR, 0:nx(2)*nx(3)-1)
+#endif
+    logical, intent(in) :: floor
 
     real(rt) :: xx, p
     real(rt) :: q(lo(1):hi(1), lo(2):hi(2), lo(3):hi(3), NQ)
     real(rt) :: qaux(lo(1):hi(1), lo(2):hi(2), lo(3):hi(3),NQAUX)
     real(rt) :: swe(lo(1):hi(1), lo(2):hi(2), lo(3):hi(3), NVAR)
-    integer :: i,j,k
+    real(rt) :: vertically_avgd_comp(1, lo(2):hi(2), lo(3):hi(3), NVAR)
+    integer :: i,j,k,n,vlo(3),vhi(3)
+
+    do k = lo(3), hi(3)
+        do j = lo(2), hi(2)
+            i = k*nx(2) + j
+            do n = 1, NVAR
+                vertically_avgd_comp(1, j, k, n) = horizontal_comp(n, i)
+            enddo
+        enddo
+    enddo
+    vlo = [1, lo(2), lo(3)]
+    vhi = [1, hi(2), hi(3)]
+
+    ! NOTE: hack because for some reason this is always 0??
+    vertically_avgd_comp(1, vlo(2), :, :) = vertically_avgd_comp(1, vlo(2)+1, :, :)
 
     if (level > swe_to_comp_level) then
-        call comp_to_swe(swe, lo, hi, u(:,:,:,1:NVAR), d_lo, d_hi, lo, hi, xlo, dx, .false.)
+        call comp_to_swe(swe, lo, hi, u(:,:,:,1:NVAR), d_lo, d_hi, vertically_avgd_comp, vlo, vhi, lo, hi, xlo, dx, .false.)
 
         call swectoprim(lo, hi, swe, lo, hi, q, lo, hi, qaux, lo, hi, .false.)
     else
@@ -96,6 +118,7 @@ end subroutine ca_derprimv
 
 subroutine ca_derprimrho(rho,r_lo,r_hi,nr, &
                     u,d_lo,d_hi,nc, &
+                    horizontal_comp, nx, &
                     lo,hi,domlo,domhi,dx, &
                     xlo,time,dt,bc,level,grid_no) &
                     bind(C, name="ca_derprimrho")
@@ -109,7 +132,7 @@ subroutine ca_derprimrho(rho,r_lo,r_hi,nr, &
     use riemann_module, only: swe_to_comp
     implicit none
 
-    integer, intent(in) :: lo(3), hi(3)
+    integer, intent(in) :: lo(3), hi(3), nx(3)
     integer, intent(in) :: r_lo(3), r_hi(3), nr
     integer, intent(in) :: d_lo(3), d_hi(3), nc
     integer, intent(in) :: domlo(3), domhi(3)
@@ -118,17 +141,35 @@ subroutine ca_derprimrho(rho,r_lo,r_hi,nr, &
     real(rt), intent(inout) :: rho(r_lo(1):r_hi(1),r_lo(2):r_hi(2),r_lo(3):r_hi(3),nr)
     real(rt), intent(in) ::    u(d_lo(1):d_hi(1),d_lo(2):d_hi(2),d_lo(3):d_hi(3),nc)
     integer, intent(in) :: level, grid_no
+#if BL_SPACEDIM == 2
+    real(rt), intent(in)  :: horizontal_comp(NVAR, 0:nx(2)-1)
+#elif BL_SPACEDIM == 3
+    real(rt), intent(in)  :: horizontal_comp(NVAR, 0:nx(2)*nx(3)-1)
+#endif
+
 
     real(rt) :: xx, p
     real(rt) :: q(lo(1):hi(1), lo(2):hi(2), lo(3):hi(3), NQ)
     real(rt) :: qaux(lo(1):hi(1), lo(2):hi(2), lo(3):hi(3),NQAUX)
     real(rt) :: comp(lo(1):hi(1), lo(2):hi(2), lo(3):hi(3), NVAR)
-    integer :: i,j,k
+    real(rt) :: vertically_avgd_swe(1, lo(2):hi(2), lo(3):hi(3), NVAR)
+    integer :: i,j,k,n,vlo(3),vhi(3)
+
+    do k = lo(3), hi(3)
+        do j = lo(2), hi(2)
+            i = k*nx(2) + j
+            do n = 1, NVAR
+                vertically_avgd_swe(1, j, k, n) = horizontal_comp(n, i)
+            enddo
+        enddo
+    enddo
+    vlo = [1, lo(2), lo(3)]
+    vhi = [1, hi(2), hi(3)]
 
     if (level > swe_to_comp_level) then
         call compctoprim(lo, hi, u(:,:,:,1:NVAR), d_lo, d_hi, q, lo, hi, qaux, lo, hi, xlo, dx, .false.)
     else
-        call swe_to_comp(u(:,:,:,1:NVAR), d_lo, d_hi, comp, lo, hi, lo, hi, dx, xlo, .false.)
+        call swe_to_comp(u(:,:,:,1:NVAR), d_lo, d_hi, vertically_avgd_swe, vlo, vhi, comp, lo, hi, lo, hi, dx, xlo, .false.)
 
         call compctoprim(lo, hi, comp(:,:,:,1:NVAR), lo, hi, q, lo, hi, qaux, lo, hi, xlo, dx, .false.)
     endif
@@ -190,7 +231,9 @@ subroutine ca_derW(w,w_lo,w_hi,nw, &
 end subroutine ca_derW
 
 subroutine ca_dereint(e,e_lo,e_hi,ncomp_e, &
-                       u,u_lo,u_hi,ncomp_u,lo,hi,domlo, &
+                       u,u_lo,u_hi,ncomp_u, &
+                       horizontal_comp, nx, &
+                       lo,hi,domlo, &
                        domhi,dx,xlo,time,dt,bc,level,grid_no) &
                        bind(C, name="ca_dereint")
 
@@ -202,7 +245,7 @@ subroutine ca_dereint(e,e_lo,e_hi,ncomp_e, &
   use amrex_fort_module, only : rt => amrex_real
   implicit none
 
-  integer, intent(in) :: lo(3), hi(3)
+  integer, intent(in) :: lo(3), hi(3), nx(3)
   integer, intent(in) :: e_lo(3), e_hi(3), ncomp_e
   integer, intent(in) :: u_lo(3), u_hi(3), ncomp_u
   integer, intent(in) :: domlo(3), domhi(3)
@@ -210,16 +253,33 @@ subroutine ca_dereint(e,e_lo,e_hi,ncomp_e, &
   real(rt), intent(in) :: u(u_lo(1):u_hi(1),u_lo(2):u_hi(2),u_lo(3):u_hi(3),ncomp_u)
   real(rt), intent(in) :: dx(3), xlo(3), time, dt
   integer, intent(in) :: bc(3,2,ncomp_u), level, grid_no
+#if BL_SPACEDIM == 2
+  real(rt), intent(in)  :: horizontal_comp(NVAR, 0:nx(2)-1)
+#elif BL_SPACEDIM == 3
+  real(rt), intent(in)  :: horizontal_comp(NVAR, 0:nx(2)*nx(3)-1)
+#endif
 
   real(rt) :: q(lo(1):hi(1), lo(2):hi(2), lo(3):hi(3), NQ)
   real(rt) :: qaux(lo(1):hi(1), lo(2):hi(2), lo(3):hi(3),NQAUX)
   real(rt) :: comp(lo(1):hi(1), lo(2):hi(2), lo(3):hi(3), NVAR)
-  integer :: i,j,k
+  real(rt) :: vertically_avgd_swe(1, lo(2):hi(2), lo(3):hi(3), NVAR)
+  integer :: i,j,k,n,vlo(3),vhi(3)
+
+  do k = lo(3), hi(3)
+      do j = lo(2), hi(2)
+          i = k*nx(2) + j
+          do n = 1, NVAR
+              vertically_avgd_swe(1, j, k, n) = horizontal_comp(n, i)
+          enddo
+      enddo
+  enddo
+  vlo = [1, lo(2), lo(3)]
+  vhi = [1, hi(2), hi(3)]
 
   if (level > swe_to_comp_level) then
       call compctoprim(lo, hi, u(:,:,:,1:NVAR), u_lo, u_hi, q, lo, hi, qaux, lo, hi, xlo, dx, .false.)
   else
-      call swe_to_comp(u(:,:,:,1:NVAR), u_lo, u_hi, comp, lo, hi, lo, hi, dx, xlo, .false.)
+      call swe_to_comp(u(:,:,:,1:NVAR), u_lo, u_hi, vertically_avgd_swe, vlo, vhi, comp, lo, hi, lo, hi, dx, xlo, .false.)
 
       call compctoprim(lo, hi, comp(:,:,:,1:NVAR), lo, hi, q, lo, hi, qaux, lo, hi, xlo, dx, .false.)
   endif
@@ -366,44 +426,3 @@ subroutine ca_derpressgrad(g,g_lo,g_hi,ncomp_g, &
   enddo
 
 end subroutine ca_derpressgrad
-
-subroutine ca_derprimadv(g,g_lo,g_hi,ncomp_g, &
-                       u,u_lo,u_hi,ncomp_u,lo,hi,domlo, &
-                       domhi,dx,xlo,time,dt,bc,level,grid_no) &
-                       bind(C, name="ca_derprimadv")
-
-  use meth_params_module, only: QFA, NQ, NQAUX, NVAR, UFA, URHO
-  use advection_util_module, only: compctoprim, swectoprim
-  use probdata_module, only: swe_to_comp_level
-
-  use amrex_fort_module, only : rt => amrex_real
-  implicit none
-
-  integer, intent(in) :: lo(3), hi(3)
-  integer, intent(in) :: g_lo(3), g_hi(3), ncomp_g
-  integer, intent(in) :: u_lo(3), u_hi(3), ncomp_u
-  integer, intent(in) :: domlo(3), domhi(3)
-  real(rt), intent(inout) :: g(g_lo(1):g_hi(1),g_lo(2):g_hi(2),g_lo(3):g_hi(3),ncomp_g)
-  real(rt), intent(in) :: u(u_lo(1):u_hi(1),u_lo(2):u_hi(2),u_lo(3):u_hi(3),ncomp_u)
-  real(rt), intent(in) :: dx(3), xlo(3), time, dt
-  integer, intent(in) :: bc(3,2,ncomp_u), level, grid_no
-
-  real(rt) :: q(lo(1):hi(1), lo(2):hi(2), lo(3):hi(3), NQ)
-  real(rt) :: qaux(lo(1):hi(1), lo(2):hi(2), lo(3):hi(3),NQAUX)
-  integer :: i,j,k
-
-  if (level > swe_to_comp_level) then
-      call compctoprim(lo, hi, u(:,:,:,1:NVAR), u_lo, u_hi, q, lo, hi, qaux, lo, hi, xlo, dx, .true.)
-  else
-      call swectoprim(lo, hi, u(:,:,:,1:NVAR), u_lo, u_hi, q, lo, hi, qaux, lo, hi, .true.)
-  endif
-
-  do k = lo(3),hi(3)
-     do j = lo(2),hi(2)
-        do i = lo(1),hi(1)
-            g(i,j,k,1) = q(i,j,k,QFA)
-        enddo
-     enddo
-  enddo
-
-end subroutine ca_derprimadv

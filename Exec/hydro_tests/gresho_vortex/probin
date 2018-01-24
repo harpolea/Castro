@@ -1,7 +1,7 @@
 &fortin
 
-  g = 1.0d-2
-  swe_to_comp_level = -5
+  g = 1.0d-1
+  swe_to_comp_level = 0
   dens_incompressible = 1.0d-2
 
 /
