@@ -1,0 +1,11 @@
+#!/bin/bash
+#PBS -l walltime=60:00:00
+#PBS -l nodes=8:ppn=16
+
+cd $PBS_O_WORKDIR
+
+module load python gcc/6.1.0 openmpi/2.0.2/gcc
+
+#make
+
+./Castro3d.gnu.MPI.OMP.ex inputs.3d
