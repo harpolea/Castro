@@ -507,9 +507,6 @@ subroutine swe_to_comp(swe, slo, shi, vertically_avgd_swe, vlo, vhi, comp, clo, 
     ! phi = gh
     call swectoprim(lo, hi, swe, slo, shi, q_swe, slo, shi, qaux, slo, shi, ignore_errs)
 
-    ! NOTE: hack because for some reason this is always 0??
-    vertically_avgd_swe(1, vlo(2), :, :) = vertically_avgd_swe(1, vlo(2)+1, :, :)
-
     call swectoprim(lo2d, hi2d, vertically_avgd_swe, vlo, vhi, vertically_avgd_q_swe, lo2d, hi2d, qaux, slo, shi, .true.)
 
     ! INCOMPRESSIBLE
@@ -593,16 +590,9 @@ subroutine comp_to_swe(swe, slo, shi, comp, clo, chi, floor_comp, vlo, vhi, lo, 
 
     call compctoprim(lo, hi, comp, clo, chi, q_comp, clo, chi, qaux, clo, chi, xlo, dx, ignore_errs)
 
-    ! NOTE: hack because for some reason this is always 0??
-    floor_comp(1, vlo(2), :, :) = floor_comp(1, vlo(2)+1, :, :)
-
     call compctoprim(lo2d, hi2d, floor_comp, vlo, vhi, floor_q_comp, lo2d, hi2d, qaux, clo, chi, xlo, dx, ignore_errs)
 
     xx = dx(1)*HALF
-
-    ! write(*,*) "height = ", sqrt(2.0_rt * floor_q_comp(1,lo(2):hi(2),lo(3),QPRES) / (dens_incompressible * g)) + xx
-
-    ! write(*,*) "floor_q_comp = ", floor_q_comp(1,lo(2),lo(3),QPRES)
 
     do k = lo(3), hi(3)
         do j = lo(2), hi(2)

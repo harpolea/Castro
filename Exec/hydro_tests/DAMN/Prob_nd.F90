@@ -190,17 +190,10 @@ subroutine ca_initdata(level,time,lo,hi,nscal, &
             eos_state % p = 0.5e0_rt * dens_incompressible * g * (h-xx)**2
             q(i,j,k,QPRES) = eos_state % p
 
-            ! if (r < damn_rad) then
-            !     eos_state % p = 0.5e0_rt * g * (h_in-xx)**2
-            ! else
-            !     eos_state % p = 0.5e0_rt * g * (h_out-xx)**2
-            ! end if
-
             !eos_state % e = e_zone
             eos_state % rho = q(i,j,k, QRHO)
             eos_state % xn(:) = xn_zone(:)
             eos_state%T = 100000.e0_rt ! initial guess
-            !eos_state % p = 0.5e0_rt * g * state(i,j,k,URHO)**2
 
             call eos(eos_input_rp, eos_state)
 
@@ -227,7 +220,6 @@ subroutine ca_initdata(level,time,lo,hi,nscal, &
                 call swe_cons_state(q(i,j,k,:), state(i,j,k,:))
             else
                 call comp_cons_state(q(i,j,k,:), state(i,j,k,:))
-                ! state(i,j,k,URHO) = dens_incompressible
             end if
 
         enddo

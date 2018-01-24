@@ -50,9 +50,6 @@ subroutine ca_derheight(h,h_lo,h_hi,nh, &
     vlo = [1, lo(2), lo(3)]
     vhi = [1, hi(2), hi(3)]
 
-    ! NOTE: hack because for some reason this is always 0??
-    vertically_avgd_comp(1, vlo(2), :, :) = vertically_avgd_comp(1, vlo(2)+1, :, :)
-
     if (level > swe_to_comp_level) then
         call comp_to_swe(swe, lo, hi, u(:,:,:,1:NVAR), d_lo, d_hi, vertically_avgd_comp, vlo, vhi, lo, hi, xlo, dx, .false.)
 
