@@ -2,7 +2,8 @@
 
   g = 1.0d-1
   swe_to_comp_level = 0
-  dens_incompressible = 1.0d-2
+  eos_K = 1.0
+
 
 /
 
@@ -26,6 +27,4 @@
 
   eos_assume_neutral = T
   eos_gamma = 1.666667
-  eos_K = 1.0
-
 /

@@ -44,7 +44,7 @@ subroutine amrex_probinit (init,name,namlen,problo,probhi) bind(c)
    t_r = 1.0_rt
    g = 1.0_rt
    nsub = 4
-   dens_incompressible = 1.0_rt
+   eos_K = 1._rt
 
    swe_to_comp_level = 0
 
@@ -102,6 +102,7 @@ subroutine ca_initdata(level,time,lo,hi,nscal, &
   use eos_module, only : eos, initialized, eos_init
   use eos_type_module, only : eos_t, eos_input_rp, eos_input_re, eos_input_rt
   use riemann_util_module, only: comp_cons_state, swe_cons_state
+  use actual_eos_module, only: gamma_const
 
   use amrex_fort_module, only : rt => amrex_real
   implicit none
@@ -117,7 +118,7 @@ subroutine ca_initdata(level,time,lo,hi,nscal, &
 
   integer :: i, j, k, jj, kk
 
-  real(rt)         :: reint, p, u_phi, u_tot, p0
+  real(rt)         :: reint, p, u_phi, u_tot, p0, rho0
   real(rt)         :: q(state_lo(1):state_hi(1),state_lo(2):state_hi(2),state_lo(3):state_hi(3),NQ)
   type(eos_t) :: eos_state
 
@@ -129,7 +130,7 @@ subroutine ca_initdata(level,time,lo,hi,nscal, &
       write(*,*) "Initialising level ", level, " with incompressible data"
   endif
 
-  eos_state % rho = dens_incompressible
+  eos_state % rho = 1.0_rt
   eos_state % e = 1.0_rt
 
   if (.not. initialized) call eos_init(small_dens=small_dens, small_temp=small_temp)
@@ -137,7 +138,8 @@ subroutine ca_initdata(level,time,lo,hi,nscal, &
   call eos(eos_input_re, eos_state)
 
   ! M = 0.1, uphi = 0.25
-  p0 = (0.1_rt / 0.5_rt)**2 / eos_state % gam1 + dens_incompressible * (2.0_rt - 4.0_rt*log(2.0_rt))
+  p0 = ((gamma_const-1._rt)/gamma_const * g * eos_K * 5._rt)**(gamma_const / (gamma_const - 1._rt))
+  rho0 = eos_K * p0**(1._rt / gamma_const)
 
   !$OMP PARALLEL DO PRIVATE(i, j, k, xx, yy, zz, r, h)
   do k = lo(3), hi(3)
@@ -161,15 +163,15 @@ subroutine ca_initdata(level,time,lo,hi,nscal, &
 
                if (r < 0.2_rt) then
                   u_phi = 5.0_rt*r
-                  p = p0 + dens_incompressible * 12.5_rt*r**2
+                  p = p0 + rho0 * 12.5_rt*r**2
 
                else if (r < 0.4_rt) then
                   u_phi = 2.0_rt - 5.0_rt*r
-                  p = p0 + dens_incompressible * (12.5_rt*r**2 + 4.0_rt*(1.0_rt - 5.0_rt*r - log(0.2_rt) + log(r)))
+                  p = p0 + rho0 * (12.5_rt*r**2 + 4.0_rt*(1.0_rt - 5.0_rt*r - log(0.2_rt) + log(r)))
 
                else
                   u_phi = 0.0_rt
-                  p = p0 - dens_incompressible * (2.0_rt - 4.0_rt*log(2.0_rt))
+                  p = p0 - rho0 * (2.0_rt - 4.0_rt*log(2.0_rt))
                endif
 
                ! write(*,*) "p = ", p, "r = ", r, "yy, zz", yy, zz
@@ -185,7 +187,7 @@ subroutine ca_initdata(level,time,lo,hi,nscal, &
        p = (eos_state % gam1 - 1.0_rt) * reint
 
        ! write(*,*) "p = ", p, "reint = ", reint, "p0 = ", p0
-       h = sqrt(p / (0.5_rt * dens_incompressible * g))
+       h = gamma_const / (gamma_const - 1._rt) * 1._rt / (g * eos_K) * p**((gamma_const - 1._rt) / gamma_const)
 
        ! velocity is based on the reference velocity, q_r
        yc = yl + 0.5_rt*delta(2)
@@ -194,19 +196,19 @@ subroutine ca_initdata(level,time,lo,hi,nscal, &
        r = sqrt((z - center(3))**2 + (y - center(2))**2)
 
        q(lo(1):hi(1),j,k,QU) = 0.0_rt
-       q(lo(1):hi(1),j,k,QV) = -dens_incompressible*q_r*u_phi*((zc-center(3))/r)  ! -sin(phi) = z/r
-       q(lo(1):hi(1),j,k,QW) = dens_incompressible*q_r*u_phi*((yc-center(2))/r)
+       q(lo(1):hi(1),j,k,QV) = -rho0*q_r*u_phi*((zc-center(3))/r)  ! -sin(phi) = z/r
+       q(lo(1):hi(1),j,k,QW) = rho0*q_r*u_phi*((yc-center(2))/r)
 
        ! HACK TO MAKE HOMOGENEOUS
        !h = sqrt(p0 / (0.5_rt * dens_incompressible * g))
        !q(lo(1):hi(1),j,k,QU:QW) = 0.0_rt
 
-       q(lo(1):hi(1),j,k,QRHO) = dens_incompressible
-
        do i = lo(1), hi(1)
            xx = xlo(1) + delta(1)*dble(i-lo(1)+HALF)
 
-           q(i,j,k,QPRES) = 0.5_rt * dens_incompressible * g * (h-xx)**2
+           q(i,j,k,QPRES) = ((gamma_const - 1._rt) / gamma_const * g * eos_K * (h - xx))**(gamma_const / (gamma_const - 1._rt))
+
+           q(i,j,k,QRHO) = eos_K * q(i,j,k,QPRES)**(1._rt / gamma_const)
 
            eos_state % rho = q(i,j,k,QRHO)
            eos_state % xn(:) = xn_zone(:)

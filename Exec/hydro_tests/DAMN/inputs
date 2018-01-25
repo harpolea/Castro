@@ -63,7 +63,7 @@ amr.check_per       = 0.1       # number of timesteps between checkpoints
 
 # PLOTFILES
 amr.plot_files_output = 1
-amr.plot_file       = plots/comp_plt       # root name of plotfile
+amr.plot_file       = plots/3d_plt       # root name of plotfile
 amr.plot_per        = 20       # time between plotfiles
 amr.plot_int = 5
 
