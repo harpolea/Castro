@@ -1,7 +1,7 @@
 # define the location of the CASTRO top directory
 CASTRO_HOME  := ../../..
 
-TEST_DIR = $(CASTRO_HOME)/Exec/hydro_tests/DAMN
+TEST_DIR = $(CASTRO_HOME)/Exec/hydro_tests/gresho_vortex
 
 PRECISION  = DOUBLE
 PROFILE    = FALSE

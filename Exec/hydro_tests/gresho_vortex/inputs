@@ -1,0 +1,74 @@
+# To get visit to plot these as a time series, output names of Header files to a .visit file like so:
+# ls -1 plt*/Header | tee plots.visit
+
+
+# ------------------  INPUTS TO MAIN PROGRAM  -------------------
+stop_time = 2
+max_step = 250
+
+# PROBLEM SIZE & GEOMETRY
+geometry.is_periodic = 0  0  0
+geometry.coord_sys   = 0        # 0 => cart, 1 => RZ  2=>spherical
+geometry.prob_lo     = 0 -0.5 -0.5
+geometry.prob_hi     = 2.0 1.5 1.5 #0.125
+castro.center        = 1.0 0.5 0.5 #0.0625
+
+amr.n_cell           = 32 32 32
+amr.max_level        = 2       # maximum level number allowed; base level is 0
+
+amr.max_grid_size    = 64
+
+#castro.state_nghost = 4
+
+# >>>>>>>>>>>>>  BC FLAGS <<<<<<<<<<<<<<<<
+# 0 = Interior           3 = Symmetry
+# 1 = Inflow             4 = SlipWall
+# 2 = Outflow            5 = NoSlipWall
+# >>>>>>>>>>>>>  BC FLAGS <<<<<<<<<<<<<<<<
+castro.lo_bc       =  2   2   2
+castro.hi_bc       =  2   2   2
+
+# WHICH PHYSICS
+castro.do_hydro = 1
+castro.do_ctu = 0
+castro.ppm_type = 1
+castro.allow_negative_energy = 0
+castro.small_temp = 1.e-12
+castro.small_dens = 1.e-12
+castro.riemann_solver = 2
+castro.do_reflux = 0
+
+# TIME STEP CONTROL
+castro.cfl            = 0.1     # cfl number for hyperbolic system
+castro.init_shrink    = 0.1     # scale back initial timestep
+castro.change_max     = 1.1     # scale back initial timestep
+castro.dt_cutoff      = 5.e-20  # level 0 timestep below which we halt
+
+# DIAGNOSTICS & VERBOSITY
+castro.sum_interval   = 1       # timesteps between computing mass
+castro.v              = 1       # verbosity in Castro.cpp
+amr.v                 = 1       # verbosity in Amr.cpp
+amr.grid_log          = grid_diag.out   # name of grid logging file
+
+# REFINEMENT / REGRIDDING
+amr.ref_ratio       = 2   # refinement ratio
+amr.regrid_int      = 2   # how often to regrid
+amr.blocking_factor = 4         # block factor in grid generation
+amr.n_error_buf     = 4   # number of buffer cells in error est
+
+# CHECKPOINT FILES
+amr.checkpoint_files_output = 0
+amr.check_file      = chk       # root name of checkpoint file
+amr.check_per       = 0.1       # number of timesteps between checkpoints
+
+# PLOTFILES
+amr.plot_files_output = 1
+amr.plot_file       = plots/gresho_plt       # root name of plotfile
+amr.plot_per        = 20       # time between plotfiles
+amr.plot_int = 5
+
+#amr.plot_vars = ALL
+amr.derive_plot_vars = density xmom ymom zmom pressure height eint primmom
+
+# PROBIN FILENAME
+amr.probin_file = probin
