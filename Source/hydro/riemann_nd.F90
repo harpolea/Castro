@@ -521,6 +521,8 @@ subroutine swe_to_comp(swe, slo, shi, vertically_avgd_swe, vlo, vhi, comp, clo, 
 
                 q_comp(QRHO) = eos_K**(gamma_const/(gamma_const-1._rt)) * ((gamma_const-1._rt)/gamma_const * g * (h-xx))**(1._rt / (gamma_const-1._rt))
 
+                ! write(*,*) i,j,k,q_comp(QRHO)
+
                 q_comp(QPRES) = (q_comp(QRHO) / eos_K)**gamma_const
 
                 eos_state % rho = q_comp(QRHO)
@@ -544,6 +546,9 @@ subroutine swe_to_comp(swe, slo, shi, vertically_avgd_swe, vlo, vhi, comp, clo, 
             enddo
         enddo
     enddo
+
+    ! write(*,*) "swe_avg", vertically_avgd_q_swe(1,:,lo(3),QRHO)
+    ! write(*,*) "comp", comp(:,:,lo(3), URHO)
 
 end subroutine swe_to_comp
 
@@ -602,7 +607,9 @@ subroutine comp_to_swe(swe, slo, shi, comp, clo, chi, floor_comp, vlo, vhi, lo, 
             ! look at pressure at bottom and invert to get height
             ! using p = 0.5 * g * h**2
             q_swe(1:NQ) = floor_q_comp(1,j,k,1:NQ)
-            q_swe(QRHO) = sqrt(2.0_rt * floor_q_comp(1,j,k,QPRES) / (floor_q_comp(1,j,k,QRHO) * g)) + xx
+            q_swe(QRHO) = xx + gamma_const / (gamma_const-1._rt) * &
+                1._rt / (g * eos_K) * &
+                floor_q_comp(1,j,k,QPRES)**((gamma_const-1._rt)/gamma_const)
             q_swe(QPRES) = (floor_q_comp(1,j,k,QRHO) / eos_K)**gamma_const
 
             q_swe(QU) = 0.0_rt
@@ -619,6 +626,11 @@ subroutine comp_to_swe(swe, slo, shi, comp, clo, chi, floor_comp, vlo, vhi, lo, 
             enddo
         enddo
     enddo
+
+    ! NOTE: looks ok
+    ! write(*,*) "floor rho", floor_q_comp(1,:,lo(3),QRHO)
+    ! write(*,*) "eos_K, gamma", eos_K, gamma_const
+    ! write(*,*) "swe", swe(lo(1), :, lo(3), :QW)
 
 end subroutine comp_to_swe
 

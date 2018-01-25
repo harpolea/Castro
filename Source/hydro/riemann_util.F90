@@ -235,7 +235,7 @@ contains
     F(1:NVAR) = 0.0_rt
 
     ! NOTE: Made incompressible for now
-    F(URHO) = 0.0_rt!U(URHO) * u_flx
+    F(URHO) = U(URHO) * u_flx
 
     F(UMX) = U(UMX) * u_flx
     F(UMY) = U(UMY) * u_flx

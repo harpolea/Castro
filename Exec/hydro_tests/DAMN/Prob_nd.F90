@@ -133,6 +133,7 @@ subroutine ca_initdata(level,time,lo,hi,nscal, &
   use eos_module, only : eos, initialized, eos_init
   use eos_type_module, only : eos_t, eos_input_rp, eos_input_re, eos_input_rt
   use riemann_util_module, only: comp_cons_state, swe_cons_state
+  use actual_eos_module, only: gamma_const
 
   use amrex_fort_module, only : rt => amrex_real
   implicit none
@@ -147,7 +148,7 @@ subroutine ca_initdata(level,time,lo,hi,nscal, &
 
   integer :: i, j, k, n, ii, jj, kk
 
-  real(rt)         :: dye, eint, a, gamma
+  real(rt)         :: dye, eint, a
   real(rt)         :: q(state_lo(1):state_hi(1),state_lo(2):state_hi(2),state_lo(3):state_hi(3),NQ)
   type(eos_t) :: eos_state
 
@@ -155,9 +156,6 @@ subroutine ca_initdata(level,time,lo,hi,nscal, &
 
   eos_state % p = 0._rt
   eos_state % rho = 0._rt
-
-  call eos(eos_input_rp, eos_state)
-  gamma = eos_state % gam1
 
   dye = ZERO
 
@@ -190,9 +188,9 @@ subroutine ca_initdata(level,time,lo,hi,nscal, &
 
             xx = xlo(1) + delta(1)*dble(i-lo(1)+HALF)
 
-            eos_state % rho = eos_K**(gamma/(gamma-1._rt)) * ((gamma-1._rt)/gamma * g * (h-xx))**(1._rt / (gamma-1._rt))
+            eos_state % rho = eos_K**(gamma_const/(gamma_const-1._rt)) * ((gamma_const-1._rt)/gamma_const * g * (h-xx))**(1._rt / (gamma_const-1._rt))
 
-            eos_state % p = (eos_state % rho / eos_K)**gamma
+            eos_state % p = (eos_state % rho / eos_K)**gamma_const
 
             q(i,j,k,QPRES) = eos_state % p
             q(i,j,k,QRHO) = eos_state % rho
