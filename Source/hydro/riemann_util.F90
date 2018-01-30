@@ -75,10 +75,10 @@ contains
 
     ! since we advect all 3 velocity components regardless of dimension, this
 #if BL_SPACEDIM == 1
-    U(UMY)  = 0.0_rt! q(QRHO) * q(QU)
+    U(UMY)  = 0.0_rt
 #endif
 #if BL_SPACEDIM <= 2
-    U(UMZ)  = 0.0_rt!q(QRHO) * q(QV)
+    U(UMZ)  = 0.0_rt
 #endif
 
     ! don't care for swe but might help
@@ -114,7 +114,7 @@ contains
     call calculate_scalar_W(q(QU:QW), W)
     U(1:NVAR) = 0.0_rt
 
-    U(URHO) = q(QRHO) * W !q(QRHO)
+    U(URHO) = q(QRHO) * W
 
     eos_state % rho  = q(QRHO)
     eos_state % e    = q(QREINT) / q(QRHO)
@@ -183,7 +183,7 @@ contains
 
     F(URHO) = U(URHO) * u_flx
 
-    F(UMX) = 0.0_rt!U(UMX) * u_flx
+    F(UMX) = 0.0_rt
     F(UMY) = U(UMY) * u_flx
     F(UMZ) = U(UMZ) * u_flx
 
@@ -206,7 +206,7 @@ contains
   end subroutine swe_compute_flux
 
   subroutine comp_compute_flux(idir, bnd_fac, q, U, F, p)
-    ! returns the GR flux in direction idir
+    ! returns the comp flux in direction idir
     use meth_params_module, only: NQ, NVAR, URHO, UMX, UMY, UMZ, UTEMP, &
          UEDEN, UEINT, npassive, upass_map, UFS, UFA, QU, QV, QW, nadv, QFA
     use probdata_module, only: g
@@ -234,7 +234,6 @@ contains
     endif
     F(1:NVAR) = 0.0_rt
 
-    ! NOTE: Made incompressible for now
     F(URHO) = U(URHO) * u_flx
 
     F(UMX) = U(UMX) * u_flx

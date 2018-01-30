@@ -3,12 +3,6 @@ module c_interface_modules
   use meth_params_module, only: NVAR, NQAUX, NQ, QVAR
   use amrex_fort_module, only: rt => amrex_real
 
-#ifdef CUDA
-    use cudafor, only: cudaMemcpyAsync, cudaMemcpyHostToDevice, &
-                       cudaDeviceSynchronize, dim3, cuda_stream_kind
-    use cuda_module, only: threads_and_blocks, cuda_streams, max_cuda_streams
-#endif
-
 contains
 
 subroutine ca_enforce_consistent_e(lo,hi,state,s_lo,s_hi,idx,level,xlo,dx) &
@@ -98,10 +92,6 @@ end subroutine ca_reset_internal_e
     real(rt) :: vertically_avgd_swe(1, slo(2):shi(2), slo(3):shi(3), NVAR)
     integer :: i,j,k,n, vlo(3), vhi(3)
 
-    ! write(*,*) "calling ca_swe_to_comp"
-    ! write(*,*) "lo, slo, clo = ", lo, slo, clo
-    ! write(*,*) "hi, shi, chi = ", hi, shi, chi
-
     do k = slo(3), shi(3)
         do j = slo(2), shi(2)
             i = k*nx(2) + j
@@ -117,7 +107,6 @@ end subroutine ca_reset_internal_e
     if (sum(swe(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),URHO)) == 0.0e0_rt) then
         comp(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),1:NVAR) = swe(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),1:NVAR)
     else
-        ! write(*,*) "ca_swe_to_comp", sum(swe(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),URHO))
         call swe_to_comp(swe, slo, shi, vertically_avgd_swe, vlo, vhi, comp, clo, chi, lo, hi, dx, xlo)
     endif
 
@@ -157,15 +146,9 @@ end subroutine ca_reset_internal_e
     vlo = [1, slo(2), slo(3)]
     vhi = [1, shi(2), shi(3)]
 
-    ! write(*,*) "calling ca_swe_to_comp_self"
-    ! write(*,*) "lo, slo = ", lo, slo
-    ! write(*,*) "hi, shi = ", hi, shi
-
     if (sum(swe(lo(1)+1:hi(1),lo(2):hi(2),lo(3):hi(3),URHO)) == 0.0e0_rt) then
-        !write(*,*) "ca_swe_to_comp_self, sum of rhos is zero :("
         return
     else
-        ! write(*,*) "ca_swe_to_comp_self", sum(swe(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),URHO))
         call swe_to_comp(swe, slo, shi, vertically_avgd_swe, vlo, vhi, comp, slo, shi, lo, hi, dx, xlo, ignore_errors)
 
         swe(slo(1):shi(1), slo(2):shi(2), slo(3):shi(3), 1:NVAR) = comp(slo(1):shi(1), slo(2):shi(2), slo(3):shi(3), 1:NVAR)
@@ -193,8 +176,6 @@ end subroutine ca_swe_to_comp_self
 
     real(rt) :: vertically_avgd_comp(1, slo(2):shi(2), slo(3):shi(3), NVAR)
     integer :: i,j,k,n, vlo(3), vhi(3)
-    !
-    ! write(*,*) "calling ca_comp_to_swe"
 
     do k = slo(3), shi(3)
         do j = slo(2), shi(2)
@@ -238,8 +219,6 @@ end subroutine ca_swe_to_comp_self
     real(rt) :: vertically_avgd_comp(1, clo(2):chi(2), clo(3):chi(3), NVAR)
     integer :: i,j,k,n, vlo(3), vhi(3)
 
-    ! write(*,*) "calling ca_comp_to_swe_self"
-
     do k = clo(3), chi(3)
         do j = clo(2), chi(2)
             i = k*nx(2) + j
@@ -253,7 +232,6 @@ end subroutine ca_swe_to_comp_self
     vhi = [1, chi(2), chi(3)]
 
     if (sum(comp(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),URHO)) == 0.0e0_rt) then
-        !write(*,*) "ca_comp_to_swe_self, sum of rhos is zero :("
         return
     else
         call comp_to_swe(swe, clo, chi, comp, clo, chi, vertically_avgd_comp, vlo, vhi, lo, hi, xlo, dx, ignore_errors)
@@ -334,11 +312,6 @@ end subroutine ca_swe_to_comp_self
     real(rt)        , intent(inout) :: qaux(qa_lo(1):qa_hi(1),qa_lo(2):qa_hi(2),qa_lo(3):qa_hi(3),NQAUX)
     integer, intent(in)     :: idx, level
     real(rt), intent(in) :: dx(3), xlo(3)
-
-    !write(*,*) "level = ", level, "swe_to_comp_level", swe_to_comp_level
-
-    ! write(*,*) "ulo, qlo, lo", uin_lo, q_lo, lo
-    ! write(*,*) "uhi, qhi, hi", uin_hi, q_hi, hi
 
     if (level <= swe_to_comp_level) then
         call swectoprim(lo, hi, &

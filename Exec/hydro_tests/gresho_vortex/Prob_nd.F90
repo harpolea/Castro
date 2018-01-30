@@ -174,8 +174,6 @@ subroutine ca_initdata(level,time,lo,hi,nscal, &
                   p = p0 - rho0 * (2.0_rt - 4.0_rt*log(2.0_rt))
                endif
 
-               ! write(*,*) "p = ", p, "r = ", r, "yy, zz", yy, zz
-
                u_tot = u_tot + u_phi
                reint = reint + p/(eos_state % gam1 - 1.0_rt)
 
@@ -186,8 +184,7 @@ subroutine ca_initdata(level,time,lo,hi,nscal, &
        reint = reint/(nsub*nsub)
        p = (eos_state % gam1 - 1.0_rt) * reint
 
-       ! write(*,*) "p = ", p, "reint = ", reint, "p0 = ", p0
-       h = gamma_const / (gamma_const - 1._rt) * 1._rt / (g * eos_K) * p**((gamma_const - 1._rt) / gamma_const)
+       h = height_from_p(p, 0._rt)
 
        ! velocity is based on the reference velocity, q_r
        yc = yl + 0.5_rt*delta(2)
@@ -199,16 +196,12 @@ subroutine ca_initdata(level,time,lo,hi,nscal, &
        q(lo(1):hi(1),j,k,QV) = -rho0*q_r*u_phi*((zc-center(3))/r)  ! -sin(phi) = z/r
        q(lo(1):hi(1),j,k,QW) = rho0*q_r*u_phi*((yc-center(2))/r)
 
-       ! HACK TO MAKE HOMOGENEOUS
-       !h = sqrt(p0 / (0.5_rt * dens_incompressible * g))
-       !q(lo(1):hi(1),j,k,QU:QW) = 0.0_rt
-
        do i = lo(1), hi(1)
            xx = xlo(1) + delta(1)*dble(i-lo(1)+HALF)
 
-           q(i,j,k,QPRES) = ((gamma_const - 1._rt) / gamma_const * g * eos_K * (h - xx))**(gamma_const / (gamma_const - 1._rt))
+           q(i,j,k,QPRES) = p_from_height(h, xx)
 
-           q(i,j,k,QRHO) = eos_K * q(i,j,k,QPRES)**(1._rt / gamma_const)
+           q(i,j,k,QRHO) = rho_from_p(q(i,j,k,QPRES))
 
            eos_state % rho = q(i,j,k,QRHO)
            eos_state % xn(:) = xn_zone(:)
@@ -229,12 +222,7 @@ subroutine ca_initdata(level,time,lo,hi,nscal, &
                q(i,j,k,QRHO) = h
            end if
 
-           ! make a tracer blob at (0.25, 0.25)
-           ! if (((z - 0.25_rt)**2 + (y - 0.25_rt)**2) < (0.25_rt)**2) then
-           !     q(i,j,k,QFA:QFA-1+nadv)  = 1.0_rt
-           ! else
            q(i,j,k,QFA:QFA-1+nadv)  = 0.0_rt
-           ! endif
            q(i,j,k,QFS:QFS-1+nspec) = q(i,j,k,QRHO) / nspec
 
            if (level <= swe_to_comp_level) then

@@ -615,27 +615,6 @@ Castro::initData ()
     MultiFab& dSdt_new = get_new_data(Source_Type);
     dSdt_new.setVal(0.);
 
-    // set up outflow_data to record vertically averaged quantities
-// #if (BL_SPACEDIM > 1)
-//     int swe_to_comp_level;
-//     ca_get_swe_to_comp_level(&swe_to_comp_level);
-//
-//     if ( level == swe_to_comp_level ) {
-//        const int nc = S_new.nComp();
-//        int ny, nz;
-//        get_horizontal_numpts(geom, &ny, &nz);
-// #if (BL_SPACEDIM == 2)
-//        const int npoints = ny;
-// #elif (BL_SPACEDIM == 3)
-//        const int npoints = ny * nz;
-// #endif
-//        allocate_outflow_data(&npoints,&nc);
-//        Vector<Real> horizontal_state(npoints*nc,0);
-//        make_vertically_avgd_data(S_new, geom, horizontal_state);
-//     }
-// #endif
-
-
     if (verbose && ParallelDescriptor::IOProcessor())
        std::cout << "Done initializing the level " << level << " data " << std::endl;
 }
@@ -1415,7 +1394,6 @@ Castro::avgDown (int state_indx)
         MultiFab base(S_fine.boxArray(), S_fine.DistributionMap(), S_fine.nComp(), S_fine.nGrow());
 
         int np = S_fine.nComp();
-        // MultiFab::Copy(base, S_fine, 0, 0, S_fine.nComp());
 
         const int nc = S_fine.nComp();
         Vector<int> nx = amrex::get_horizontal_numpts(fine_lev.geom);
@@ -1440,8 +1418,8 @@ Castro::avgDown (int state_indx)
 
 
         for (MFIter mfi(base); mfi.isValid(); ++mfi)
-        { //it breaks without this
-            const Box& bx = mfi.tilebox();//growntilebox(S_fine.nGrow());
+        {
+            const Box& bx = mfi.tilebox();
             RealBox gridloc = RealBox(fine_lev.grids[mfi.index()],fgeom.CellSize(),fgeom.ProbLo());
 
             ca_comp_to_swe(BL_TO_FORTRAN_3D(S_fine[mfi]), BL_TO_FORTRAN_3D(base[mfi]), floor_state.dataPtr(), nx.dataPtr(),
@@ -1470,7 +1448,7 @@ Castro::avgDown (int state_indx)
          const Real* dx        = fgeom.CellSize();
          for (MFIter mfi(S_fine); mfi.isValid(); ++mfi)
          {
-             const Box& bx = mfi.tilebox();//growntilebox(S_fine.nGrow());
+             const Box& bx = mfi.tilebox();
              bool f = false;
              RealBox gridloc = RealBox(fine_lev.grids[mfi.index()],fgeom.CellSize(),fgeom.ProbLo());
 

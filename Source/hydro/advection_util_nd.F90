@@ -555,13 +555,11 @@ contains
               !q(i,j,k,:QW) = uin(i,j,k,:QW)
               if (uin(i,j,k,URHO) .le. ZERO) then
                   q(i,j,k,QRHO) = 1.0_rt / W
-                  ! q(i,j,k,QU) = 0.1_rt * uin(i,j,k,UMX)
                   q(i,j,k,QV) = 0.1_rt * uin(i,j,k,UMY) / W
                   q(i,j,k,QW) = 0.1_rt * uin(i,j,k,UMZ) / W
                   q(i,j,k,QFA:QFA-1+nadv) = uin(i,j,k,UFA:UFA-1+nadv) * 0.1_rt
               else
                   q(i,j,k,QRHO) = uin(i,j,k,URHO)
-                  ! q(i,j,k,QU) = uin(i,j,k,UMX) / uin(i,j,k,URHO)
                   q(i,j,k,QV) = uin(i,j,k,UMY) / (uin(i,j,k,URHO) * W)
                   q(i,j,k,QW) = uin(i,j,k,UMZ) / (uin(i,j,k,URHO) * W)
                   q(i,j,k,QFA:QFA-1+nadv) = uin(i,j,k,UFA:UFA-1+nadv) / uin(i,j,k,URHO)
@@ -676,12 +674,12 @@ subroutine compctoprim(lo, hi, &
 
             if (uin(i,j,k,URHO) .le. ZERO) then
                 q(i,j,k,QRHO) = 1.0_rt
-                q(i,j,k,QU) = 0.1_rt * uin(i,j,k,UMX) !/ uin(i,j,k,URHO)
-                q(i,j,k,QV) = 0.1_rt * uin(i,j,k,UMY) !/ uin(i,j,k,URHO)
-                q(i,j,k,QW) = 0.1_rt * uin(i,j,k,UMZ) !/ uin(i,j,k,URHO)
+                q(i,j,k,QU) = 0.1_rt * uin(i,j,k,UMX)
+                q(i,j,k,QV) = 0.1_rt * uin(i,j,k,UMY)
+                q(i,j,k,QW) = 0.1_rt * uin(i,j,k,UMZ)
             else
                 ! Incompressible
-                q(i,j,k,QRHO) = 1.0_rt!uin(i,j,k,URHO)
+                q(i,j,k,QRHO) = uin(i,j,k,URHO)
                 q(i,j,k,QU) = uin(i,j,k,UMX) / uin(i,j,k,URHO)
                 q(i,j,k,QV) = uin(i,j,k,UMY) / uin(i,j,k,URHO)
                 q(i,j,k,QW) = uin(i,j,k,UMZ) / uin(i,j,k,URHO)
@@ -707,20 +705,16 @@ subroutine compctoprim(lo, hi, &
             call f_of_p(fmax, pmax, uin(i,j,k,:))
 
             if (fmin * fmax > 0.0_rt) then
-                pmin = pmin * 0.1_rt !0._rt
+                pmin = pmin * 0.1_rt
             end if
 
             call f_of_p(fmin, pmin, uin(i,j,k,:))
-
-            !write(*,*) "f = ", fmin, fmax, " p = ", pmin, pmax
 
             if (fmin * fmax > 0.0_rt) then
               pmax = pmax * 10._rt
             end if
 
             call zbrent(p, pmin, pmax, uin(i,j,k,:))
-
-            !write(*,*) "pressure = ", pmin, pmax
 
             if (p /= p .or. p <= 0.0_rt) then! .or. p > 1.0_rt) then
 
@@ -738,15 +732,10 @@ subroutine compctoprim(lo, hi, &
             end if
 
             h = 1.0_rt + gamma * &
-            (sq - p * (eden + p + uin(i,j,k,URHO)) / sq - uin(i,j,k,URHO)) / uin(i,j,k,URHO)
+                (sq - p * (eden + p + uin(i,j,k,URHO)) / sq - uin(i,j,k,URHO)) / uin(i,j,k,URHO)
             W2 = 1.0_rt + ssq / (uin(i,j,k,URHO) * h)**2
 
-            !write(*,*) "p, sq, eden, rho", p, sq, eden, uin(i,j,k,URHO)
-            !return
-
             q(i,j,k,QRHO) = uin(i,j,k,URHO) * sq / (eden + p + uin(i,j,k,URHO))
-
-            ! write(*,*) uin(i,j,k,URHO) * sq / (eden + p + uin(i,j,k,URHO))
 
             W2 = (uin(i,j,k,URHO) / q(i,j,k,QRHO))**2
             ! if ((W2 - 1.0_rt) < 1.0e-8_rt) then
@@ -768,8 +757,6 @@ subroutine compctoprim(lo, hi, &
 #if BL_SPACEDIM <= 2
             vel(3) = 0.0_rt
 #endif
-
-            ! p = rhoh * W2 - uin(i,j,k,UEDEN) - uin(i,j,k,URHO)
 
             q(i,j,k,QU:QW) = vel(1:3)
 

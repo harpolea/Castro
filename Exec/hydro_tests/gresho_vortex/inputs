@@ -4,7 +4,7 @@
 
 # ------------------  INPUTS TO MAIN PROGRAM  -------------------
 stop_time = 2
-max_step = 250
+max_step = 5
 
 # PROBLEM SIZE & GEOMETRY
 geometry.is_periodic = 0  0  0
@@ -63,12 +63,12 @@ amr.check_per       = 0.1       # number of timesteps between checkpoints
 
 # PLOTFILES
 amr.plot_files_output = 1
-amr.plot_file       = plots/gresho_plt       # root name of plotfile
+amr.plot_file       = plots/test_plt       # root name of plotfile
 amr.plot_per        = 20       # time between plotfiles
 amr.plot_int = 5
 
 #amr.plot_vars = ALL
-amr.derive_plot_vars = density xmom ymom zmom pressure height eint primmom
+amr.derive_plot_vars = density pressure height eint primu primv primw primspeed
 
 # PROBIN FILENAME
 amr.probin_file = probin

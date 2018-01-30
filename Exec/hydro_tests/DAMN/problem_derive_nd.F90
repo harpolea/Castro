@@ -68,17 +68,17 @@ subroutine ca_derheight(h,h_lo,h_hi,nh, &
 
 end subroutine ca_derheight
 
-subroutine ca_derprimv(v,v_lo,v_hi,nv, &
+subroutine ca_derprimu(v,v_lo,v_hi,nv, &
                     u,d_lo,d_hi,nc, &
                     lo,hi,domlo,domhi,dx, &
                     xlo,time,dt,bc,level,grid_no) &
-                    bind(C, name="ca_derprimv")
+                    bind(C, name="ca_derprimu")
     !
     ! Primitive velocity
     !
     use amrex_fort_module, only : rt => amrex_real
     use probdata_module, only: swe_to_comp_level
-    use meth_params_module, only: QU, QW, NQ, NQAUX, NVAR
+    use meth_params_module, only: QU, NQ, NQAUX, NVAR
     use advection_util_module, only: swectoprim, compctoprim
     implicit none
 
@@ -106,12 +106,102 @@ subroutine ca_derprimv(v,v_lo,v_hi,nv, &
     do k = lo(3), hi(3)
        do j = lo(2), hi(2)
           do i = lo(1), hi(1)
-              v(i,j,k,1:3) = q(i,j,k,QU:QW)
+              v(i,j,k,1) = q(i,j,k,QU)
+          enddo
+       enddo
+    enddo
+
+end subroutine ca_derprimu
+
+subroutine ca_derprimv(v,v_lo,v_hi,nv, &
+                    u,d_lo,d_hi,nc, &
+                    lo,hi,domlo,domhi,dx, &
+                    xlo,time,dt,bc,level,grid_no) &
+                    bind(C, name="ca_derprimv")
+    !
+    ! Primitive velocity
+    !
+    use amrex_fort_module, only : rt => amrex_real
+    use probdata_module, only: swe_to_comp_level
+    use meth_params_module, only: QV, NQ, NQAUX, NVAR
+    use advection_util_module, only: swectoprim, compctoprim
+    implicit none
+
+    integer, intent(in) :: lo(3), hi(3)
+    integer, intent(in) :: v_lo(3), v_hi(3), nv
+    integer, intent(in) :: d_lo(3), d_hi(3), nc
+    integer, intent(in) :: domlo(3), domhi(3)
+    integer, intent(in) :: bc(3,2,nc)
+    real(rt), intent(in) :: dx(3), xlo(3), time, dt
+    real(rt), intent(inout) :: v(v_lo(1):v_hi(1),v_lo(2):v_hi(2),v_lo(3):v_hi(3),nv)
+    real(rt), intent(in) ::    u(d_lo(1):d_hi(1),d_lo(2):d_hi(2),d_lo(3):d_hi(3),nc)
+    integer, intent(in) :: level, grid_no
+
+    real(rt) :: xx, p
+    real(rt) :: q(lo(1):hi(1), lo(2):hi(2), lo(3):hi(3), NQ)
+    real(rt) :: qaux(lo(1):hi(1), lo(2):hi(2), lo(3):hi(3),NQAUX)
+    integer :: i,j,k
+
+    if (level > swe_to_comp_level) then
+        call compctoprim(lo, hi, u(:,:,:,1:NVAR), d_lo, d_hi, q, lo, hi, qaux, lo, hi, xlo, dx, .false.)
+    else
+        call swectoprim(lo, hi, u(:,:,:,1:NVAR), d_lo, d_hi, q, lo, hi, qaux, lo, hi, .false.)
+    endif
+
+    do k = lo(3), hi(3)
+       do j = lo(2), hi(2)
+          do i = lo(1), hi(1)
+              v(i,j,k,1) = q(i,j,k,QV)
           enddo
        enddo
     enddo
 
 end subroutine ca_derprimv
+
+subroutine ca_derprimw(v,v_lo,v_hi,nv, &
+                    u,d_lo,d_hi,nc, &
+                    lo,hi,domlo,domhi,dx, &
+                    xlo,time,dt,bc,level,grid_no) &
+                    bind(C, name="ca_derprimw")
+    !
+    ! Primitive velocity
+    !
+    use amrex_fort_module, only : rt => amrex_real
+    use probdata_module, only: swe_to_comp_level
+    use meth_params_module, only: QW, NQ, NQAUX, NVAR
+    use advection_util_module, only: swectoprim, compctoprim
+    implicit none
+
+    integer, intent(in) :: lo(3), hi(3)
+    integer, intent(in) :: v_lo(3), v_hi(3), nv
+    integer, intent(in) :: d_lo(3), d_hi(3), nc
+    integer, intent(in) :: domlo(3), domhi(3)
+    integer, intent(in) :: bc(3,2,nc)
+    real(rt), intent(in) :: dx(3), xlo(3), time, dt
+    real(rt), intent(inout) :: v(v_lo(1):v_hi(1),v_lo(2):v_hi(2),v_lo(3):v_hi(3),nv)
+    real(rt), intent(in) ::    u(d_lo(1):d_hi(1),d_lo(2):d_hi(2),d_lo(3):d_hi(3),nc)
+    integer, intent(in) :: level, grid_no
+
+    real(rt) :: xx, p
+    real(rt) :: q(lo(1):hi(1), lo(2):hi(2), lo(3):hi(3), NQ)
+    real(rt) :: qaux(lo(1):hi(1), lo(2):hi(2), lo(3):hi(3),NQAUX)
+    integer :: i,j,k
+
+    if (level > swe_to_comp_level) then
+        call compctoprim(lo, hi, u(:,:,:,1:NVAR), d_lo, d_hi, q, lo, hi, qaux, lo, hi, xlo, dx, .false.)
+    else
+        call swectoprim(lo, hi, u(:,:,:,1:NVAR), d_lo, d_hi, q, lo, hi, qaux, lo, hi, .false.)
+    endif
+
+    do k = lo(3), hi(3)
+       do j = lo(2), hi(2)
+          do i = lo(1), hi(1)
+              v(i,j,k,1) = q(i,j,k,QW)
+          enddo
+       enddo
+    enddo
+
+end subroutine ca_derprimw
 
 subroutine ca_derprimrho(rho,r_lo,r_hi,nr, &
                     u,d_lo,d_hi,nc, &
@@ -294,10 +384,10 @@ subroutine ca_dereint(e,e_lo,e_hi,ncomp_e, &
 
 end subroutine ca_dereint
 
-subroutine ca_derprimmom(m,m_lo,m_hi,ncomp_m, &
+subroutine ca_derprimspeed(m,m_lo,m_hi,ncomp_m, &
                        u,u_lo,u_hi,ncomp_u,lo,hi,domlo, &
                        domhi,dx,xlo,time,dt,bc,level,grid_no) &
-                       bind(C, name="ca_derprimmom")
+                       bind(C, name="ca_derprimspeed")
 
   use meth_params_module, only: QU, QW, NQ, NQAUX, NVAR
   use advection_util_module, only: compctoprim, swectoprim
@@ -336,7 +426,7 @@ subroutine ca_derprimmom(m,m_lo,m_hi,ncomp_m, &
      enddo
   enddo
 
-end subroutine ca_derprimmom
+end subroutine ca_derprimspeed
 
 subroutine ca_derpressgrad(g,g_lo,g_hi,ncomp_g, &
                        u,u_lo,u_hi,ncomp_u,lo,hi,domlo, &

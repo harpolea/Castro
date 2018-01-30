@@ -912,18 +912,15 @@ end subroutine compute_temp
     real(rt), intent(in   ) :: state(s_lo(1):s_hi(1),s_lo(2):s_hi(2),s_lo(3):s_hi(3),nc)
 
     integer  :: i,j,k,n,index
-    ! real(rt) :: cell_volume
 
     if (dim .eq. 1) call bl_error("Error: cannot do ca_compute_vertical_avgstate in 1D.")
+    ! 
+    ! write(*,*) "lo, hi", lo, hi
+    ! write(*,*) "nx = ", nx
 
     !
     ! Do not OMP this.
     !
-! #if BL_SPACEDIM == 2
-!     cell_volume = dx(1) * dx(2)
-! #elif BL_SPACEDIM == 3
-!     cell_volume = dx(2) * dx(3)
-! #endif
     do k = lo(3), hi(3)
        do j = lo(2), hi(2)
           do i = lo(1), hi(1)
@@ -941,11 +938,9 @@ end subroutine compute_temp
                 print *,'AT (i,j,k) ',i,j,k
                 call bl_error("Error:: Castro_util.F90 :: ca_compute_vertical_avgstate")
              end if
-             ! radial_state(URHO,index) = radial_state(URHO,index) &
-             !                          + vol(i,j,k)*state(i,j,k,URHO)
              do n = 1,nc
                 horizontal_state(n,index) = horizontal_state(n,index) + state(i,j,k,n) / nx(1)
-             end do
+             enddo
           enddo
        enddo
     enddo
@@ -980,8 +975,6 @@ end subroutine compute_temp
 
     if (dim .eq. 1) call bl_error("Error: cannot do ca_compute_vertical_avgstate in 1D.")
 
-    ! write(*,*) "lo, hi", lo, hi
-
     if ((lo(1) .le. 0) .and. (hi(1) .ge. 0)) then
         !
         ! Do not OMP this.
@@ -1002,8 +995,6 @@ end subroutine compute_temp
                 print *,'AT (j,k) ',j,k
                 call bl_error("Error:: Castro_util.F90 :: ca_compute_floor_state")
              end if
-             ! radial_state(URHO,index) = radial_state(URHO,index) &
-             !                          + vol(i,j,k)*state(i,j,k,URHO)
              do n = 1,nc
                 horizontal_state(n,index) = state(0,j,k,n)
              enddo

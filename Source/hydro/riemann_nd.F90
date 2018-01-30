@@ -462,7 +462,7 @@ subroutine swe_to_comp(swe, slo, shi, vertically_avgd_swe, vlo, vhi, comp, clo, 
     use meth_params_module, only: NQ, QVAR, QRHO, QU, QV, QW, &
          NVAR, URHO, UMX, UMY, UMZ, NQAUX, QTEMP, UTEMP, UEDEN, UEINT, &
          QPRES, UFS, UFA, QFA, outflow_data_new, ny, nz, n_outflow_cpts
-    use probdata_module, only : g, eos_K
+    use probdata_module, only : g, eos_K, rho_from_height, p_from_rho
     use actual_eos_module, only: gamma_const
     use eos_module, only : eos
     use eos_type_module, only : eos_t, eos_input_rp
@@ -491,16 +491,6 @@ subroutine swe_to_comp(swe, slo, shi, vertically_avgd_swe, vlo, vhi, comp, clo, 
     else
         ignore_errs = .false.
     endif
-    ! write(*,*) "swe_to_comp"
-
-    ! do k = lo(3), hi(3)
-    !     do j = lo(2), hi(2)
-    !         write(*,*) j, k,  vertically_avgd_swe(1, j, k, URHO)
-    !     enddo
-    ! enddo
-
-    ! write(*,*) vertically_avgd_swe(1, lo(2):hi(2), lo(3):hi(3), URHO)
-    ! call exit(0)
 
     lo2d = [1, lo(2), lo(3)]
     hi2d = [1, hi(2), hi(3)]
@@ -519,11 +509,9 @@ subroutine swe_to_comp(swe, slo, shi, vertically_avgd_swe, vlo, vhi, comp, clo, 
                 U_comp(1:NVAR) = 0.0_rt
                 xx = xlo(1) + dx(1)*dble(i-lo(1)+HALF)
 
-                q_comp(QRHO) = eos_K**(gamma_const/(gamma_const-1._rt)) * ((gamma_const-1._rt)/gamma_const * g * (h-xx))**(1._rt / (gamma_const-1._rt))
+                q_comp(QRHO) = rho_from_height(h, xx)
 
-                ! write(*,*) i,j,k,q_comp(QRHO)
-
-                q_comp(QPRES) = (q_comp(QRHO) / eos_K)**gamma_const
+                q_comp(QPRES) = p_from_rho(q_comp(QRHO))
 
                 eos_state % rho = q_comp(QRHO)
                 eos_state % p   = q_comp(QPRES)
@@ -547,16 +535,13 @@ subroutine swe_to_comp(swe, slo, shi, vertically_avgd_swe, vlo, vhi, comp, clo, 
         enddo
     enddo
 
-    ! write(*,*) "swe_avg", vertically_avgd_q_swe(1,:,lo(3),QRHO)
-    ! write(*,*) "comp", comp(:,:,lo(3), URHO)
-
 end subroutine swe_to_comp
 
 
 subroutine comp_to_swe(swe, slo, shi, comp, clo, chi, floor_comp, vlo, vhi, lo, hi, xlo, dx, ignore_errors)
     use meth_params_module, only: QVAR, QRHO, QU, QV, QW, &
          NVAR, URHO, UMX, UMY, UMZ, QTEMP, UTEMP, UFS, UEDEN, UEINT, UFA, QFA
-    use probdata_module, only : g, eos_K
+    use probdata_module, only : g, eos_K, height_from_p, p_from_rho
     use actual_eos_module, only: gamma_const
     use advection_util_module, only: compctoprim
     use network, only : nspec
@@ -584,15 +569,8 @@ subroutine comp_to_swe(swe, slo, shi, comp, clo, chi, floor_comp, vlo, vhi, lo, 
         ignore_errs = .false.
     endif
 
-    ! write(*,*) "comp to swe"
-
     lo2d = [1, lo(2), lo(3)]
     hi2d = [1, hi(2), hi(3)]
-
-    ! phi = gh
-
-    ! NOTE: DON'T DO THIS IS CAUSES ALL OF COMP TO BE SET TO ZERO AS WELL
-    !swe(:,:,:,:) = 0.0_rt
 
     call compctoprim(lo, hi, comp, clo, chi, q_comp, clo, chi, qaux, clo, chi, xlo, dx, ignore_errs)
 
@@ -602,15 +580,10 @@ subroutine comp_to_swe(swe, slo, shi, comp, clo, chi, floor_comp, vlo, vhi, lo, 
 
     do k = lo(3), hi(3)
         do j = lo(2), hi(2)
-            ! do i = lo(1), hi(1)
             U_swe(1:NVAR) = 0.0_rt
-            ! look at pressure at bottom and invert to get height
-            ! using p = 0.5 * g * h**2
             q_swe(1:NQ) = floor_q_comp(1,j,k,1:NQ)
-            q_swe(QRHO) = xx + gamma_const / (gamma_const-1._rt) * &
-                1._rt / (g * eos_K) * &
-                floor_q_comp(1,j,k,QPRES)**((gamma_const-1._rt)/gamma_const)
-            q_swe(QPRES) = (floor_q_comp(1,j,k,QRHO) / eos_K)**gamma_const
+            q_swe(QRHO) = height_from_p(floor_q_comp(1,j,k,QPRES), xx)
+            q_swe(QPRES) = p_from_rho(floor_q_comp(1,j,k,QRHO))
 
             q_swe(QU) = 0.0_rt
 #if BL_SPACEDIM == 1
@@ -626,11 +599,6 @@ subroutine comp_to_swe(swe, slo, shi, comp, clo, chi, floor_comp, vlo, vhi, lo, 
             enddo
         enddo
     enddo
-
-    ! NOTE: looks ok
-    ! write(*,*) "floor rho", floor_q_comp(1,:,lo(3),QRHO)
-    ! write(*,*) "eos_K, gamma", eos_K, gamma_const
-    ! write(*,*) "swe", swe(lo(1), :, lo(3), :QW)
 
 end subroutine comp_to_swe
 

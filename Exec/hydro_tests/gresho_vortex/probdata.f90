@@ -9,4 +9,70 @@ module probdata_module
       integer, save :: nsub
       integer, save           :: swe_to_comp_level
 
+  contains
+
+      function rho_from_height(h, x) result(rho)
+          use actual_eos_module, only: gamma_const
+
+          implicit none
+
+          real(rt), intent(in) :: h, x
+          real(rt) :: rho
+
+          rho = eos_K**(gamma_const/(gamma_const-1._rt)) * &
+              ((gamma_const-1._rt)/gamma_const * g * &
+              (h-x))**(1._rt / (gamma_const-1._rt))
+
+      end function rho_from_height
+
+      function p_from_height(h, x) result(p)
+          use actual_eos_module, only: gamma_const
+
+          implicit none
+
+          real(rt), intent(in) :: h, x
+          real(rt) :: p
+
+          p = ((gamma_const - 1._rt) / gamma_const * g * eos_K * &
+            (h - x))**(gamma_const / (gamma_const - 1._rt))
+
+      end function p_from_height
+
+      function height_from_p(p, x) result(h)
+          use actual_eos_module, only: gamma_const
+
+          implicit none
+
+          real(rt), intent(in) :: p, x
+          real(rt) :: h
+
+          h = x + gamma_const / (gamma_const-1._rt) * &
+              1._rt / (g * eos_K) * p**((gamma_const-1._rt)/gamma_const)
+
+      end function height_from_p
+
+      function p_from_rho(rho) result(p)
+          use actual_eos_module, only: gamma_const
+
+          implicit none
+
+          real(rt) :: p
+          real(rt), intent(in) :: rho
+
+          p = (rho / eos_K)**gamma_const
+
+      end function p_from_rho
+
+      function rho_from_p(p) result(rho)
+          use actual_eos_module, only: gamma_const
+
+          implicit none
+
+          real(rt), intent(in) :: p
+          real(rt) :: rho
+
+          rho = eos_K * p**(1._rt / gamma_const)
+
+      end function rho_from_p
+
 end module probdata_module
