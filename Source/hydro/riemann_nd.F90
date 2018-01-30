@@ -339,8 +339,6 @@ contains
     real(rt) :: U_hll_state(NVAR), U_state(NVAR), F_state(NVAR), Fr_state(NVAR)
     real(rt) :: S_l, S_r, S_c, Smax_l, Smax_r, Smax
 
-    ! k = ilo(3)
-
     if (idir == 1) then
        iu = QU
        iv1 = QV

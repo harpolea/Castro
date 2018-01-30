@@ -146,7 +146,7 @@ subroutine ca_initdata(level,time,lo,hi,nscal, &
 
   real(rt)         :: xx, yy, zz, r, h
 
-  integer :: i, j, k, n, ii, jj, kk
+  integer :: i, j, k
 
   real(rt)         :: dye, eint, a
   real(rt)         :: q(state_lo(1):state_hi(1),state_lo(2):state_hi(2),state_lo(3):state_hi(3),NQ)
@@ -167,7 +167,7 @@ subroutine ca_initdata(level,time,lo,hi,nscal, &
 
   a = 0.0005e0_rt ! characteristic size of layer between states
 
-  !$OMP PARALLEL DO PRIVATE(i, j, k, xx, yy, zz, r, h)
+  !$OMP PARALLEL DO PRIVATE(i, j, k, xx, yy, zz, r, h, eos_state, eint)
   do k = lo(3), hi(3)
      zz = xlo(3) + delta(3)*dble(k-lo(3)+HALF)
 

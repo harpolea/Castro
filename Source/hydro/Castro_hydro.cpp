@@ -59,16 +59,12 @@ Castro::construct_mol_hydro_source(Real time, Real dt)
     const int*  domain_lo = geom.Domain().loVect();
     const int*  domain_hi = geom.Domain().hiVect();
 
-    //fill_boundary(Sborder, geom, true);
-
     for (MFIter mfi(S_new, hydro_tile_size); mfi.isValid(); ++mfi) {
     	const Box& bx  = mfi.tilebox();
     	const Box& qbx = amrex::grow(bx, NUM_GROW);
 
     	const int* lo = bx.loVect();
     	const int* hi = bx.hiVect();
-
-        // std::cout << "lo = " << lo[0] << ' ' << lo[1] << ' ' << lo[2] << '\n';
 
     	FArrayBox &statein  = Sborder[mfi];
     	FArrayBox &stateout = S_new[mfi];
@@ -81,18 +77,10 @@ Castro::construct_mol_hydro_source(Real time, Real dt)
 
     	FArrayBox& vol = volume[mfi];
 
-    	//q.resize(qbx, NQ);
-    	//qaux.resize(qbx, NQAUX);
-
     	// convert the conservative state to the primitive variable state.
     	// this fills both q and qaux.
 
     	const int idx = mfi.tileIndex();
-
-    	// ca_ctoprim(ARLIM_3D(qbx.loVect()), ARLIM_3D(qbx.hiVect()),
-    	// 	   statein.dataPtr(), ARLIM_3D(statein.loVect()), ARLIM_3D(statein.hiVect()),
-    	// 	   q.dataPtr(), ARLIM_3D(q.loVect()), ARLIM_3D(q.hiVect()),
-    	// 	   qaux.dataPtr(), ARLIM_3D(qaux.loVect()), ARLIM_3D(qaux.hiVect()), &idx, &level);
 
     	// Allocate fabs for fluxes
     	for (int i = 0; i < BL_SPACEDIM ; i++)  {
@@ -105,7 +93,6 @@ Castro::construct_mol_hydro_source(Real time, Real dt)
     	  pradial.resize(amrex::surroundingNodes(bx,0),1);
     	}
 #endif
-
 
         RealBox gridloc = RealBox(grids[mfi.index()],geom.CellSize(),geom.ProbLo());
 
@@ -223,16 +210,6 @@ Castro::cons_to_prim(const Real time)
                    BL_TO_FORTRAN_ANYD(q[mfi]),
                    BL_TO_FORTRAN_ANYD(qaux[mfi]),
                    &idx, &level, ZFILL(gridloc.lo()), ZFILL(dx));
-
-        // Convert the source terms expressed as sources to the conserved state to those
-        // expressed as sources for the primitive state.
-
-        // ca_srctoprim(BL_TO_FORTRAN_BOX(qbx),
-        //              BL_TO_FORTRAN_ANYD(q[mfi]),
-        //              BL_TO_FORTRAN_ANYD(qaux[mfi]),
-        //              BL_TO_FORTRAN_ANYD(sources_for_hydro[mfi]),
-        //              BL_TO_FORTRAN_ANYD(src_q[mfi]),
-        //              &idx);
     }
 }
 

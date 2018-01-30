@@ -62,20 +62,6 @@ module meth_params_module
 
   integer, save :: xl_ext, yl_ext, zl_ext, xr_ext, yr_ext, zr_ext
 
-  ! Create versions of these variables on the GPU
-  ! the device update is then done in Castro_nd.f90
-
-  !$acc declare &
-  !$acc create(NTHERM, NVAR) &
-  !$acc create(URHO, UMX, UMY, UMZ, UMR, UML, UMP, UEDEN, UEINT, UTEMP, UFA, UFS,UFX) &
-  !$acc create(USHK) &
-  !$acc create(QTHERM, QVAR) &
-  !$acc create(QRHO, QU, QV, QW, QPRES, QREINT, QTEMP) &
-  !$acc create(QGAMC, QGAME) &
-  !$acc create(NQ) &
-  !$acc create(QFA, QFS, QFX) &
-  !$acc create(xl_ext, yl_ext, zl_ext, xr_ext, yr_ext, zr_ext)
-
   ! Begin the declarations of the ParmParse parameters
 
   real(rt), save :: difmag
@@ -157,33 +143,6 @@ module meth_params_module
   integer         , save :: track_grid_losses
   real(rt), save :: const_grav
   integer         , save :: get_g_from_phi
-
-  !$acc declare &
-  !$acc create(difmag, small_dens, small_temp) &
-  !$acc create(small_pres, small_ener, do_hydro) &
-  !$acc create(do_ctu, hybrid_hydro, ppm_type) &
-  !$acc create(ppm_trace_sources, ppm_temp_fix, ppm_predict_gammae) &
-  !$acc create(ppm_reference_eigenvectors, plm_iorder, hybrid_riemann) &
-  !$acc create(riemann_solver, cg_maxiter, cg_tol) &
-  !$acc create(cg_blend, use_eos_in_riemann, use_flattening) &
-  !$acc create(transverse_use_eos, transverse_reset_density, transverse_reset_rhoe) &
-  !$acc create(dual_energy_update_E_from_e, dual_energy_eta1, dual_energy_eta2) &
-  !$acc create(dual_energy_eta3, use_pslope, fix_mass_flux) &
-  !$acc create(limit_fluxes_on_small_dens, density_reset_method, allow_negative_energy) &
-  !$acc create(allow_small_energy, do_sponge, sponge_implicit) &
-  !$acc create(first_order_hydro, hse_zero_vels, hse_interp_temp) &
-  !$acc create(hse_reflect_vels, cfl, dtnuc_e) &
-  !$acc create(dtnuc_X, dtnuc_X_threshold, dtnuc_mode) &
-  !$acc create(dxnuc, do_react, react_T_min) &
-  !$acc create(react_T_max, react_rho_min, react_rho_max) &
-  !$acc create(disable_shock_burning, diffuse_cutoff_density, diffuse_cond_scale_fac) &
-  !$acc create(do_grav, grav_source_type, do_rotation) &
-  !$acc create(rot_period, rot_period_dot, rotation_include_centrifugal) &
-  !$acc create(rotation_include_coriolis, rotation_include_domegadt, state_in_rotating_frame) &
-  !$acc create(rot_source_type, implicit_rotation_update, rot_axis) &
-  !$acc create(point_mass, point_mass_fix_solution, do_acc) &
-  !$acc create(grown_factor, track_grid_losses, const_grav) &
-  !$acc create(get_g_from_phi)
 
   ! End the declarations of the ParmParse parameters
 
@@ -358,36 +317,6 @@ contains
     call pp%query("track_grid_losses", track_grid_losses)
     call amrex_parmparse_destroy(pp)
 
-
-
-    !$acc update &
-    !$acc device(difmag, small_dens, small_temp) &
-    !$acc device(small_pres, small_ener, do_hydro) &
-    !$acc device(do_ctu, hybrid_hydro, ppm_type) &
-    !$acc device(ppm_trace_sources, ppm_temp_fix, ppm_predict_gammae) &
-    !$acc device(ppm_reference_eigenvectors, plm_iorder, hybrid_riemann) &
-    !$acc device(riemann_solver, cg_maxiter, cg_tol) &
-    !$acc device(cg_blend, use_eos_in_riemann, use_flattening) &
-    !$acc device(transverse_use_eos, transverse_reset_density, transverse_reset_rhoe) &
-    !$acc device(dual_energy_update_E_from_e, dual_energy_eta1, dual_energy_eta2) &
-    !$acc device(dual_energy_eta3, use_pslope, fix_mass_flux) &
-    !$acc device(limit_fluxes_on_small_dens, density_reset_method, allow_negative_energy) &
-    !$acc device(allow_small_energy, do_sponge, sponge_implicit) &
-    !$acc device(first_order_hydro, hse_zero_vels, hse_interp_temp) &
-    !$acc device(hse_reflect_vels, cfl, dtnuc_e) &
-    !$acc device(dtnuc_X, dtnuc_X_threshold, dtnuc_mode) &
-    !$acc device(dxnuc, do_react, react_T_min) &
-    !$acc device(react_T_max, react_rho_min, react_rho_max) &
-    !$acc device(disable_shock_burning, diffuse_cutoff_density, diffuse_cond_scale_fac) &
-    !$acc device(do_grav, grav_source_type, do_rotation) &
-    !$acc device(rot_period, rot_period_dot, rotation_include_centrifugal) &
-    !$acc device(rotation_include_coriolis, rotation_include_domegadt, state_in_rotating_frame) &
-    !$acc device(rot_source_type, implicit_rotation_update, rot_axis) &
-    !$acc device(point_mass, point_mass_fix_solution, do_acc) &
-    !$acc device(grown_factor, track_grid_losses, const_grav) &
-    !$acc device(get_g_from_phi)
-
-
     ! now set the external BC flags
     select case (xl_ext_bc_type)
     case ("hse", "HSE")
@@ -442,9 +371,6 @@ contains
     case default
        zr_ext = EXT_UNDEFINED
     end select
-
-    !$acc update device(xl_ext, yl_ext, zl_ext, xr_ext, yr_ext, zr_ext)
-
 
   end subroutine ca_set_castro_method_params
 

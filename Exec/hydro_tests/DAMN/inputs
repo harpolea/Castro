@@ -4,7 +4,7 @@
 
 # ------------------  INPUTS TO MAIN PROGRAM  -------------------
 stop_time = 2
-max_step = 50
+max_step = 25
 
 # PROBLEM SIZE & GEOMETRY
 geometry.is_periodic = 0  0  0
@@ -19,7 +19,7 @@ amr.max_level        = 2        # maximum level number allowed; base level is 0
 amr.max_grid_size    = 64
 
 # Name of checkpoint file from which to restart
-amr.restart = chk/chk00025
+#amr.restart = chk/chk00025
 
 # >>>>>>>>>>>>>  BC FLAGS <<<<<<<<<<<<<<<<
 # 0 = Interior           3 = Symmetry
@@ -58,7 +58,7 @@ amr.blocking_factor = 4         # block factor in grid generation
 amr.n_error_buf     = 4   # number of buffer cells in error est
 
 # CHECKPOINT FILES
-amr.checkpoint_files_output = 1
+amr.checkpoint_files_output = 0
 amr.check_file      = chk/chk       # root name of checkpoint file
 amr.check_per       = 0.1       # number of timesteps between checkpoints
 amr.check_int = 5

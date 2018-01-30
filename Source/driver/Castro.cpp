@@ -1408,6 +1408,9 @@ Castro::avgDown (int state_indx)
         Real new_time = state[State_Type].curTime();
         amrex::make_floor_data(S_fine, fine_lev.geom, floor_state, new_time);
 
+#ifdef _OPENMP
+#pragma omp parallel
+#endif
         for (MFIter mfi(base); mfi.isValid(); ++mfi)
         {
             const Box& bx = mfi.tilebox();
@@ -1416,7 +1419,9 @@ Castro::avgDown (int state_indx)
             ca_getbase(ARLIM_3D(bx.loVect()), ARLIM_3D(bx.hiVect()), BL_TO_FORTRAN_3D(S_fine[mfi]), BL_TO_FORTRAN_3D(base[mfi]), ZFILL(gridloc.lo()), &np);
         }
 
-
+#ifdef _OPENMP
+#pragma omp parallel
+#endif
         for (MFIter mfi(base); mfi.isValid(); ++mfi)
         {
             const Box& bx = mfi.tilebox();
@@ -1445,7 +1450,10 @@ Castro::avgDown (int state_indx)
         Real new_time = state[State_Type].curTime();
         amrex::make_vertically_avgd_data(S_fine, fine_lev.geom, horizontal_state, new_time);
 
-         const Real* dx        = fgeom.CellSize();
+        const Real* dx        = fgeom.CellSize();
+#ifdef _OPENMP
+#pragma omp parallel
+#endif
          for (MFIter mfi(S_fine); mfi.isValid(); ++mfi)
          {
              const Box& bx = mfi.tilebox();
@@ -1764,7 +1772,9 @@ Castro::computeTemp(MultiFab& State)
 {
 
   reset_internal_energy(State);
-
+#ifdef _OPENMP
+#pragma omp parallel
+#endif
   for (MFIter mfi(State,true); mfi.isValid(); ++mfi)
     {
         const Box& bx = mfi.growntilebox();
@@ -1968,6 +1978,9 @@ Castro::make_radial_data(int is_new)
       MultiFab& S = get_new_data(State_Type);
       const int nc = S.nComp();
       Vector<Real> radial_state(numpts_1d*nc,0);
+#ifdef _OPENMP
+#pragma omp parallel
+#endif
       for (MFIter mfi(S); mfi.isValid(); ++mfi)
       {
          Box bx(mfi.validbox());
@@ -2010,6 +2023,9 @@ Castro::make_radial_data(int is_new)
       MultiFab& S = get_old_data(State_Type);
       const int nc = S.nComp();
       Vector<Real> radial_state(numpts_1d*nc,0);
+#ifdef _OPENMP
+#pragma omp parallel
+#endif
       for (MFIter mfi(S); mfi.isValid(); ++mfi)
       {
          Box bx(mfi.validbox());
