@@ -4,7 +4,7 @@
 
 # ------------------  INPUTS TO MAIN PROGRAM  -------------------
 stop_time = 2
-max_step = 800
+max_step = 5
 
 # PROBLEM SIZE & GEOMETRY
 geometry.is_periodic = 0  0  0
@@ -14,7 +14,7 @@ geometry.prob_hi     = 2.0 2.0 0.25 #0.125
 castro.center        = 1.0 1.0 0.125 #0.0625
 
 amr.n_cell           = 32 32 4
-amr.max_level        = 3        # maximum level number allowed; base level is 0
+amr.max_level        = 2        # maximum level number allowed; base level is 0
 
 amr.max_grid_size    = 64
 
@@ -26,8 +26,8 @@ amr.max_grid_size    = 64
 # 1 = Inflow             4 = SlipWall
 # 2 = Outflow            5 = NoSlipWall
 # >>>>>>>>>>>>>  BC FLAGS <<<<<<<<<<<<<<<<
-castro.lo_bc       =  2   2   2
-castro.hi_bc       =  2   2   2
+castro.lo_bc       =  1   2   2
+castro.hi_bc       =  1   2   2
 
 # WHICH PHYSICS
 castro.do_hydro = 1
@@ -58,16 +58,16 @@ amr.blocking_factor = 4         # block factor in grid generation
 amr.n_error_buf     = 4   # number of buffer cells in error est
 
 # CHECKPOINT FILES
-amr.checkpoint_files_output = 1
+amr.checkpoint_files_output = 0
 amr.check_file      = chk/chk       # root name of checkpoint file
 amr.check_per       = 0.1       # number of timesteps between checkpoints
 amr.check_int = 50
 
 # PLOTFILES
 amr.plot_files_output = 1
-amr.plot_file       = plots/fixed_plt       # root name of plotfile
+amr.plot_file       = plots/hse_plt       # root name of plotfile
 amr.plot_per        = 20       # time between plotfiles
-amr.plot_int = 10
+amr.plot_int = 1
 
 #amr.plot_vars = ALL
 amr.derive_plot_vars = density pressure height eint primspeed primu primv primw
