@@ -57,9 +57,10 @@ amr.blocking_factor = 4         # block factor in grid generation
 amr.n_error_buf     = 4   # number of buffer cells in error est
 
 # CHECKPOINT FILES
-amr.checkpoint_files_output = 0
-amr.check_file      = chk       # root name of checkpoint file
+amr.checkpoint_files_output = 1
+amr.check_file      = chk/chk       # root name of checkpoint file
 amr.check_per       = 0.1       # number of timesteps between checkpoints
+amr.check_int = 5
 
 # PLOTFILES
 amr.plot_files_output = 1
@@ -68,7 +69,7 @@ amr.plot_per        = 20       # time between plotfiles
 amr.plot_int = 5
 
 #amr.plot_vars = ALL
-amr.derive_plot_vars = density pressure height eint primu primv primw primspeed
+amr.derive_plot_vars = density pressure height primu primv primw primspeed
 
 # PROBIN FILENAME
 amr.probin_file = probin

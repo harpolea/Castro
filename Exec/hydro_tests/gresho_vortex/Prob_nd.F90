@@ -122,8 +122,6 @@ subroutine ca_initdata(level,time,lo,hi,nscal, &
   real(rt)         :: q(state_lo(1):state_hi(1),state_lo(2):state_hi(2),state_lo(3):state_hi(3),NQ)
   type(eos_t) :: eos_state
 
-  if (.not. initialized) call eos_init(small_dens=small_dens, small_temp=small_temp)
-
   if (level <= swe_to_comp_level) then
       write(*,*) "Initialising level ", level, " with SWE data"
   else
@@ -141,7 +139,7 @@ subroutine ca_initdata(level,time,lo,hi,nscal, &
   p0 = ((gamma_const-1._rt)/gamma_const * g * eos_K * 5._rt)**(gamma_const / (gamma_const - 1._rt))
   rho0 = eos_K * p0**(1._rt / gamma_const)
 
-  !$OMP PARALLEL DO PRIVATE(i, j, k, xx, yy, zz, r, h)
+  !$OMP PARALLEL DO PRIVATE(i, j, k, xx, yy, zz, r, h, u_phi, reint, u_tot, p, yc, zc, jj, kk)
   do k = lo(3), hi(3)
       zl = problo(3) + delta(3)*dble(k)
       z = problo(3) + delta(3)*dble(k+0.5_rt)

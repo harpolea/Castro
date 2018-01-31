@@ -19,7 +19,7 @@
   velgrad = 0.005
   pressgrad = 0.01 !for 3d!0.002 for 2d
   max_pressgrad_lev = 5
-  speederr = 4.0d-2
+  speederr = 0.1 !4.0d-2
 
 /
 
