@@ -8,7 +8,7 @@ module bc_fill_module
 contains
 
   subroutine ca_hypfill(adv,adv_lo,adv_hi, &
-                        domlo,domhi,delta,xlo,time,bc) &
+                        domlo,domhi,delta,xlo,time,bc,level) &
                         bind(C, name="ca_hypfill")
 
     use probdata_module
@@ -25,15 +25,14 @@ contains
 
     include 'AMReX_bc_types.fi'
 
-    integer, intent(in) :: adv_lo(3),adv_hi(3)
+    integer, intent(in) :: adv_lo(3),adv_hi(3), level
     integer, intent(in) :: bc(dim,2,*)
     integer, intent(in) :: domlo(3), domhi(3)
     real(rt), intent(in)         :: delta(3), xlo(3), time
     real(rt), intent(inout)         :: adv(adv_lo(1):adv_hi(1),adv_lo(2):adv_hi(2),adv_lo(3):adv_hi(3),NVAR)
 
-    integer :: i,j,k,q,n,iter, npts
-    real(rt)         :: x
-    real(rt)         :: xs(domlo(1)-2:adv_hi(1)+1)
+    integer :: i,j,k,q,n,iter
+    ! real(rt)         :: x
     real(rt)         :: pres_above,p_want,pres_zone, A
     real(rt)         :: drho,dpdr,temp_zone,eint,X_zone(nspec),dens_zone
 
@@ -44,11 +43,17 @@ contains
     type (eos_t) :: eos_state
 
     do n = 1,NVAR
-       call filcc_nd(adv(adv_lo(1),adv_lo(2),adv_lo(3),n),adv_lo,adv_hi, &
-                  domlo,domhi,delta,xlo,bc(2,1,n))
-
-       call filcc_nd(adv(adv_lo(1),adv_lo(2),adv_lo(3),n),adv_lo,adv_hi, &
-                 domlo,domhi,delta,xlo,bc(3,1,n))
+        do i = 2,3
+            do j = 1,1
+                call filcc_nd(adv(:,:,:,n),adv_lo,adv_hi, &
+                           domlo,domhi,delta,xlo,bc(i,j,n))
+           enddo
+       enddo
+       ! call filcc_nd(adv(adv_lo(1),adv_lo(2),adv_lo(3),n),adv_lo,adv_hi, &
+       !            domlo,domhi,delta,xlo,bc(2,1,n))
+       !
+       ! call filcc_nd(adv(adv_lo(1),adv_lo(2),adv_lo(3),n),adv_lo,adv_hi, &
+       !           domlo,domhi,delta,xlo,bc(3,1,n))
     enddo
 
     do n = 1, NVAR
@@ -85,11 +90,6 @@ contains
 
        end if
 
-       do i= domlo(1)-2, adv_hi(1)+1
-           xs(i) = xlo(1) + delta(1)*dble(i-adv_lo(1))
-       enddo
-       npts = adv_hi(1) - adv_lo(1) + 1
-
        !        XLO
        if ( bc(1,1,n).eq.EXT_DIR .and. adv_lo(1).lt.domlo(1)) then
 
@@ -98,8 +98,8 @@ contains
               do j = adv_lo(2), adv_hi(2)
                  ! y = xlo(2) + delta(2)*(dble(j-adv_lo(2)) + 0.5e0_rt)
 
-                 do i= domlo(1)-1, adv_lo(1)-1
-                     x = xlo(1) + delta(1)*(dble(i-adv_lo(1)) + 0.5e0_rt)
+                 do i= domlo(1)-1, adv_lo(1),-1
+                     ! x = xlo(1) + delta(1)*(dble(i-adv_lo(1)) + 0.5e0_rt)
 
                     ! set all the variables even though we're testing on URHO
                     if (n .eq. URHO) then
@@ -159,7 +159,7 @@ contains
 
                       enddo
 
-                      if (.not. converged_hse) call bl_error("ERROR: failure to converge in -Y BC")
+                      if (.not. converged_hse) call bl_error("ERROR: failure to converge in -X BC")
 
                       ! zero gradient velocity
                       adv(i,j,k,UMX) = dens_zone*(adv(domlo(1),j,k,UMX)/adv(domlo(1),j,k,URHO))
@@ -196,8 +196,8 @@ contains
               do j=adv_lo(2),adv_hi(2)
                  ! y = xlo(2) + delta(2)*(dble(j-adv_l2) + 0.5e0_rt)
 
-                 do i=domhi(1)+1,adv_hi(2)
-                     x = xlo(1) + delta(1)*(dble(i-adv_lo(1)) + 0.5e0_rt)
+                 do i=domhi(1)+1,adv_hi(1)
+                     ! x = xlo(1) + delta(1)*(dble(i-adv_lo(1)) + 0.5e0_rt)
 
                     ! set all the variables even though we're testing on URHO
                     if (n .eq. URHO) then
@@ -213,12 +213,12 @@ contains
                        !         model_state(:,ispec_model-1+q))
                        ! enddo
 
-                       dens_zone = interpolate_noparser(x,xlo(1),adv(:,j,k,URHO),npts,i)
+                       dens_zone = interpolate_noparser(adv(:,j,k,URHO),adv_lo(1),adv_hi(1),i)
 
-                       temp_zone = interpolate_noparser(x,xlo(1),adv(:,j,k,UTEMP),npts,i)
+                       temp_zone = interpolate_noparser(adv(:,j,k,UTEMP),adv_lo(1),adv_hi(1),i)
 
                        do q = 1, nspec
-                          X_zone(q) = interpolate_noparser(x,xlo(1),adv(:,j,k,UFS-1+q),npts,i)
+                          X_zone(q) = interpolate_noparser(adv(:,j,k,UFS-1+q),adv_lo(1),adv_hi(1),i)
                        enddo
 
 
@@ -259,7 +259,7 @@ contains
 
 
   subroutine ca_denfill(adv,adv_lo,adv_hi, &
-                        domlo,domhi,delta,xlo,time,bc) &
+                        domlo,domhi,delta,xlo,time,bc,level) &
                         bind(C, name="ca_denfill")
 
     use probdata_module
@@ -273,14 +273,14 @@ contains
 
     include 'AMReX_bc_types.fi'
 
-    integer, intent(in) :: adv_lo(3),adv_hi(3)
+    integer, intent(in) :: adv_lo(3),adv_hi(3),level
     integer, intent(in) :: bc(dim,2,*)
     integer, intent(in) :: domlo(3), domhi(3)
     real(rt), intent(in)         :: delta(3), xlo(3), time
     real(rt), intent(inout)         :: adv(adv_lo(1):adv_hi(1),adv_lo(2):adv_hi(2),adv_lo(3):adv_hi(3))
 
-    integer :: i,j,k,npts
-    real(rt)         :: x, xs(adv_lo(1)-1: adv_hi(1)+1)
+    integer :: i,j,k
+    ! real(rt)         :: x
 
     ! Note: this function should not be needed, technically, but is
     ! provided to filpatch because there are many times in the algorithm
@@ -310,19 +310,13 @@ contains
        call bl_error("We shoundn't be here (zlo denfill)")
     endif
 
-    do i= adv_lo(1)-1, adv_hi(1)+1
-        xs(i) = xlo(1) + delta(1)*dble(i-adv_lo(1))
-    enddo
-    npts = adv_hi(1) - adv_lo(1) + 1
-
-
     !     XLO
     if ( bc(1,1,1).eq.EXT_DIR .and. adv_lo(1).lt.domlo(1)) then
        do k=adv_lo(3),adv_hi(3)
            do j=adv_lo(2),adv_hi(2)
               do i=adv_lo(1),domlo(1)-1
-                 x = xlo(1) + delta(1)*(dble(i-adv_lo(1)) + 0.5e0_rt)
-                 adv(i,j,k) = interpolate_noparser(x,xlo(1),adv(:,j,k),npts,i)
+                 ! x = xlo(1) + delta(1)*(dble(i-adv_lo(1)) + 0.5e0_rt)
+                 adv(i,j,k) = interpolate_noparser(adv(:,j,k),adv_lo(1),adv_hi(1),i)
                  !interpolate(x,npts_model,model_r,model_state(:,idens_model))
               end do
            end do
@@ -334,8 +328,8 @@ contains
        do k=adv_lo(3),adv_hi(3)
            do j=adv_lo(2),adv_hi(2)
               do i=domhi(1)+1,adv_hi(1)
-                 x = xlo(1) + delta(1)*(dble(i-adv_lo(1))+ 0.5e0_rt)
-                 adv(i,j,k) = interpolate_noparser(x,xlo(1),adv(:,j,k),npts,i)
+                 ! x = xlo(1) + delta(1)*(dble(i-adv_lo(1))+ 0.5e0_rt)
+                 adv(i,j,k) = interpolate_noparser(adv(:,j,k),adv_lo(1),adv_hi(1),i)
                  !interpolate(x,npts_model,model_r,model_state(:,idens_model))
               end do
            end do

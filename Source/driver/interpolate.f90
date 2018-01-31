@@ -192,7 +192,7 @@ module interpolate_module
 
     end function locate
 
-    function interpolate_noparser(r, xlo, model_var, npts, id) result(interpolate)
+    function interpolate_noparser(model_var, mlo, mhi, id) result(interpolate)
 
 !     given the array of model coordinates (model_r), and variable (model_var),
 !     find the value of model_var at point r using linear interpolation.
@@ -200,9 +200,8 @@ module interpolate_module
 ! do above interpolation but without the model parser module
 
     use amrex_fort_module, only : rt => amrex_real
-    real(rt)        , intent(in   ) :: r, xlo
-    integer, intent(in)   :: id, npts
-    real(rt)        , intent(in   ) :: model_var(npts)
+    integer, intent(in)   :: id, mlo, mhi
+    real(rt)        , intent(in   ) :: model_var(mlo:mhi)
     real(rt)                        :: interpolate
 
     ! Local variables
@@ -221,7 +220,7 @@ module interpolate_module
        interpolate = max(interpolate,minvar)
        interpolate = min(interpolate,maxvar)
 
-    else if (id .eq. npts) then
+   else if (id .eq. mhi) then
 
        slope = (model_var(id) - model_var(id-1))*0.5_rt
        interpolate = slope + model_var(id)
