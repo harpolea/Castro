@@ -579,17 +579,11 @@ Castro::initData ()
               const int* lo      = box.loVect();
               const int* hi      = box.hiVect();
 
-#ifdef DIMENSION_AGNOSTIC
           BL_FORT_PROC_CALL(CA_INITDATA,ca_initdata)
               (level, cur_time, ARLIM_3D(lo), ARLIM_3D(hi), ns,
           	   BL_TO_FORTRAN_3D(S_new[mfi]), ZFILL(dx),
           	   ZFILL(gridloc.lo()), ZFILL(gridloc.hi()));
-#else
-          BL_FORT_PROC_CALL(CA_INITDATA,ca_initdata)
-          	  (level, cur_time, lo, hi, ns,
-          	   BL_TO_FORTRAN(S_new[mfi]), dx,
-          	   gridloc.lo(), gridloc.hi());
-#endif
+
 
           // Verify that the sum of (rho X)_i = rho at every cell
     	  const int idx = mfi.tileIndex();
@@ -1558,19 +1552,11 @@ Castro::apply_problem_tags (TagBoxArray& tags,
             const RealBox& pbx  = RealBox(tilebx,geom.CellSize(),geom.ProbLo());
             const Real* xlo     = pbx.lo();
 
-#ifdef DIMENSION_AGNOSTIC
     	    set_problem_tags(tptr,  ARLIM_3D(tlo), ARLIM_3D(thi),
     			     BL_TO_FORTRAN_3D(S_new[mfi]),
     			     &tagval, &clearval,
     			     ARLIM_3D(tilebx.loVect()), ARLIM_3D(tilebx.hiVect()),
     			     ZFILL(dx), ZFILL(prob_lo), &time, &level, ZFILL(xlo));
-#else
-    	    set_problem_tags(tptr,  ARLIM(tlo), ARLIM(thi),
-    			     BL_TO_FORTRAN(S_new[mfi]),
-    			     &tagval, &clearval,
-    			     tilebx.loVect(), tilebx.hiVect(),
-    			     dx, prob_lo, &time, &level, xlo);
-#endif
 
     	    //
     	    // Now update the tags in the TagBox.

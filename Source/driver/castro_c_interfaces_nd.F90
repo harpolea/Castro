@@ -293,7 +293,7 @@ end subroutine ca_swe_to_comp_self
   subroutine ca_ctoprim(lo, hi, &
                         uin, uin_lo, uin_hi, &
                         q,     q_lo,   q_hi, &
-                        qaux, qa_lo,  qa_hi, idx, level, &
+                        qaux, qa_lo,  qa_hi, level, &
                         xlo, dx) bind(C, name = "ca_ctoprim")
 
     use advection_util_module, only: swectoprim, compctoprim
@@ -310,7 +310,7 @@ end subroutine ca_swe_to_comp_self
 
     real(rt)        , intent(inout) :: q(q_lo(1):q_hi(1),q_lo(2):q_hi(2),q_lo(3):q_hi(3),NQ)
     real(rt)        , intent(inout) :: qaux(qa_lo(1):qa_hi(1),qa_lo(2):qa_hi(2),qa_lo(3):qa_hi(3),NQAUX)
-    integer, intent(in)     :: idx, level
+    integer, intent(in)     :: level
     real(rt), intent(in) :: dx(3), xlo(3)
 
     if (level <= swe_to_comp_level) then

@@ -204,8 +204,6 @@ void ca_compute_floor_state
      const amrex::Real* dx, const amrex::Real* glo,
      const amrex::Real* time, const int* bc, int * level);
 
-#ifdef DIMENSION_AGNOSTIC
-
   void ca_hypfill
     (BL_FORT_FAB_ARG_3D(state),
      const int* dlo, const int* dhi,
@@ -257,63 +255,6 @@ void ca_compute_floor_state
   { amrex::Abort("Not supposed to call ca_nullfill"); }
 #else
     ;
-#endif
-
-#else
-
-  void ca_hypfill
-    (BL_FORT_FAB_ARG(state),
-     const int dlo[], const int dhi[],
-     const amrex::Real dx[], const amrex::Real glo[],
-     const amrex::Real* time, const int bc[], int * level);
-
-  void ca_denfill
-    (BL_FORT_FAB_ARG(state),
-     const int dlo[], const int dhi[],
-     const amrex::Real dx[], const amrex::Real glo[],
-     const amrex::Real* time, const int bc[], int * level);
-
-  void ca_xmomfill
-    (BL_FORT_FAB_ARG(state),
-     const int dlo[], const int dhi[],
-     const amrex::Real dx[], const amrex::Real glo[],
-     const amrex::Real* time, const int bc[], int * level);
-
-  void ca_ymomfill
-    (BL_FORT_FAB_ARG(state),
-     const int dlo[], const int dhi[],
-     const amrex::Real dx[], const amrex::Real glo[],
-     const amrex::Real* time, const int bc[], int * level;
-
-  void ca_zmomfill
-    (BL_FORT_FAB_ARG(state),
-     const int dlo[], const int dhi[],
-     const amrex::Real dx[], const amrex::Real glo[],
-     const amrex::Real* time, const int bc[], int * level);
-
-  void ca_zerofill
-    (BL_FORT_FAB_ARG(state),
-     const int dlo[], const int dhi[],
-     const amrex::Real dx[], const amrex::Real glo[],
-     const amrex::Real* time, const int bc[], int * level);
-
-  void ca_default_fill
-    (BL_FORT_FAB_ARG(state),
-     const int dlo[], const int dhi[],
-     const amrex::Real dx[], const amrex::Real glo[],
-     const amrex::Real* time, const int bc[], int * level);
-
-  inline void ca_nullfill
-    (BL_FORT_FAB_ARG(state),
-     const int dlo[], const int dhi[],
-     const amrex::Real dx[], const amrex::Real glo[],
-     const amrex::Real* time, const int bc[], int * level)
-#ifdef __cplusplus
-  { amrex::Abort("Not supposed to call ca_nullfill"); }
-#else
-    ;
-#endif
-
 #endif
 
   void ca_estdt
@@ -483,8 +424,6 @@ void ca_compute_floor_state
 }
 #endif
 
-#ifdef DIMENSION_AGNOSTIC
-
 BL_FORT_PROC_DECL(CA_INITDATA,ca_initdata)
     (const int& level, const amrex::Real& time,
      const int* lo, const int* hi,
@@ -492,16 +431,6 @@ BL_FORT_PROC_DECL(CA_INITDATA,ca_initdata)
      BL_FORT_FAB_ARG_3D(state),
      const amrex::Real* dx, const amrex::Real* xlo, const amrex::Real* xhi);
 
-#else
-
-BL_FORT_PROC_DECL(CA_INITDATA,ca_initdata)
-    (const int& level, const amrex::Real& time,
-     const int* lo, const int* hi,
-     const int& num_state,
-     BL_FORT_FAB_ARG(state),
-     const amrex::Real* dx, const amrex::Real* xlo, const amrex::Real* xhi);
-
-#endif
 
 #ifdef MAESTRO_INIT
 BL_FORT_PROC_DECL(CA_INITDATA_MAESTRO,ca_initdata_maestro)
@@ -524,7 +453,6 @@ BL_FORT_PROC_DECL(CA_INITDATA_OVERWRITE,ca_initdata_overwrite)
    const int& r_model_start);
 #endif
 
-#ifdef DIMENSION_AGNOSTIC
 BL_FORT_PROC_DECL(CA_EXT_SRC,ca_ext_src)
     (const int* lo, const int* hi,
      const BL_FORT_FAB_ARG_3D(old_state),
@@ -532,15 +460,6 @@ BL_FORT_PROC_DECL(CA_EXT_SRC,ca_ext_src)
      BL_FORT_FAB_ARG_3D(ext_src),
      const amrex::Real* prob_lo, const amrex::Real* dx,
      const amrex::Real* time, const amrex::Real* dt);
-#else
-BL_FORT_PROC_DECL(CA_EXT_SRC,ca_ext_src)
-    (const int* lo, const int* hi,
-     const BL_FORT_FAB_ARG(old_state),
-     const BL_FORT_FAB_ARG(new_state),
-     BL_FORT_FAB_ARG(ext_src),
-     const amrex::Real* prob_lo, const amrex::Real* dx,
-     const amrex::Real* time, const amrex::Real* dt);
-#endif
 
 /* problem-specific includes */
 #include <Problem_F.H>

@@ -50,7 +50,7 @@ contains
        call filcc_nd(adv(:,:,:,n),adv_lo,adv_hi,domlo,domhi,delta,xlo,bc(:,:,n))
     enddo
 
-    return
+    ! return
 
     do n = 1,NVAR
         do i = 2,3
@@ -108,10 +108,11 @@ contains
 
        if (level > swe_to_comp_level) then
 
-           call ca_ctoprim(adv_lo, adv_hi, adv, adv_lo, adv_hi, qprim, adv_lo, adv_hi, qaux, adv_lo, adv_hi, 1, level, xlo, delta)
+           call ca_ctoprim(adv_lo, adv_hi, adv, adv_lo, adv_hi, qprim, adv_lo, adv_hi, qaux, adv_lo, adv_hi, level, xlo, delta)
 
            !        XLO
-           if ( bc(1,1,n).eq.EXT_DIR .and. adv_lo(1).lt.domlo(1)) then
+           ! if ( bc(1,1,n).eq.EXT_DIR .and. adv_lo(1).lt.domlo(1)) then
+           if (adv_lo(1).lt.domlo(1)) then
 
               ! this do loop counts backwards since we want to work downward
               do k = adv_lo(3), adv_hi(3)
@@ -156,7 +157,8 @@ contains
            end if
 
            !        XHI
-           if ( bc(1,2,n).eq.EXT_DIR .and. adv_hi(1).gt.domhi(1)) then
+           ! if ( bc(1,2,n).eq.EXT_DIR .and. adv_hi(1).gt.domhi(1)) then
+           if (adv_hi(1).gt.domhi(1)) then
 
               do k=adv_lo(3),adv_hi(3)
                   do j=adv_lo(2),adv_hi(2)
@@ -279,7 +281,7 @@ contains
 
     call filcc_nd(adv,adv_lo,adv_hi,domlo,domhi,delta,xlo,bc)
 
-    return 
+    ! return
 
     !     YLO
     if ( bc(2,1,1).eq.EXT_DIR .and. adv_lo(2).lt.domlo(2)) then
@@ -303,7 +305,8 @@ contains
 
     if (level > swe_to_comp_level) then
         !     XLO
-        if ( bc(1,1,1).eq.EXT_DIR .and. adv_lo(1).lt.domlo(1)) then
+        ! if ( bc(1,1,1).eq.EXT_DIR .and. adv_lo(1).lt.domlo(1)) then
+        if (adv_lo(1).lt.domlo(1)) then
            do k=adv_lo(3),adv_hi(3)
                do j=adv_lo(2),adv_hi(2)
                   do i=adv_lo(1),domlo(1)-1
@@ -316,7 +319,8 @@ contains
         end if
 
         !     XHI
-        if ( bc(1,2,1).eq.EXT_DIR .and. adv_hi(1).gt.domhi(1)) then
+        ! if ( bc(1,2,1).eq.EXT_DIR .and. adv_hi(1).gt.domhi(1)) then
+        if (adv_hi(1).gt.domhi(1)) then
            do k=adv_lo(3),adv_hi(3)
                do j=adv_lo(2),adv_hi(2)
                   do i=domhi(1)+1,adv_hi(1)

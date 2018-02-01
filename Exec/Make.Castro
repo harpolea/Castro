@@ -63,11 +63,6 @@ Bdirs := Source/driver Source/driver/param_includes \
 
 # add / define any special physics we need
 
-Bdirs += Source/gravity
-DEFINES += -DGRAVITY
-USE_MG = TRUE
-
-
 ifeq ($(USE_AUX_UPDATE), TRUE)
   DEFINES += -DAUX_UPDATE
 endif
