@@ -12,13 +12,15 @@ contains
                         bind(C, name="ca_hypfill")
 
     use probdata_module
-    use meth_params_module, only : NVAR, URHO, UMX, UMY, UMZ, UEDEN, UEINT, UFS, UTEMP
+    use meth_params_module, only : NVAR, URHO, UMX, UMY, UMZ, UEDEN, UEINT, UFS, UTEMP, NQ, NQAUX, QRHO, QTEMP, QU, QV, QW, QFS, QPRES, QREINT
     use interpolate_module
     use eos_module, only : eos
-    use eos_type_module, only: eos_input_rt, eos_t
+    use eos_type_module, only: eos_input_rt, eos_t, eos_input_rp
     use network, only: nspec
     !use model_parser_module
     use prob_params_module, only: dim
+    use c_interface_modules, only: ca_ctoprim
+    use riemann_util_module, only: comp_cons_state
 
     use amrex_fort_module, only : rt => amrex_real
     implicit none
@@ -32,9 +34,11 @@ contains
     real(rt), intent(inout)         :: adv(adv_lo(1):adv_hi(1),adv_lo(2):adv_hi(2),adv_lo(3):adv_hi(3),NVAR)
 
     integer :: i,j,k,q,n,iter
-    ! real(rt)         :: x
+    real(rt)         :: x, h
     real(rt)         :: pres_above,p_want,pres_zone, A
     real(rt)         :: drho,dpdr,temp_zone,eint,X_zone(nspec),dens_zone
+    real(rt) :: qprim(adv_lo(1):adv_hi(1),adv_lo(2):adv_hi(2),adv_lo(3):adv_hi(3),NQ)
+    real(rt) :: qaux(adv_lo(1):adv_hi(1),adv_lo(2):adv_hi(2),adv_lo(3):adv_hi(3),NQAUX)
 
     integer, parameter :: MAX_ITER = 100
     real(rt)        , parameter :: TOL = 1.e-8_rt
@@ -43,12 +47,24 @@ contains
     type (eos_t) :: eos_state
 
     do n = 1,NVAR
+       call filcc_nd(adv(:,:,:,n),adv_lo,adv_hi,domlo,domhi,delta,xlo,bc(:,:,n))
+    enddo
+
+    return
+
+    do n = 1,NVAR
         do i = 2,3
-            do j = 1,1
+            do j = 1,2
                 call filcc_nd(adv(:,:,:,n),adv_lo,adv_hi, &
                            domlo,domhi,delta,xlo,bc(i,j,n))
            enddo
        enddo
+       if (level <= swe_to_comp_level) then
+           do j = 1,2
+               call filcc_nd(adv(:,:,:,n),adv_lo,adv_hi, &
+                          domlo,domhi,delta,xlo,bc(1,j,n))
+          enddo
+       endif
        ! call filcc_nd(adv(adv_lo(1),adv_lo(2),adv_lo(3),n),adv_lo,adv_hi, &
        !            domlo,domhi,delta,xlo,bc(2,1,n))
        !
@@ -90,167 +106,140 @@ contains
 
        end if
 
-       !        XLO
-       if ( bc(1,1,n).eq.EXT_DIR .and. adv_lo(1).lt.domlo(1)) then
+       if (level > swe_to_comp_level) then
 
-          ! this do loop counts backwards since we want to work downward
-          do k = adv_lo(3), adv_hi(3)
-              do j = adv_lo(2), adv_hi(2)
-                 ! y = xlo(2) + delta(2)*(dble(j-adv_lo(2)) + 0.5e0_rt)
+           call ca_ctoprim(adv_lo, adv_hi, adv, adv_lo, adv_hi, qprim, adv_lo, adv_hi, qaux, adv_lo, adv_hi, 1, level, xlo, delta)
 
-                 do i= domlo(1)-1, adv_lo(1),-1
-                     ! x = xlo(1) + delta(1)*(dble(i-adv_lo(1)) + 0.5e0_rt)
+           !        XLO
+           if ( bc(1,1,n).eq.EXT_DIR .and. adv_lo(1).lt.domlo(1)) then
 
-                    ! set all the variables even though we're testing on URHO
-                    if (n .eq. URHO) then
+              ! this do loop counts backwards since we want to work downward
+              do k = adv_lo(3), adv_hi(3)
+                  do j = adv_lo(2), adv_hi(2)
+                      h = height_from_p(qprim(domlo(1),j,k,QPRES), xlo(1) + delta(1)*(dble(domlo(1)-adv_lo(1)) + 0.5e0_rt))
+                     do i = domlo(1)-1, adv_lo(1),-1
+                         x = xlo(1) + delta(1)*(dble(i-adv_lo(1)) + 0.5e0_rt)
 
-                      ! HSE integration to get density, pressure
+                        ! set all the variables even though we're testing on URHO
+                        if (n .eq. URHO) then
 
-                      ! initial guesses
-                      dens_zone = adv(i+1,j,k,URHO)
+                          ! HSE integration to get density, pressure
 
-                      ! temperature and species held constant in BCs
-                      temp_zone = adv(i+1,j,k,UTEMP)
-                      X_zone(:) = adv(i+1,j,k,UFS:UFS-1+nspec)/adv(i+1,j,k,URHO)
+                          ! initial guesses
+                          dens_zone = rho_from_height(h, x)
+                          pres_zone = p_from_rho(dens_zone)
 
-                      ! get pressure in zone above
-                      eos_state%rho = adv(i+1,j,k,URHO)
-                      eos_state%T = adv(i+1,j,k,UTEMP)
-                      eos_state%xn(:) = adv(i+1,j,k,UFS:UFS-1+nspec)/adv(i+1,j,k,URHO)
+                          ! get pressure in zone above
+                          eos_state%rho = dens_zone
+                          eos_state%p = pres_zone
+                          eos_state%xn(:) = qprim(i+1,j,k,QFS:QFS-1+nspec)
 
-                      call eos(eos_input_rt, eos_state)
+                          call eos(eos_input_rp, eos_state)
 
-                      eint = eos_state%e
-                      pres_above = eos_state%p
+                          eint = eos_state%e
+                          temp_zone = eos_state%T
 
+                          qprim(i,j,k,:) = qprim(domlo(1),j,k,:)
 
-                      converged_hse = .FALSE.
+                          qprim(i,j,k,QRHO) = dens_zone
+                          qprim(i,j,k,QPRES) = pres_zone
+                          qprim(i,j,k,QTEMP) = temp_zone
+                          qprim(i,j,k,QREINT) = eint * dens_zone
 
-                      do iter = 1, MAX_ITER
+                          call comp_cons_state(qprim(i,j,k,:), adv(i,j,k,:))
 
-                         ! pressure needed from HSE
-                         p_want = pres_above - &
-                              delta(1)*0.5e0_rt*(dens_zone + adv(i+1,j,k,URHO))*g
+                        end if
 
-                         ! pressure from EOS
-                         eos_state%rho = dens_zone
-                         eos_state%T = temp_zone
-                         eos_state%xn(:) = X_zone
+                     end do
+                  end do
+               end do
+           end if
 
-                         call eos(eos_input_rt, eos_state)
+           !        XHI
+           if ( bc(1,2,n).eq.EXT_DIR .and. adv_hi(1).gt.domhi(1)) then
 
-                         pres_zone = eos_state%p
-                         dpdr = eos_state%dpdr
-                         eint = eos_state%e
+              do k=adv_lo(3),adv_hi(3)
+                  do j=adv_lo(2),adv_hi(2)
+                      h = height_from_p(qprim(domhi(1),j,k,QPRES), xlo(1) + delta(1)*(dble(domhi(1)-adv_lo(1)) + 0.5e0_rt))
 
-                         ! Newton-Raphson - we want to zero A = p_want - p(rho)
-                         A = p_want - pres_zone
-                         drho = A/(dpdr + 0.5*delta(1)*g)
+                     do i=domhi(1)+1,adv_hi(1)
+                         x = xlo(1) + delta(1)*(dble(i-adv_lo(1)) + 0.5e0_rt)
 
-                         dens_zone = max(0.9_rt*dens_zone, &
-                              min(dens_zone + drho, 1.1_rt*dens_zone))
+                        ! set all the variables even though we're testing on URHO
+                        if (n .eq. URHO) then
 
+                           ! dens_zone = interpolate(x,npts_model,model_r, &
+                           !      model_state(:,idens_model))
+                           !
+                           ! temp_zone = interpolate(y,npts_model,model_r, &
+                           !      model_state(:,itemp_model))
+                           !
+                           ! do q = 1, nspec
+                           !    X_zone(q) = interpolate(x,npts_model,model_r, &
+                           !         model_state(:,ispec_model-1+q))
+                           ! enddo
 
-                         ! convergence?
-                         if (abs(drho) < TOL*dens_zone) then
-                            converged_hse = .TRUE.
-                            exit
-                         endif
+                           dens_zone = interpolate_noparser(adv(:,j,k,URHO),adv_lo(1),adv_hi(1),i)
 
-                      enddo
+                           temp_zone = interpolate_noparser(adv(:,j,k,UTEMP),adv_lo(1),adv_hi(1),i)
 
-                      if (.not. converged_hse) call bl_error("ERROR: failure to converge in -X BC")
+                           do q = 1, nspec
+                              X_zone(q) = interpolate_noparser(adv(:,j,k,UFS-1+q),adv_lo(1),adv_hi(1),i)
+                           enddo
 
-                      ! zero gradient velocity
-                      adv(i,j,k,UMX) = dens_zone*(adv(domlo(1),j,k,UMX)/adv(domlo(1),j,k,URHO))
-                      adv(i,j,k,UMY) = dens_zone*(adv(domlo(1),j,k,UMY)/adv(domlo(1),j,k,URHO))
-                      adv(i,j,k,UMZ) = dens_zone*(adv(domlo(1),j,k,UMZ)/adv(domlo(1),j,k,URHO))
+                           dens_zone = rho_from_height(h, x)
+                           pres_zone = p_from_rho(dens_zone)
 
-                       eos_state%rho = dens_zone
-                       eos_state%T = temp_zone
-                       eos_state%xn(:) = X_zone
+                           ! get pressure in zone above
+                           eos_state%rho = dens_zone
+                           eos_state%p = pres_zone
+                           eos_state%xn(:) = qprim(i+1,j,k,QFS:QFS-1+nspec)
 
-                       call eos(eos_input_rt, eos_state)
+                           call eos(eos_input_rp, eos_state)
 
-                       pres_zone = eos_state%p
-                       eint = eos_state%e
+                           eint = eos_state%e
+                           temp_zone = eos_state%T
 
-                       adv(i,j,k,URHO) = dens_zone
-                       adv(i,j,k,UEINT) = dens_zone*eint
-                       adv(i,j,k,UEDEN) = dens_zone*eint + &
-                            0.5e0_rt*(adv(i,j,k,UMX)**2+adv(i,j,k,UMY)**2+adv(i,j,k,UMZ)**2)/dens_zone
-                       adv(i,j,k,UTEMP) = temp_zone
-                       adv(i,j,k,UFS:UFS-1+nspec) = dens_zone*X_zone(:)
+                           qprim(i,j,k,:) = qprim(domhi(1),j,k,:)
 
-                    end if
+                           qprim(i,j,k,QRHO) = dens_zone
+                           qprim(i,j,k,QPRES) = pres_zone
+                           qprim(i,j,k,QTEMP) = temp_zone
+                           qprim(i,j,k,QREINT) = eint * dens_zone
 
-                 end do
-              end do
-           end do
-       end if
-
-       !        XHI
-       if ( bc(1,2,n).eq.EXT_DIR .and. adv_hi(1).gt.domhi(1)) then
-
-          do k=adv_lo(3),adv_hi(3)
-              do j=adv_lo(2),adv_hi(2)
-                 ! y = xlo(2) + delta(2)*(dble(j-adv_l2) + 0.5e0_rt)
-
-                 do i=domhi(1)+1,adv_hi(1)
-                     ! x = xlo(1) + delta(1)*(dble(i-adv_lo(1)) + 0.5e0_rt)
-
-                    ! set all the variables even though we're testing on URHO
-                    if (n .eq. URHO) then
-
-                       ! dens_zone = interpolate(x,npts_model,model_r, &
-                       !      model_state(:,idens_model))
-                       !
-                       ! temp_zone = interpolate(y,npts_model,model_r, &
-                       !      model_state(:,itemp_model))
-                       !
-                       ! do q = 1, nspec
-                       !    X_zone(q) = interpolate(x,npts_model,model_r, &
-                       !         model_state(:,ispec_model-1+q))
-                       ! enddo
-
-                       dens_zone = interpolate_noparser(adv(:,j,k,URHO),adv_lo(1),adv_hi(1),i)
-
-                       temp_zone = interpolate_noparser(adv(:,j,k,UTEMP),adv_lo(1),adv_hi(1),i)
-
-                       do q = 1, nspec
-                          X_zone(q) = interpolate_noparser(adv(:,j,k,UFS-1+q),adv_lo(1),adv_hi(1),i)
-                       enddo
+                           call comp_cons_state(qprim(i,j,k,:), adv(i,j,k,:))
 
 
-                       ! extrap normal momentum
-                       adv(i,j,k,UMY) = max(0.e0_rt,adv(domhi(1),j,k,UMY))
+                           ! ! extrap normal momentum
+                           ! adv(i,j,k,UMY) = max(0.e0_rt,adv(domhi(1),j,k,UMY))
+                           !
+                           ! ! zero transverse momentum
+                           ! adv(i,j,k,UMX) = 0.e0_rt
+                           ! adv(i,j,k,UMZ) = 0.e0_rt
+                           !
+                           ! eos_state%rho = dens_zone
+                           ! eos_state%T = temp_zone
+                           ! eos_state%xn(:) = X_zone
+                           !
+                           ! call eos(eos_input_rt, eos_state)
+                           !
+                           ! pres_zone = eos_state%p
+                           ! eint = eos_state%e
+                           !
+                           ! adv(i,j,k,URHO) = dens_zone
+                           ! adv(i,j,k,UEINT) = dens_zone*eint
+                           ! adv(i,j,k,UEDEN) = dens_zone*eint + &
+                           !      0.5e0_rt*(adv(i,j,k,UMX)**2+adv(i,j,k,UMY)**2+adv(i,j,k,UMZ)**2)/dens_zone
+                           ! adv(i,j,k,UTEMP) = temp_zone
+                           ! adv(i,j,k,UFS:UFS-1+nspec) = dens_zone*X_zone(:)
 
-                       ! zero transverse momentum
-                       adv(i,j,k,UMX) = 0.e0_rt
-                       adv(i,j,k,UMZ) = 0.e0_rt
+                        end if
 
-                       eos_state%rho = dens_zone
-                       eos_state%T = temp_zone
-                       eos_state%xn(:) = X_zone
-
-                       call eos(eos_input_rt, eos_state)
-
-                       pres_zone = eos_state%p
-                       eint = eos_state%e
-
-                       adv(i,j,k,URHO) = dens_zone
-                       adv(i,j,k,UEINT) = dens_zone*eint
-                       adv(i,j,k,UEDEN) = dens_zone*eint + &
-                            0.5e0_rt*(adv(i,j,k,UMX)**2+adv(i,j,k,UMY)**2+adv(i,j,k,UMZ)**2)/dens_zone
-                       adv(i,j,k,UTEMP) = temp_zone
-                       adv(i,j,k,UFS:UFS-1+nspec) = dens_zone*X_zone(:)
-
-                    end if
-
-                 end do
-              end do
-           end do
-       end if
+                     end do
+                  end do
+               end do
+           end if
+       endif
 
     end do
 
@@ -290,6 +279,8 @@ contains
 
     call filcc_nd(adv,adv_lo,adv_hi,domlo,domhi,delta,xlo,bc)
 
+    return 
+
     !     YLO
     if ( bc(2,1,1).eq.EXT_DIR .and. adv_lo(2).lt.domlo(2)) then
        call bl_error("We shoundn't be here (ylo denfill)")
@@ -310,145 +301,36 @@ contains
        call bl_error("We shoundn't be here (zlo denfill)")
     endif
 
-    !     XLO
-    if ( bc(1,1,1).eq.EXT_DIR .and. adv_lo(1).lt.domlo(1)) then
-       do k=adv_lo(3),adv_hi(3)
-           do j=adv_lo(2),adv_hi(2)
-              do i=adv_lo(1),domlo(1)-1
-                 ! x = xlo(1) + delta(1)*(dble(i-adv_lo(1)) + 0.5e0_rt)
-                 adv(i,j,k) = interpolate_noparser(adv(:,j,k),adv_lo(1),adv_hi(1),i)
-                 !interpolate(x,npts_model,model_r,model_state(:,idens_model))
-              end do
-           end do
-        end do
-    end if
+    if (level > swe_to_comp_level) then
+        !     XLO
+        if ( bc(1,1,1).eq.EXT_DIR .and. adv_lo(1).lt.domlo(1)) then
+           do k=adv_lo(3),adv_hi(3)
+               do j=adv_lo(2),adv_hi(2)
+                  do i=adv_lo(1),domlo(1)-1
+                     ! x = xlo(1) + delta(1)*(dble(i-adv_lo(1)) + 0.5e0_rt)
+                     adv(i,j,k) = interpolate_noparser(adv(:,j,k),adv_lo(1),adv_hi(1),i)
+                     !interpolate(x,npts_model,model_r,model_state(:,idens_model))
+                  end do
+               end do
+            end do
+        end if
 
-    !     XHI
-    if ( bc(1,2,1).eq.EXT_DIR .and. adv_hi(1).gt.domhi(1)) then
-       do k=adv_lo(3),adv_hi(3)
-           do j=adv_lo(2),adv_hi(2)
-              do i=domhi(1)+1,adv_hi(1)
-                 ! x = xlo(1) + delta(1)*(dble(i-adv_lo(1))+ 0.5e0_rt)
-                 adv(i,j,k) = interpolate_noparser(adv(:,j,k),adv_lo(1),adv_hi(1),i)
-                 !interpolate(x,npts_model,model_r,model_state(:,idens_model))
-              end do
-           end do
-        end do
-    end if
+        !     XHI
+        if ( bc(1,2,1).eq.EXT_DIR .and. adv_hi(1).gt.domhi(1)) then
+           do k=adv_lo(3),adv_hi(3)
+               do j=adv_lo(2),adv_hi(2)
+                  do i=domhi(1)+1,adv_hi(1)
+                     ! x = xlo(1) + delta(1)*(dble(i-adv_lo(1))+ 0.5e0_rt)
+                     adv(i,j,k) = interpolate_noparser(adv(:,j,k),adv_lo(1),adv_hi(1),i)
+                     !interpolate(x,npts_model,model_r,model_state(:,idens_model))
+                  end do
+               end do
+            end do
+        end if
+
+    endif
 
   end subroutine ca_denfill
 
-
-  !
-  ! subroutine ca_gravxfill(grav,grav_l1,grav_l2,grav_h1,grav_h2, &
-  !                         domlo,domhi,delta,xlo,time,bc) &
-  !                         bind(C, name="ca_gravxfill")
-  !
-  !   use probdata_module
-  !
-  !   use amrex_fort_module, only : rt => amrex_real
-  !   implicit none
-  !
-  !   include 'AMReX_bc_types.fi'
-  !
-  !   integer :: grav_l1,grav_l2,grav_h1,grav_h2
-  !   integer :: bc(2,2,*)
-  !   integer :: domlo(2), domhi(2)
-  !   real(rt)         delta(2), xlo(2), time
-  !   real(rt)         grav(grav_l1:grav_h1,grav_l2:grav_h2)
-  !
-  !   call filcc_nd(grav,grav_l1,grav_l2,grav_h1,grav_h2,domlo,domhi,delta,xlo,bc)
-  !
-  ! end subroutine ca_gravxfill
-  !
-  !
-  !
-  ! subroutine ca_gravyfill(grav,grav_l1,grav_l2,grav_h1,grav_h2, &
-  !                         domlo,domhi,delta,xlo,time,bc) &
-  !                         bind(C, name="ca_gravyfill")
-  !
-  !   use probdata_module
-  !
-  !   use amrex_fort_module, only : rt => amrex_real
-  !   implicit none
-  !
-  !   include 'AMReX_bc_types.fi'
-  !
-  !   integer :: grav_l1,grav_l2,grav_h1,grav_h2
-  !   integer :: bc(2,2,*)
-  !   integer :: domlo(2), domhi(2)
-  !   real(rt)         delta(2), xlo(2), time
-  !   real(rt)         grav(grav_l1:grav_h1,grav_l2:grav_h2)
-  !
-  !   call filcc_nd(grav,grav_l1,grav_l2,grav_h1,grav_h2,domlo,domhi,delta,xlo,bc)
-  !
-  ! end subroutine ca_gravyfill
-  !
-  !
-  !
-  ! subroutine ca_gravzfill(grav,grav_l1,grav_l2,grav_h1,grav_h2, &
-  !                         domlo,domhi,delta,xlo,time,bc) &
-  !                         bind(C, name="ca_gravzfill")
-  !
-  !   use probdata_module
-  !
-  !   use amrex_fort_module, only : rt => amrex_real
-  !   implicit none
-  !
-  !   include 'AMReX_bc_types.fi'
-  !
-  !   integer :: grav_l1,grav_l2,grav_h1,grav_h2
-  !   integer :: bc(2,2,*)
-  !   integer :: domlo(2), domhi(2)
-  !   real(rt)         delta(2), xlo(2), time
-  !   real(rt)         grav(grav_l1:grav_h1,grav_l2:grav_h2)
-  !
-  !   call filcc_nd(grav,grav_l1,grav_l2,grav_h1,grav_h2,domlo,domhi,delta,xlo,bc)
-  !
-  ! end subroutine ca_gravzfill
-  !
-  !
-  !
-  ! subroutine ca_reactfill(react,react_l1,react_l2, &
-  !                         react_h1,react_h2,domlo,domhi,delta,xlo,time,bc) &
-  !                         bind(C, name="ca_reactfill")
-  !
-  !   use probdata_module
-  !
-  !   use amrex_fort_module, only : rt => amrex_real
-  !   implicit none
-  !
-  !   include 'AMReX_bc_types.fi'
-  !
-  !   integer :: react_l1,react_l2,react_h1,react_h2
-  !   integer :: bc(2,2,*)
-  !   integer :: domlo(2), domhi(2)
-  !   real(rt)         delta(2), xlo(2), time
-  !   real(rt)         react(react_l1:react_h1,react_l2:react_h2)
-  !
-  !   call filcc_nd(react,react_l1,react_l2,react_h1,react_h2,domlo,domhi,delta,xlo,bc)
-  !
-  ! end subroutine ca_reactfill
-  !
-  !
-  ! subroutine ca_phigravfill(phi,phi_l1,phi_l2, &
-  !                           phi_h1,phi_h2,domlo,domhi,delta,xlo,time,bc) &
-  !                           bind(C, name="ca_phigravfill")
-  !
-  !   use amrex_fort_module, only : rt => amrex_real
-  !   implicit none
-  !
-  !   include 'AMReX_bc_types.fi'
-  !
-  !   integer          :: phi_l1,phi_l2,phi_h1,phi_h2
-  !   integer          :: bc(2,2,*)
-  !   integer          :: domlo(2), domhi(2)
-  !   real(rt)         :: delta(2), xlo(2), time
-  !   real(rt)         :: phi(phi_l1:phi_h1,phi_l2:phi_h2)
-  !
-  !   call filcc_nd(phi,phi_l1,phi_l2,phi_h1,phi_h2, &
-  !        domlo,domhi,delta,xlo,bc)
-  !
-  ! end subroutine ca_phigravfill
 
 end module bc_fill_module
