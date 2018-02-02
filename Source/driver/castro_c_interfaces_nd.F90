@@ -327,30 +327,5 @@ end subroutine ca_swe_to_comp_self
 
   end subroutine ca_ctoprim
 
-  subroutine ca_getbase(lo, hi, s, slo, shi, &
-                        b, blo, bhi, xlo, np) bind(C, name="ca_getbase")
-    implicit none
-
-    integer, intent(in) :: lo(3), hi(3)
-    integer, intent(in) :: slo(3), shi(3)
-    integer, intent(in) :: blo(3), bhi(3), xlo(3), np
-
-    real(rt), intent(in) :: s(slo(1):shi(1),slo(2):shi(2),slo(3):shi(3),np)
-    real(rt), intent(inout) :: b(blo(1):bhi(1),blo(2):bhi(2),blo(3):bhi(3),np)
-
-    integer :: i, j,k
-
-    if (xlo(1) == 0) then
-        do k = lo(3), hi(3)
-            do j = lo(2), hi(2)
-                do i = lo(1), hi(1)
-                    b(i,j,k,:) = s(lo(1),j,k,:)
-                enddo
-            enddo
-        enddo
-    endif
-
-end subroutine ca_getbase
-
 
 end module c_interface_modules

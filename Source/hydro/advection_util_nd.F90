@@ -520,8 +520,6 @@ contains
                     print *,'   '
                     print *,'>>> Error: advection_util_nd.F90::swectoprim ',i, j, k
                     print *,'>>> ... negative density ', uin(i,j,k,URHO)
-                    ! uin(i,j,k,:) = 0.0_rt
-                    ! uin(i,j,k,URHO) = 1.0_rt
                     call bl_error("Error:: advection_util_nd.f90 :: swectoprim")
                  else if (uin(i,j,k,URHO) /= uin(i,j,k,URHO)) then
                      print *,'   '
@@ -746,7 +744,7 @@ subroutine compctoprim(lo, hi, &
 
             q(i,j,k,QU:QW) = vel(1:3)
 
-            q(i,j,k,QREINT) = (rhoh - q(i,j,k,QRHO)) / gamma_const!p / (gamma - 1.0_rt)
+            q(i,j,k,QREINT) = (rhoh - q(i,j,k,QRHO)) / gamma_const
 
             q(i,j,k,QTEMP) = uin(i,j,k,UTEMP)
 
@@ -774,37 +772,6 @@ subroutine compctoprim(lo, hi, &
   !         enddo
   !      enddo
   !   enddo
-
-    ! get gamc, p, T, c, csml using q state
-   !  do k = lo(3), hi(3)
-   !     do j = lo(2), hi(2)
-   !        do i = lo(1), hi(1)
-   !           xx = xlo(1) + dx(1)*dble(i-lo(1)+HALF)
-   !
-   !           eos_state % T   = q(i,j,k,QTEMP )
-   !           eos_state % rho = q(i,j,k,QRHO  )
-   !           eos_state % e   = q(i,j,k,QREINT)
-   !           eos_state % xn  = q(i,j,k,QFS:QFS+nspec-1)
-   !           eos_state % aux = q(i,j,k,QFX:QFX+naux-1)
-   !           ! eos_state % p = 0.5_rt * g * q(i,j,k,QRHO  )**2
-   !           eos_state % p = q(i,j,k,QPRES)
-   !           !q(i,j,k,QPRES)  = eos_state % p
-   !
-   !           call eos(eos_input_rp, eos_state)
-   !           !q(i,j,k,QPRES)  = eos_state % p
-   !
-   !           q(i,j,k,QTEMP)  = eos_state % T
-   !           !q(i,j,k,QREINT) = eos_state % e * q(i,j,k,QRHO)
-   !           q(i,j,k,QGAME)  = q(i,j,k,QPRES) / q(i,j,k,QREINT) + ONE
-   !
-   !           qaux(i,j,k,QDPDR)  = eos_state % dpdr_e
-   !           qaux(i,j,k,QDPDE)  = eos_state % dpde
-   !           qaux(i,j,k,QGAMC)  = gamma_const
-   !           qaux(i,j,k,QC   )  = eos_state % cs
-   !           ! qaux(i,j,k,QCSML)  = max(small, small * qaux(i,j,k,QC))
-   !        enddo
-   !     enddo
-   ! enddo
 
 end subroutine compctoprim
 

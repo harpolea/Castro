@@ -1410,19 +1410,11 @@ Castro::avgDown (int state_indx)
             const Box& bx = mfi.tilebox();
             RealBox gridloc = RealBox(fine_lev.grids[mfi.index()],fgeom.CellSize(),fgeom.ProbLo());
 
-            ca_getbase(ARLIM_3D(bx.loVect()), ARLIM_3D(bx.hiVect()), BL_TO_FORTRAN_3D(S_fine[mfi]), BL_TO_FORTRAN_3D(base[mfi]), ZFILL(gridloc.lo()), &np);
-        }
+            bool ignore_errs = false;
 
-#ifdef _OPENMP
-#pragma omp parallel
-#endif
-        for (MFIter mfi(base); mfi.isValid(); ++mfi)
-        {
-            const Box& bx = mfi.tilebox();
-            RealBox gridloc = RealBox(fine_lev.grids[mfi.index()],fgeom.CellSize(),fgeom.ProbLo());
-
-            ca_comp_to_swe(BL_TO_FORTRAN_3D(S_fine[mfi]), BL_TO_FORTRAN_3D(base[mfi]), floor_state.dataPtr(), nx.dataPtr(),
-                ARLIM_3D(bx.loVect()), ARLIM_3D(bx.hiVect()), ZFILL(gridloc.lo()), ZFILL(dx));
+            ca_comp_to_swe_self(BL_TO_FORTRAN_3D(S_fine[mfi]),
+                floor_state.dataPtr(), nx.dataPtr(),
+                ARLIM_3D(bx.loVect()), ARLIM_3D(bx.hiVect()), ZFILL(gridloc.lo()), ZFILL(dx), &ignore_errs);
         }
     }
 

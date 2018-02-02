@@ -14,6 +14,7 @@ module probdata_module
 contains
 
     function rho_from_height(h, x) result(rho)
+        ! Calculate density rho at depth x assuming adiabatic EoS given the fluid height h
         use actual_eos_module, only: gamma_const
 
         implicit none
@@ -28,6 +29,7 @@ contains
     end function rho_from_height
 
     function p_from_height(h, x) result(p)
+        ! Calculate pressure p at depth x assuming adiabatic EoS given the fluid height h
         use actual_eos_module, only: gamma_const
 
         implicit none
@@ -41,6 +43,7 @@ contains
     end function p_from_height
 
     function height_from_p(p, x) result(h)
+        ! Calculate the fluid height assuming adiabatic EoS given the pressure p at depth x
         use actual_eos_module, only: gamma_const
 
         implicit none
@@ -54,6 +57,7 @@ contains
     end function height_from_p
 
     function p_from_rho(rho) result(p)
+        ! Calculate the pressure p assuming adiabatic EoS given density rho
         use actual_eos_module, only: gamma_const
 
         implicit none
@@ -66,6 +70,7 @@ contains
     end function p_from_rho
 
     function rho_from_p(p) result(rho)
+        ! Calculate the density rho assuming adiabatic EoS given pressure p
         use actual_eos_module, only: gamma_const
 
         implicit none

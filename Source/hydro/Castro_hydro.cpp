@@ -209,7 +209,7 @@ Castro::cons_to_prim(const Real time)
                    BL_TO_FORTRAN_ANYD(Sborder[mfi]),
                    BL_TO_FORTRAN_ANYD(q[mfi]),
                    BL_TO_FORTRAN_ANYD(qaux[mfi]),
-                   &idx, &level, ZFILL(gridloc.lo()), ZFILL(dx));
+                   &level, ZFILL(gridloc.lo()), ZFILL(dx));
     }
 }
 

@@ -112,20 +112,6 @@ contains
 
     real(rt), intent(inout) :: uflx(uflx_lo(1):uflx_hi(1),uflx_lo(2):uflx_hi(2),uflx_lo(3):uflx_hi(3),NVAR)
 
-    ! Note:
-    !
-    !  k3d: the k corresponding to the full 3d array -- it should be
-    !       used for print statements or tests against domlo, domhi,
-    !       etc
-    !
-    !  kc: the k corresponding to the 2-wide slab of k-planes, so in
-    !      this routine it takes values only of 1 or 2
-    !
-    !  kflux: used for indexing the uflx array -- in the initial calls
-    !         to cmpflx when uflx = {fx,fy,fxy,fyx,fz,fxz,fzx,fyz,fzy},
-    !         kflux = kc, but in later calls, when uflx = {flux1,flux2,flux3},
-    !         kflux = k3d
-
     integer :: i, j, k
 
     integer :: iu, iv1, iv2, sx, sy, sz
@@ -134,8 +120,8 @@ contains
 
     real(rt) :: U_hll_state(NVAR), U_state(NVAR), F_state(NVAR), Fr_state(NVAR)
     real(rt) :: S_l, S_r, S_c, Smax_l, Smax_r, Smax
-    real(rt) :: rl, ul, v1l, v2l, pl, rel, cl
-    real(rt) :: rr, ur, v1r, v2r, pr, rer, cr
+    real(rt) :: rl, ul, v1l, v2l, pl, cl
+    real(rt) :: rr, ur, v1r, v2r, pr, cr
     real(rt) :: cavg, csmall, gamcl, gamcr
 
     if (idir == 1) then
@@ -205,34 +191,32 @@ contains
                F_state(:) = 0.0_rt
                U_state(:) = 0.0_rt
 
-              rl = max(ql(i,j,k,QRHO), small_dens)
+              ! rl = max(ql(i,j,k,QRHO), small_dens)
 
               ! pick left velocities based on direction
-              ul  = ql(i,j,k,iu)
-              v1l = ql(i,j,k,iv1)
-              v2l = ql(i,j,k,iv2)
+              ! ul  = ql(i,j,k,iu)
+              ! v1l = ql(i,j,k,iv1)
+              ! v2l = ql(i,j,k,iv2)
 
               pl  = max(ql(i,j,k,QPRES ), small_pres)
-              rel = ql(i,j,k,QREINT)
 
-              rr = max(qr(i,j,k,QRHO), small_dens)
+              ! rr = max(qr(i,j,k,QRHO), small_dens)
 
               ! pick right velocities based on direction
-              ur  = qr(i,j,k,iu)
-              v1r = qr(i,j,k,iv1)
-              v2r = qr(i,j,k,iv2)
+              ! ur  = qr(i,j,k,iu)
+              ! v1r = qr(i,j,k,iv1)
+              ! v2r = qr(i,j,k,iv2)
 
               pr  = max(qr(i,j,k,QPRES), small_pres)
-              rer = qr(i,j,k,QREINT)
 
               ! find sound speeds
-              csmall = max(qaux(i,j,k,QCSML), qaux(i-sx,j-sy,k-sz,QCSML) )
-              cavg = HALF*(qaux(i,j,k,QC) + qaux(i-sx,j-sy,k-sz,QC))
-              gamcl = qaux(i-sx,j-sy,k-sz,QGAMC)
-              gamcr = qaux(i,j,k,QGAMC)
-
-              cl = sqrt(gamcl * pl / (rl + gamcl * pl / (gamcl - 1.0_rt)))
-              cr = sqrt(gamcr * pr / (rr + gamcr * pr / (gamcr - 1.0_rt)))
+              ! csmall = max(qaux(i,j,k,QCSML), qaux(i-sx,j-sy,k-sz,QCSML) )
+              ! cavg = HALF*(qaux(i,j,k,QC) + qaux(i-sx,j-sy,k-sz,QC))
+              ! gamcl = qaux(i-sx,j-sy,k-sz,QGAMC)
+              ! gamcr = qaux(i,j,k,QGAMC)
+              !
+              ! cl = sqrt(gamcl * pl / (rl + gamcl * pl / (gamcl - 1.0_rt)))
+              ! cr = sqrt(gamcr * pr / (rr + gamcr * pr / (gamcr - 1.0_rt)))
 
               ! Enforce that the fluxes through a symmetry plane or wall are hard zero.
               if ( special_bnd_lo_x .and. i== domlo(1) .or. &
@@ -244,11 +228,11 @@ contains
 
               bnd_fac = bnd_fac_x*bnd_fac_y*bnd_fac_z
 
-              ! signal speeds
-              S_l = min(-Smax, min(ul - sqrt(gamcl*pl/rl), ur - sqrt(gamcr*pr/rr)))
-              S_r = max(ul + sqrt(gamcl*pl/rl), ur + sqrt(gamcr*pr/rr))
-
-               S_r = max(Smax, max(ul + sqrt(gamcl*pl/rl), ur + sqrt(gamcr*pr/rr)))
+              ! ! signal speeds
+              ! S_l = min(-Smax, min(ul - sqrt(gamcl*pl/rl), ur - sqrt(gamcr*pr/rr)))
+              ! S_r = max(ul + sqrt(gamcl*pl/rl), ur + sqrt(gamcr*pr/rr))
+              !
+              !  S_r = max(Smax, max(ul + sqrt(gamcl*pl/rl), ur + sqrt(gamcr*pr/rr)))
 
                !!!!!!!!!! HACK doesn't help
                ! signal speeds
@@ -315,20 +299,6 @@ contains
     real(rt), intent(in) :: qaux(qa_lo(1):qa_hi(1),qa_lo(2):qa_hi(2),qa_lo(3):qa_hi(3),NQAUX)
 
     real(rt), intent(inout) :: uflx(uflx_lo(1):uflx_hi(1),uflx_lo(2):uflx_hi(2),uflx_lo(3):uflx_hi(3),NVAR)
-
-    ! Note:
-    !
-    !  k3d: the k corresponding to the full 3d array -- it should be
-    !       used for print statements or tests against domlo, domhi,
-    !       etc
-    !
-    !  kc: the k corresponding to the 2-wide slab of k-planes, so in
-    !      this routine it takes values only of 1 or 2
-    !
-    !  kflux: used for indexing the uflx array -- in the initial calls
-    !         to cmpflx when uflx = {fx,fy,fxy,fyx,fz,fxz,fzx,fyz,fzy},
-    !         kflux = kc, but in later calls, when uflx = {flux1,flux2,flux3},
-    !         kflux = k3d
 
     integer :: i, j, k
 

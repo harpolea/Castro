@@ -98,12 +98,7 @@ extern "C"
   void ca_ctoprim(const int* lo, const int* hi,
 	          const amrex::Real* u, const int* u_lo, const int* u_hi,
 		  amrex::Real* q, const int* q_lo, const int* q_hi,
-		  amrex::Real* qaux, const int* qa_lo, const int* qa_hi, const int* idx, const int* level, const amrex::Real* xlo, const amrex::Real* dx);
-
-  void ca_getbase(const int* lo, const int* hi,
-	          const amrex::Real* s, const int* slo, const int* shi,
-              const amrex::Real* b, const int* blo, const int* bhi,
-              const amrex::Real* xlo, const int* np);
+		  amrex::Real* qaux, const int* qa_lo, const int* qa_hi, const int* level, const amrex::Real* xlo, const amrex::Real* dx);
 
   void ca_srctoprim(const int* lo,   const int* hi,
 		    const amrex::Real* q,   const int* q_lo,   const int* q_hi,
