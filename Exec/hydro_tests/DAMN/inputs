@@ -59,7 +59,7 @@ amr.n_error_buf     = 4   # number of buffer cells in error est
 
 # CHECKPOINT FILES
 amr.checkpoint_files_output = 1
-amr.check_file      = chk/chk       # root name of checkpoint file
+amr.check_file      = chk/grav_chk       # root name of checkpoint file
 amr.check_per       = 0.1       # number of timesteps between checkpoints
 amr.check_int = 100
 

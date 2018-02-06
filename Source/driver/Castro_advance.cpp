@@ -126,6 +126,7 @@ Castro::do_advance (Real time,
       // MOL integrator.  Also note -- this does not affect the
       // prediction of the interface state, an explict source will be
       // traced there as needed.
+
       do_old_sources(prev_time, dt, amr_iteration, amr_ncycle);
 
       // store the result of the burn and old-time sources in Sburn for later stages
@@ -158,6 +159,8 @@ Castro::do_advance (Real time,
 
       enforce_consistent_e(S_new); // not sure does anything
       clean_state(S_new);
+
+      do_new_sources(cur_time, dt, amr_iteration, amr_ncycle);
 //
 // #if (BL_SPACEDIM > 1)
 //       int swe_to_comp_level;

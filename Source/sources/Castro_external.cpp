@@ -57,13 +57,16 @@ Castro::fill_ext_source (Real time, Real dt, MultiFab& state_old, MultiFab& stat
 
         const Box& bx = mfi.growntilebox(ng);
 
+        const RealBox& pbx  = RealBox(bx,geom.CellSize(),geom.ProbLo());
+        const Real* xlo     = pbx.lo();
+
 #ifdef DIMENSION_AGNOSTIC
         BL_FORT_PROC_CALL(CA_EXT_SRC,ca_ext_src)
 	  (ARLIM_3D(bx.loVect()), ARLIM_3D(bx.hiVect()),
 	   BL_TO_FORTRAN_3D(state_old[mfi]),
 	   BL_TO_FORTRAN_3D(state_new[mfi]),
 	   BL_TO_FORTRAN_3D(ext_src[mfi]),
-	   ZFILL(prob_lo),ZFILL(dx),&time,&dt);
+	   ZFILL(prob_lo),ZFILL(dx),&time,&dt,&level, ZFILL(xlo));
 #else
 	BL_FORT_PROC_CALL(CA_EXT_SRC,ca_ext_src)
 	  (bx.loVect(), bx.hiVect(),
