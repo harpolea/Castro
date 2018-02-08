@@ -9,7 +9,7 @@ geometry.prob_lo     = 0 0    #0.0 0.0
 geometry.prob_hi     = 1.0 7.8125e-3      #10.0 0.3125
 castro.center        = 0.5 3.90625e-3      #5.0 0.15625
 
-amr.n_cell           = 512 4
+amr.n_cell           = 2048 16
 amr.max_level        = 0        # maximum level number allowed; base level is 0
 
 amr.max_grid_size    = 64
@@ -61,7 +61,7 @@ amr.check_per       = 0.1       # number of timesteps between checkpoints
 amr.plot_files_output = 1
 amr.plot_file       = plots/1d_plt       # root name of plotfile
 amr.plot_per        = 0.1       # time between plotfiles
-amr.plot_int = 10
+amr.plot_int = 50
 
 #amr.plot_vars = ALL
 amr.derive_plot_vars =  density xmom ymom zmom mom_magnitude height
