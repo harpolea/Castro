@@ -1,15 +1,15 @@
 # ------------------  INPUTS TO MAIN PROGRAM  -------------------
 stop_time = 1,0
-#max_step = 5
+#max_step = 0
 
 # PROBLEM SIZE & GEOMETRY
 geometry.is_periodic = 0   0
 geometry.coord_sys   = 0        # 0 => cart, 1 => RZ  2=>spherical
-geometry.prob_lo     = 0.0 0.0
-geometry.prob_hi     = 10.0 0.3125
-castro.center        = 5.0 0.15625
+geometry.prob_lo     = -1.0 -1.0    #0.0 0.0
+geometry.prob_hi     = 1.0 1.0      #10.0 0.3125
+castro.center        = 0.0 0.0      #5.0 0.15625
 
-amr.n_cell           = 128 4
+amr.n_cell           = 256 256
 amr.max_level        = 0        # maximum level number allowed; base level is 0
 
 amr.max_grid_size    = 64
@@ -59,7 +59,7 @@ amr.check_per       = 0.1       # number of timesteps between checkpoints
 
 # PLOTFILES
 amr.plot_files_output = 1
-amr.plot_file       = newt_plt       # root name of plotfile
+amr.plot_file       = plots/rad_plt       # root name of plotfile
 amr.plot_per        = 0.1       # time between plotfiles
 amr.plot_int = 10
 

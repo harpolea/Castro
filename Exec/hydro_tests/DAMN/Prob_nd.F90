@@ -136,4 +136,6 @@ subroutine ca_initdata(level,time,lo,hi,nscal, &
   enddo
   !$OMP END PARALLEL DO
 
+  ! write(*,*) "h_in, h_out = ", h_in, h_out
+
 end subroutine ca_initdata

@@ -28,7 +28,7 @@ contains
     integer, intent(in) :: uout_lo(3), uout_hi(3)
     integer, intent(in) ::  vol_lo(3),  vol_hi(3)
 
-    real(rt)        , intent(in) ::  uin( uin_lo(1): uin_hi(1), uin_lo(2): uin_hi(2), uin_lo(3): uin_hi(3),NVAR)
+    real(rt)        , intent(inout) ::  uin( uin_lo(1): uin_hi(1), uin_lo(2): uin_hi(2), uin_lo(3): uin_hi(3),NVAR)
     real(rt)        , intent(inout) :: uout(uout_lo(1):uout_hi(1),uout_lo(2):uout_hi(2),uout_lo(3):uout_hi(3),NVAR)
     real(rt)        , intent(in) ::  vol( vol_lo(1): vol_hi(1), vol_lo(2): vol_hi(2), vol_lo(3): vol_hi(3))
     real(rt)        , intent(inout) :: frac_change
@@ -384,7 +384,7 @@ contains
     integer, intent(in) :: q_lo(3), q_hi(3)
     integer, intent(in) :: qa_lo(3), qa_hi(3)
 
-    real(rt)        , intent(in ) :: uin(uin_lo(1):uin_hi(1),uin_lo(2):uin_hi(2),uin_lo(3):uin_hi(3),NVAR)
+    real(rt)        , intent(inout) :: uin(uin_lo(1):uin_hi(1),uin_lo(2):uin_hi(2),uin_lo(3):uin_hi(3),NVAR)
 
     real(rt)        , intent(inout) :: q(q_lo(1):q_hi(1),q_lo(2):q_hi(2),q_lo(3):q_hi(3),NQ)
     real(rt)        , intent(inout) :: qaux(qa_lo(1):qa_hi(1),qa_lo(2):qa_hi(2),qa_lo(3):qa_hi(3),NQAUX)
@@ -402,20 +402,21 @@ contains
           do i = lo(1), hi(1)
              if (uin(i,j,k,URHO) .le. ZERO) then
                 print *,'   '
-                print *,'>>> Error: advection_util_nd.F90::grctoprim ',i, j, k
+                print *,'>>> Error: advection_util_nd.F90::swectoprim ',i, j, k
                 print *,'>>> ... negative density ', uin(i,j,k,URHO)
-                call bl_error("Error:: advection_util_nd.f90 :: grctoprim")
+                call bl_error("Error:: advection_util_nd.f90 :: swectoprim")
+                ! uin(i,j,k,URHO) = 1.0d0
              else if (uin(i,j,k,URHO) /= uin(i,j,k,URHO)) then
                  print *,'   '
-                 print *,'>>> Error: advection_util_nd.F90::grctoprim ',i, j, k
+                 print *,'>>> Error: advection_util_nd.F90::swectoprim ',i, j, k
                  print *,'>>> ... density is nan ', uin(i,j,k,URHO)
                  write(*,*) uin(:,:,:,URHO)
-                 call bl_error("Error:: advection_util_nd.f90 :: grctoprim")
+                 call bl_error("Error:: advection_util_nd.f90 :: swectoprim")
              else if (uin(i,j,k,URHO) .lt. small_dens) then
                 print *,'   '
-                print *,'>>> Error: advection_util_nd.F90::grctoprim ',i, j, k
+                print *,'>>> Error: advection_util_nd.F90::swectoprim ',i, j, k
                 print *,'>>> ... small density ', uin(i,j,k,URHO)
-                call bl_error("Error:: advection_util_nd.f90 :: grctoprim")
+                call bl_error("Error:: advection_util_nd.f90 :: swectoprim")
              endif
           end do
 
