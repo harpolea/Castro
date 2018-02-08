@@ -133,6 +133,14 @@ Castro::do_advance (Real time,
       // define the temperature now
       //clean_state(S_new);
 
+      // MultiFab& new_source = get_new_data(Source_Type);
+
+          do_new_sources(cur_time, dt, amr_iteration, amr_ncycle);
+
+          // apply_source_to_state(S_new, new_source, dt, S_new.nGrow());
+
+
+
     }
 
     finalize_do_advance(time, dt, amr_iteration, amr_ncycle);
