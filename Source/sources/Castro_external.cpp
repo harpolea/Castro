@@ -10,7 +10,7 @@ Castro::construct_old_ext_source(Real time, Real dt)
 
     old_sources[ext_src]->setVal(0.0);
 
-    if (!add_ext_src) return;
+    // if (!add_ext_src) return;
 
     fill_ext_source(time, dt, Sborder, Sborder, *old_sources[ext_src], ng);
 
@@ -29,7 +29,7 @@ Castro::construct_new_ext_source(Real time, Real dt)
 
     new_sources[ext_src]->setVal(0.0);
 
-    if (!add_ext_src) return;
+    // if (!add_ext_src) return;
 
     fill_ext_source(time, dt, S_old, S_new, *new_sources[ext_src], ng);
 

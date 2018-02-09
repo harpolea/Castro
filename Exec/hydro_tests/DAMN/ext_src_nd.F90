@@ -43,6 +43,8 @@
     real(rt) :: q(lo(1):hi(1), lo(2):hi(2), lo(3):hi(3), NQ)
     real(rt) :: qaux(lo(1):hi(1), lo(2):hi(2), lo(3):hi(3),NQAUX)
 
+    ! write(*,*) "I am being called"
+
     ! lo and hi specify work region
     src(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),:) = ZERO ! Fill work region only
 
@@ -53,9 +55,9 @@
            do j = lo(2), hi(2)
               do i = lo(1), hi(1)
 
-                  src(i,j,k,UMX) = new_state(i,j,k,URHO) * g
+                  src(i,j,k,UMX) = -new_state(i,j,k,URHO) * g
 
-                  src(i,j,k,UEDEN) = new_state(i,j,k,URHO) * q(i,j,k,QU) * g
+                  src(i,j,k,UEDEN) = -new_state(i,j,k,URHO) * q(i,j,k,QU) * g
 
               enddo
             enddo
