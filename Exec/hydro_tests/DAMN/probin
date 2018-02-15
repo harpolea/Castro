@@ -2,7 +2,7 @@
 
    h_in = 5
    h_out = 4
-   damn_rad = 1.0
+   damn_rad = 0.25 !1.0
    g = 1.0d-1
    p_ambient = 1.d-6
    exp_energy = 1.0d-5
@@ -17,9 +17,9 @@
 
   dengrad = 0.05
   velgrad = 0.005
-  pressgrad = 0.01 !for 3d!0.002 for 2d
+  pressgrad = 0.007 !0.01 for 3d!0.002 for 2d
   max_pressgrad_lev = 5
-  speederr = 0.1 !4.0d-2
+  speederr = 4.0d-2 !0.1 for fixed !4.0d-2 for mesh refinement
 
 /
 

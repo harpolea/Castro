@@ -174,10 +174,10 @@ subroutine ca_initdata(level,time,lo,hi,nscal, &
      do j = lo(2), hi(2)
         yy = xlo(2) + delta(2)*dble(j-lo(2)+HALF)
 
-        r = yy
+        !r = yy
 
         ! circular dam
-        !r = sqrt((yy - center(2))**2 + (zz - center(3))**2)
+        r = sqrt((yy - center(2))**2 + (zz - center(3))**2)
 
         h = h_in + 0.5e0_rt * (h_out - h_in) * (1.0e0_rt + tanh((r - damn_rad) / a))
 

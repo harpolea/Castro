@@ -57,16 +57,16 @@ contains
        enddo
     enddo
 
-    do k = lo(3), hi(3)
-       do j = lo(2), hi(2)
-          yy = xlo(2) + dx(2)*dble(j-lo(2)+0.5_rt)
-          do i = lo(1), hi(1)
-              if (abs(yy - damn_rad) .le. speederr) then
-                  tag(i,j,k) = set
-              endif
-          enddo
-       enddo
-    enddo
+    ! do k = lo(3), hi(3)
+    !    do j = lo(2), hi(2)
+    !       yy = xlo(2) + dx(2)*dble(j-lo(2)+0.5_rt)
+    !       do i = lo(1), hi(1)
+    !           if (abs(yy - damn_rad) .le. speederr) then
+    !               tag(i,j,k) = set
+    !           endif
+    !       enddo
+    !    enddo
+    ! enddo
 
     ! If it's the swe_to_comp_level or coarser, need to make sure that
     ! any refinement happens uniformly in vertical direction
