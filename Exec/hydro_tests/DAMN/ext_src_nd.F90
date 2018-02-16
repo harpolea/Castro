@@ -22,10 +22,10 @@
                         new_state,ns_lo,ns_hi,&
                         src,src_lo,src_hi,problo,dx,time,dt,level,xlo)
 
-    use bl_constants_module, only: ZERO
-    use meth_params_module, only : NVAR, UMX, QU, URHO, NQ, NQAUX, UEDEN
+    use bl_constants_module, only: ZERO, HALF
+    use meth_params_module, only : NVAR, UMX, UMY, QU, QV, URHO, NQ, NQAUX, UEDEN
     use probdata_module, only: swe_to_comp_level, g
-    use advection_util_module, only: compctoprim
+    use advection_util_module, only: compctoprim, swectoprim
 
     use amrex_fort_module, only : rt => amrex_real
     implicit none
@@ -42,6 +42,7 @@
     integer :: i, j, k
     real(rt) :: q(lo(1):hi(1), lo(2):hi(2), lo(3):hi(3), NQ)
     real(rt) :: qaux(lo(1):hi(1), lo(2):hi(2), lo(3):hi(3),NQAUX)
+    real(rt) :: yy
 
     ! write(*,*) "I am being called"
 
@@ -63,6 +64,17 @@
             enddo
         enddo
 
+    else
+        call swectoprim(lo, hi, new_state, ns_lo, ns_hi, q, lo, hi, qaux, lo, hi)
+
+        do j = lo(2), hi(2)
+            yy = xlo(2) + dx(2)*dble(j-lo(2)+HALF)
+
+            src(lo(1):hi(1),j,lo(3):hi(3),URHO) = -new_state(lo(1):hi(1),j,lo(3):hi(3),URHO) * q(lo(1):hi(1),j,lo(3):hi(3),QV) / yy
+
+            src(lo(1):hi(1),j,lo(3):hi(3),UMY) = -new_state(lo(1):hi(1),j,lo(3):hi(3),UMY) * q(lo(1):hi(1),j,lo(3):hi(3),QV) / yy
+
+        enddo
     endif
 
   end subroutine ca_ext_src

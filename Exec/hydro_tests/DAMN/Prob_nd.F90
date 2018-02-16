@@ -167,6 +167,8 @@ subroutine ca_initdata(level,time,lo,hi,nscal, &
 
   a = 0.0005e0_rt ! characteristic size of layer between states
 
+  ! write(*,*) damn_rad
+
   !$OMP PARALLEL DO PRIVATE(i, j, k, xx, yy, zz, r, h, eos_state, eint)
   do k = lo(3), hi(3)
      zz = xlo(3) + delta(3)*dble(k-lo(3)+HALF)
@@ -174,10 +176,10 @@ subroutine ca_initdata(level,time,lo,hi,nscal, &
      do j = lo(2), hi(2)
         yy = xlo(2) + delta(2)*dble(j-lo(2)+HALF)
 
-        !r = yy
+        r = yy
 
         ! circular dam
-        r = sqrt((yy - center(2))**2 + (zz - center(3))**2)
+        !r = sqrt((yy - center(2))**2 + (zz - center(3))**2)
 
         h = h_in + 0.5e0_rt * (h_out - h_in) * (1.0e0_rt + tanh((r - damn_rad) / a))
 
