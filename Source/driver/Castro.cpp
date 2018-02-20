@@ -724,11 +724,13 @@ Castro::estTimeStep (Real dt_old)
 	      for (MFIter mfi(stateMF,true); mfi.isValid(); ++mfi)
     		{
     		  const Box& box = mfi.tilebox();
+              const RealBox& pbx  = RealBox(box,geom.CellSize(),geom.ProbLo());
+              const Real* xlo     = pbx.lo();
 
     		  ca_estdt(ARLIM_3D(box.loVect()),
                    ARLIM_3D(box.hiVect()),
     			   BL_TO_FORTRAN_3D(stateMF[mfi]),
-    			   ZFILL(dx),&dt);
+    			   ZFILL(dx),&dt,&level,ZFILL(xlo));
     		}
 #ifdef _OPENMP
 #pragma omp critical (castro_estdt)

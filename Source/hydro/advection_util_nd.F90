@@ -351,9 +351,11 @@ contains
                          bind(C, name = "ca_compute_cfl")
 
     use bl_constants_module, only: ZERO, ONE
-    use meth_params_module, only: NQ, QRHO, QU, QV, QW, QC, NQAUX
+    use meth_params_module, only: NQ, QRHO, QU, QV, QW, QC, NQAUX, QREINT, QTEMP
     use prob_params_module, only: dim
     use probdata_module, only : g
+    use eos_module, only: eos
+    use eos_type_module, only: eos_t, eos_input_re
 
     use amrex_fort_module, only : rt => amrex_real
     implicit none
@@ -368,6 +370,7 @@ contains
     real(rt)         :: courx, coury, courz, courmx, courmy, courmz, courtmp
     real(rt)         :: dtdx, dtdy, dtdz, c, large_number
     integer          :: i, j, k
+    type(eos_t) :: eos_state
 
     ! Compute running max of Courant number over grids
 
@@ -422,7 +425,13 @@ contains
                   q(i,j,k,QU:QW) = ZERO
               endif
 
-              c = sqrt(q(i,j,k,QRHO) * g)
+              eos_state % rho = q(i,j,k,QRHO )
+              eos_state % T   = q(i,j,k,QTEMP)
+              eos_state % e   = q(i,j,k,QREINT) / q(i,j,k,QRHO )
+
+              call eos(eos_input_re, eos_state)
+
+              c = eos_state % cs
 
              courx = ( c + abs(q(i,j,k,QU)) ) * dtdx
              coury = ( c + abs(q(i,j,k,QV)) ) * dtdy

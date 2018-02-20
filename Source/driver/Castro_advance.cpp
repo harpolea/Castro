@@ -540,11 +540,13 @@ Castro::retry_advance(Real time, Real dt, int amr_iteration, int amr_ncycle)
 
     	const int* lo = bx.loVect();
     	const int* hi = bx.hiVect();
+        const RealBox& pbx  = RealBox(bx,geom.CellSize(),geom.ProbLo());
+        const Real* xlo     = pbx.lo();
 
     	ca_check_timestep(BL_TO_FORTRAN_3D(S_old[mfi]),
     			  BL_TO_FORTRAN_3D(S_new[mfi]),
     			  ARLIM_3D(lo), ARLIM_3D(hi), ZFILL(dx),
-    			  &dt, &dt_subcycle);
+    			  &dt, &dt_subcycle,&level,ZFILL(xlo));
     }
 
     if (retry_neg_dens_factor > 0.0) {

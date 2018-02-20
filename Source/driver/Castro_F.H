@@ -255,13 +255,13 @@ void ca_compute_floor_state
   void ca_estdt
     (const int* lo, const int* hi,
      const BL_FORT_FAB_ARG_3D(state),
-     const amrex::Real* dx, amrex::Real* dt);
+     const amrex::Real* dx, amrex::Real* dt, int * level, const amrex::Real* xlo);
 
   void ca_check_timestep
     (const BL_FORT_FAB_ARG_3D(state_old),
      const BL_FORT_FAB_ARG_3D(state_new),
      const int* lo, const int* hi,
-     const amrex::Real* dx, const amrex::Real* dt_old, amrex::Real* dt);
+     const amrex::Real* dx, const amrex::Real* dt_old, amrex::Real* dt, int * level, const amrex::Real* xlo);
 
   void ca_ctu_update
     (const int* is_finest_level,

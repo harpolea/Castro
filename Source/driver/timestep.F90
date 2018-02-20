@@ -10,40 +10,58 @@ contains
 
   ! Courant-condition limited timestep
 
-  subroutine ca_estdt(lo,hi,u,u_lo,u_hi,dx,dt) bind(C, name="ca_estdt")
+  subroutine ca_estdt(lo,hi,u,u_lo,u_hi,dx,dt,level,xlo) bind(C, name="ca_estdt")
 
     use network, only: nspec, naux
-    use meth_params_module, only: NVAR, URHO, UMX, UMY, UMZ
+    use meth_params_module, only: NVAR, URHO, UMX, UMY, UMZ, QU, QV, QW, QRHO, QTEMP, QPRES, NQ, NQAUX, QREINT
     use prob_params_module, only: dim
     use bl_constants_module
     use amrex_fort_module, only : rt => amrex_real
-    use probdata_module, only : g
+    use probdata_module, only : g, swe_to_comp_level
+    use advection_util_module, only: compctoprim, swectoprim
+    use eos_module, only: eos
+    use eos_type_module, only: eos_t, eos_input_re
 
     implicit none
 
-    integer, intent(in) :: lo(3), hi(3)
+    integer, intent(in) :: lo(3), hi(3), level
     integer, intent(in) :: u_lo(3), u_hi(3)
     real(rt), intent(in) :: u(u_lo(1):u_hi(1),u_lo(2):u_hi(2),u_lo(3):u_hi(3),NVAR)
-    real(rt), intent(in) :: dx(3)
+    real(rt), intent(in) :: dx(3), xlo(3)
     real(rt), intent(inout) :: dt
 
     real(rt)         :: rhoInv, ux, uy, uz, c, dt1, dt2, dt3, dt_tmp
     integer          :: i, j, k
+    real(rt) :: q(lo(1):hi(1), lo(2):hi(2), lo(3):hi(3), NQ)
+    real(rt) :: qaux(lo(1):hi(1), lo(2):hi(2), lo(3):hi(3),NQAUX)
+
+    type(eos_t) :: eos_state
+
+    if (level > swe_to_comp_level) then
+        call compctoprim(lo, hi, u, u_lo, u_hi, q, lo, hi, qaux, lo, hi, xlo, dx, .true.)
+    else
+        call swectoprim(lo, hi, u, u_lo, u_hi, q, lo, hi, qaux, lo, hi)
+    endif
+
 
     ! Call EOS for the purpose of computing sound speed
 
     do k = lo(3), hi(3)
        do j = lo(2), hi(2)
           do i = lo(1), hi(1)
-             rhoInv = ONE / u(i,j,k,URHO)
+              eos_state % rho = q(i,j,k,QRHO )
+              eos_state % T   = q(i,j,k,QTEMP)
+              eos_state % e   = q(i,j,k,QREINT) / q(i,j,k,QRHO )
+
+              call eos(eos_input_re, eos_state)
 
              ! Compute velocity and then calculate CFL timestep.
 
-             ux = u(i,j,k,UMX) * rhoInv
-             uy = u(i,j,k,UMY) * rhoInv
-             uz = u(i,j,k,UMZ) * rhoInv
+             ux = q(i,j,k,QU)
+             uy = q(i,j,k,QV)
+             uz = q(i,j,k,QW)
 
-             c = sqrt(g * u(i,j,k,URHO)) ! sound speed is sqrt(gh)
+             c = eos_state % cs
 
              dt1 = dx(1)/(c + abs(ux))
              if (dim >= 2) then
@@ -82,31 +100,47 @@ contains
   subroutine ca_check_timestep(s_old, so_lo, so_hi, &
                                s_new, sn_lo, sn_hi, &
                                lo, hi, &
-                               dx, dt_old, dt_new) &
+                               dx, dt_old, dt_new, level, xlo) &
                                bind(C, name="ca_check_timestep")
 
     use bl_constants_module, only: HALF, ONE
-    use meth_params_module, only: NVAR, URHO, UMX, UMZ, cfl
+    use meth_params_module, only: NVAR, URHO, UMX, UMZ, cfl, NQ, QRHO, QREINT, QU, QW, QTEMP, NQAUX
     use prob_params_module, only: dim
-    use probdata_module, only : g
+    use probdata_module, only : g, swe_to_comp_level
     use network, only: nspec, naux
     use amrex_fort_module, only : rt => amrex_real
+    use eos_module, only: eos
+    use eos_type_module, only: eos_t, eos_input_re
+    use advection_util_module, only: compctoprim, swectoprim
 
     implicit none
 
-    integer, intent(in) :: lo(3), hi(3)
+    integer, intent(in) :: lo(3), hi(3), level
     integer, intent(in) :: so_lo(3), so_hi(3)
     integer, intent(in) :: sn_lo(3), sn_hi(3)
     real(rt), intent(in) :: s_old(so_lo(1):so_hi(1),so_lo(2):so_hi(2),so_lo(3):so_hi(3),NVAR)
     real(rt), intent(in) :: s_new(sn_lo(1):sn_hi(1),sn_lo(2):sn_hi(2),sn_lo(3):sn_hi(3),NVAR)
-    real(rt), intent(in) :: dx(3), dt_old
+    real(rt), intent(in) :: dx(3), dt_old, xlo(3)
     real(rt), intent(inout) :: dt_new
 
     integer          :: i, j, k
     real(rt)         :: tau_CFL
     real(rt)         :: h, v(3), c
+    type (eos_t) :: eos_state
+    real(rt) :: q_old(lo(1):hi(1), lo(2):hi(2), lo(3):hi(3), NQ)
+    real(rt) :: q_new(lo(1):hi(1), lo(2):hi(2), lo(3):hi(3), NQ)
+    real(rt) :: qaux(lo(1):hi(1), lo(2):hi(2), lo(3):hi(3),NQAUX)
 
     real(rt), parameter :: derivative_floor = 1.e-50_rt
+
+    if (level > swe_to_comp_level) then
+        call compctoprim(lo, hi, s_old, so_lo, so_hi, q_old, lo, hi, qaux, lo, hi, xlo, dx, .true.)
+        call compctoprim(lo, hi, s_new, sn_lo, sn_hi, q_new, lo, hi, qaux, lo, hi, xlo, dx, .true.)
+    else
+        call swectoprim(lo, hi, s_old, so_lo, so_hi, q_old, lo, hi, qaux, lo, hi)
+        call swectoprim(lo, hi, s_new, sn_lo, sn_hi, q_new, lo, hi, qaux, lo, hi)
+    endif
+
 
     do k = lo(3), hi(3)
        do j = lo(2), hi(2)
@@ -128,11 +162,17 @@ contains
              ! want to trigger a retry if the timestep strongly violated
              ! the stability criterion.
 
-            v = HALF * (s_old(i,j,k,UMX:UMZ) / s_old(i,j,k,URHO) + &
-                s_new(i,j,k,UMX:UMZ) / s_new(i,j,k,URHO))
-            h = HALF * (s_old(i,j,k,URHO) + s_new(i,j,k,URHO))
+             eos_state % rho = q_new(i,j,k,QRHO )
+             eos_state % T   = q_new(i,j,k,QTEMP)
+             eos_state % p   = q_new(i,j,k,QREINT) / q_new(i,j,k,QRHO )
 
-            c = sqrt(g * h) ! sound speed is sqrt(gh)
+             call eos(eos_input_re, eos_state)
+
+            v = HALF * (q_old(i,j,k,QU:QW) + &
+                s_new(i,j,k,QU:QW))
+            h = HALF * (q_old(i,j,k,QRHO) + q_new(i,j,k,QRHO))
+
+            c = eos_state % cs
 
             tau_CFL = minval(dx(1:dim) / (c + abs(v(1:dim))))
 
