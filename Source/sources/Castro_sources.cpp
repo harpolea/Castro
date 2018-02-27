@@ -56,7 +56,7 @@ Castro::do_old_sources(Real time, Real dt, int amr_iteration, int amr_ncycle)
     MultiFab& S_new = get_new_data(State_Type);
 
     for (int n = 0; n < num_src; ++n)
-      if (source_flag(n))
+      // if (source_flag(n))
 	     apply_source_to_state(S_new, *old_sources[n], dt);
 
     // Optionally print out diagnostic information about how much
@@ -84,11 +84,11 @@ Castro::do_new_sources(Real time, Real dt, int amr_iteration, int amr_ncycle)
 
     	for (int n = 0; n < num_src; ++n) {
     	    construct_new_source(n, time, dt, amr_iteration, amr_ncycle);
-    	    if (source_flag(n)) {
+    	    // if (source_flag(n)) {
         		apply_source_to_state(S_new, *new_sources[n], dt);
                 enforce_consistent_e(S_new); // not sure does anything
         		clean_state(S_new);
-    	    }
+    	    // }
     	}
 
     } else {

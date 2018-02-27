@@ -1030,16 +1030,13 @@ Castro::post_timestep (int iteration)
     if (verbose)
 	   flush_output();
 
-#ifdef DO_PROBLEM_POST_TIMESTEP
-
     // Provide a hook for the user to do things after all of
     // the normal updates have been applied. The user is
     // responsible for any actions after this point, like
     // doing a computeTemp call if they change the state data.
 
-    problem_post_timestep();
+    problem_post_timestep(S_new);
 
-#endif
 
     if (level == 0)
     {

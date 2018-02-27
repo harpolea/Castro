@@ -158,6 +158,8 @@ Castro::do_advance (Real time,
 
       enforce_consistent_e(S_new); // not sure does anything
       clean_state(S_new);
+
+      do_new_sources(cur_time, dt, amr_iteration, amr_ncycle);
 //
 // #if (BL_SPACEDIM > 1)
 //       int swe_to_comp_level;
