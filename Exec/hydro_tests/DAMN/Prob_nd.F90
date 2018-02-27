@@ -174,7 +174,7 @@ subroutine ca_initdata(level,time,lo,hi,nscal, &
 
             r = yy
 
-           ! r = sqrt((xx - center(1))**2 + (yy - center(2))**2)
+            ! r = sqrt((zz - center(3))**2 + (yy - center(2))**2)
 
            ! if (level <= swe_to_comp_level) then
            !     ! shallow water level

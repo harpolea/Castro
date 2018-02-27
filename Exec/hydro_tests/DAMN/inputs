@@ -1,16 +1,16 @@
 # ------------------  INPUTS TO MAIN PROGRAM  -------------------
-stop_time = 2
-max_step = 100
+stop_time = 0.14
+max_step = 10000
 
 # PROBLEM SIZE & GEOMETRY
 geometry.is_periodic = 0  0  0
 geometry.coord_sys   = 0        # 0 => cart, 1 => RZ  2=>spherical
 geometry.prob_lo     = 0.0 0.0 0.0
-geometry.prob_hi     = 2.0 2.0 2.0 #0.125
-castro.center        = 1.0 1.0 1.0 #0.0625
+geometry.prob_hi     = 0.0625 2.0 2.0 #0.125
+castro.center        = 0.03125 1.0 1.0 #0.0625
 
-amr.n_cell           = 128 128 64
-amr.max_level        = 2        # maximum level number allowed; base level is 0
+amr.n_cell           = 16 512 64
+amr.max_level        = 0        # maximum level number allowed; base level is 0
 
 amr.max_grid_size    = 64
 
@@ -59,9 +59,9 @@ amr.check_per       = 0.1       # number of timesteps between checkpoints
 
 # PLOTFILES
 amr.plot_files_output = 1
-amr.plot_file       = s2c_plt       # root name of plotfile
+amr.plot_file       = plots/swe_newt_rad_dam_plt      # root name of plotfile
 amr.plot_per        = 20       # time between plotfiles
-amr.plot_int = 10
+amr.plot_int = 50
 
 #amr.plot_vars = ALL
 amr.derive_plot_vars = density xmom ymom zmom pressure height
