@@ -162,7 +162,7 @@ subroutine ca_initdata(level,time,lo,hi,nscal, &
   if (level <= swe_to_comp_level) then
       write(*,*) "Initialising level ", level, " with SWE data"
   else
-      write(*,*) "Initialising level ", level, " with incompressible data"
+      write(*,*) "Initialising level ", level, " with compressible data"
   endif
 
   a = 0.0005e0_rt ! characteristic size of layer between states
