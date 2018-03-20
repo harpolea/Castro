@@ -21,6 +21,7 @@ contains
     use meth_params_module, only : NVAR, NQ, QU, QW, NQAUX
     use probdata_module, only: swe_to_comp_level, damn_rad
     use advection_util_module, only: compctoprim, swectoprim
+    use prob_params_module, only : center
     implicit none
 
     integer, intent(in)          :: lo(3),hi(3)
@@ -45,28 +46,28 @@ contains
         call swectoprim(lo, hi, state, state_lo, state_hi, q, lo, hi, qaux, lo, hi, .false.)
     endif
 
-    do k = lo(3), hi(3)
-       do j = lo(2), hi(2)
-          do i = lo(1), hi(1)
-              speed = sqrt(sum(q(i,j,k,QU:QW)**2))
-              ! write(*,*) "speed = ", speed
-              if (speed .ge. speederr) then
-                  tag(i,j,k) = set
-              endif
-          enddo
-       enddo
-    enddo
-
     ! do k = lo(3), hi(3)
     !    do j = lo(2), hi(2)
-    !       yy = xlo(2) + dx(2)*dble(j-lo(2)+0.5_rt)
     !       do i = lo(1), hi(1)
-    !           if (abs(yy - damn_rad) .le. speederr) then
+    !           speed = sqrt(sum(q(i,j,k,QU:QW)**2))
+    !           ! write(*,*) "speed = ", speed
+    !           if (speed .ge. speederr) then
     !               tag(i,j,k) = set
     !           endif
     !       enddo
     !    enddo
     ! enddo
+
+    do k = lo(3), hi(3)
+       do j = lo(2), hi(2)
+          yy = xlo(2) + dx(2)*dble(j-lo(2)+0.5_rt)
+          do i = lo(1), hi(1)
+              if (abs(yy - center(2)) .le. speederr) then
+                  tag(i,j,k) = set
+              endif
+          enddo
+       enddo
+    enddo
 
     ! If it's the swe_to_comp_level or coarser, need to make sure that
     ! any refinement happens uniformly in vertical direction

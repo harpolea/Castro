@@ -3,18 +3,18 @@
 
 
 # ------------------  INPUTS TO MAIN PROGRAM  -------------------
-stop_time = 1.5
-max_step = 500
+stop_time = 0.1
+max_step = 5000000
 
 # PROBLEM SIZE & GEOMETRY
 geometry.is_periodic = 0  0  0
 geometry.coord_sys   = 0        # 0 => cart, 1 => RZ  2=>spherical
 geometry.prob_lo     = 0.0 0.0 0
-geometry.prob_hi     = 2.0 2.0 0.5
-castro.center        = 1.0 1.0 0.25
+geometry.prob_hi     = 0.1 0.2 0.0125
+castro.center        = 0.05 0.1 0.00625
 
-amr.n_cell = 64 64 16 #  16 2048 for 1d sr rad dam
-amr.max_level        = 2        # maximum level number allowed; base level is 0
+amr.n_cell = 64 128 8 #  16 2048 for 1d sr rad dam
+amr.max_level        = 1        # maximum level number allowed; base level is 0
 
 amr.max_grid_size    = 64
 
@@ -53,9 +53,9 @@ amr.grid_log          = grid_diag.out   # name of grid logging file
 
 # REFINEMENT / REGRIDDING
 amr.ref_ratio       = 2   # refinement ratio
-amr.regrid_int      = 2   # how often to regrid
+amr.regrid_int      = 20000000   # how often to regrid
 amr.blocking_factor = 4         # block factor in grid generation
-amr.n_error_buf     = 2   # number of buffer cells in error est
+amr.n_error_buf     = 4   # number of buffer cells in error est
 
 # CHECKPOINT FILES
 amr.checkpoint_files_output = 0
@@ -65,8 +65,8 @@ amr.check_int = 100
 
 # PLOTFILES
 amr.plot_files_output = 1
-amr.plot_file       = plots/test_plt       # root name of plotfile
-amr.plot_per        = 20       # time between plotfiles
+amr.plot_file       = plots/gaussian_test      # root name of plotfile
+amr.plot_per        = 1       # time between plotfiles
 amr.plot_int = 50
 
 #amr.plot_vars = ALL
