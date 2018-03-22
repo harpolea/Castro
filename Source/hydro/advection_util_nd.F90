@@ -563,7 +563,7 @@ contains
                   q(i,j,k,QW) = 0.1_rt * uin(i,j,k,UMZ) / W
                   q(i,j,k,QFA:QFA-1+nadv) = uin(i,j,k,UFA:UFA-1+nadv) * 0.1_rt
               else
-                  q(i,j,k,QRHO) = uin(i,j,k,URHO)
+                  q(i,j,k,QRHO) = uin(i,j,k,URHO) / W
                   q(i,j,k,QV) = uin(i,j,k,UMY) / (uin(i,j,k,URHO) * W)
                   q(i,j,k,QW) = uin(i,j,k,UMZ) / (uin(i,j,k,URHO) * W)
                   q(i,j,k,QFA:QFA-1+nadv) = uin(i,j,k,UFA:UFA-1+nadv) / uin(i,j,k,URHO)

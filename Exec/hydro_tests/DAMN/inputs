@@ -3,18 +3,18 @@
 
 
 # ------------------  INPUTS TO MAIN PROGRAM  -------------------
-stop_time = 0.1
+stop_time = 0.5
 max_step = 5000000
 
 # PROBLEM SIZE & GEOMETRY
 geometry.is_periodic = 0  0  0
 geometry.coord_sys   = 0        # 0 => cart, 1 => RZ  2=>spherical
 geometry.prob_lo     = 0.0 0.0 0
-geometry.prob_hi     = 0.1 0.2 0.0125
-castro.center        = 0.05 0.1 0.00625
+geometry.prob_hi     = 1.953125e-3 1 1
+castro.center        = 9.765625e-4 0.5 0.5
 
-amr.n_cell = 64 128 8 #  16 2048 for 1d sr rad dam
-amr.max_level        = 1        # maximum level number allowed; base level is 0
+amr.n_cell = 4 2048 256 #  16 2048 for 1d sr rad dam
+amr.max_level        = 0        # maximum level number allowed; base level is 0
 
 amr.max_grid_size    = 64
 
@@ -65,9 +65,9 @@ amr.check_int = 100
 
 # PLOTFILES
 amr.plot_files_output = 1
-amr.plot_file       = plots/gaussian_test      # root name of plotfile
+amr.plot_file       = plots/1d_rad_sr_plt     # root name of plotfile
 amr.plot_per        = 1       # time between plotfiles
-amr.plot_int = 50
+amr.plot_int = 500
 
 #amr.plot_vars = ALL
 amr.derive_plot_vars = density pressure height primspeed primu primv primw
