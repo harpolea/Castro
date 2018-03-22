@@ -61,15 +61,15 @@ subroutine ca_ext_src(lo,hi,&
           enddo
       enddo
 
-  else
-      do j = lo(2), hi(2)
-          yy = xlo(2) + dx(2)*dble(j-lo(2)+HALF)
-
-          src(lo(1):hi(1),j,lo(3):hi(3),URHO) = -new_state(lo(1):hi(1),j,lo(3):hi(3),UMY)/ yy
-
-          src(lo(1):hi(1),j,lo(3):hi(3),UMY) = -new_state(lo(1):hi(1),j,lo(3):hi(3),UMY)**2 / (new_state(lo(1):hi(1),j,lo(3):hi(3),URHO) * yy)
-
-      enddo
+  ! else
+  !     do j = lo(2), hi(2)
+  !         yy = xlo(2) + dx(2)*dble(j-lo(2)+HALF)
+  !
+  !         src(lo(1):hi(1),j,lo(3):hi(3),URHO) = -new_state(lo(1):hi(1),j,lo(3):hi(3),UMY)/ yy
+  !
+  !         src(lo(1):hi(1),j,lo(3):hi(3),UMY) = -new_state(lo(1):hi(1),j,lo(3):hi(3),UMY)**2 / (new_state(lo(1):hi(1),j,lo(3):hi(3),URHO) * yy)
+  !
+  !     enddo
   endif
 
 end subroutine ca_ext_src

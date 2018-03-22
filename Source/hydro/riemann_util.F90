@@ -160,14 +160,14 @@ contains
 
 #if BL_SPACEDIM == 2
     if (idir == 2) then
-        F(UMY) = F(UMY) + 0.5d0 * g * U(URHO)**2
+        F(UMY) = F(UMY) + 0.5d0 * 2*g * U(URHO)**2
     endif
     F(UMZ) = 0.0d0
 #elif BL_SPACEDIM == 3
     if (idir == 1) then
-        F(UMX) = F(UMX) + 0.5d0 * g * U(URHO)**2
+        F(UMX) = F(UMX) + 0.5d0 * 2*g * U(URHO)**2
     else if (idir == 2) then
-        F(UMY) = F(UMY) + 0.5d0 * g * U(URHO)**2
+        F(UMY) = F(UMY) + 0.5d0 * 2*g * U(URHO)**2
     endif
 #endif
 
@@ -184,7 +184,6 @@ contains
     ! returns the GR flux in direction idir
     use meth_params_module, only: NVAR, URHO, UMX, UMY, UMZ, UTEMP, &
          UEDEN, UEINT, npassive, upass_map, UFS, UFA
-    use probdata_module, only: g
     use network, only : nspec
 
     integer, intent(in) :: idir, bnd_fac

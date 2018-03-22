@@ -382,8 +382,8 @@ contains
        special_bnd_hi_x = .false.
     end if
 
-    Smax_l = maxval(abs(ql(:,:,:,QU-1+idir))) + maxval(sqrt(g * ql(:,:,:,QRHO)))
-    Smax_r = maxval(abs(qr(:,:,:,QU-1+idir))) + maxval(sqrt(g * qr(:,:,:,QRHO)))
+    Smax_l = maxval(abs(ql(:,:,:,QU-1+idir))) + maxval(sqrt(2*g * ql(:,:,:,QRHO)))
+    Smax_r = maxval(abs(qr(:,:,:,QU-1+idir))) + maxval(sqrt(2*g * qr(:,:,:,QRHO)))
     Smax = max(Smax_r, Smax_l)
 
     if (Smax /= Smax .or. (Smax+1 .eq. Smax)) then
@@ -518,6 +518,7 @@ subroutine swe_to_comp(swe, slo, shi, comp, clo, chi, lo, hi, dx, xlo, ignore_er
 
             do i = lo(1), hi(1)
                 xx = xlo(1) + dx(1)*dble(i-lo(1)+HALF)
+                !! NOTE: do not put hack here
                 q_comp(QPRES) = 0.5d0 * g * (q_swe(i,j,k,QRHO) - xx)**2
 
                 eos_state % rho = q_comp(QRHO)
@@ -590,6 +591,7 @@ subroutine comp_to_swe(swe, slo, shi, comp, clo, chi, lo, hi, xlo, dx, ignore_er
                 ! using p = 0.5 * g * h**2
                 q_swe(1:NQ) = q_comp(i,j,k,1:NQ)
                 q_swe(QRHO) = sqrt(2.0d0 * q_comp(lo(1),j,k,QPRES) / g) + xx
+                ! NOTE: HACK
                 q_swe(QPRES) = 0.5d0 * g * q_swe(QRHO)**2
 
                 q_swe(QU) = 0

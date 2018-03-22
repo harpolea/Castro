@@ -605,7 +605,6 @@ subroutine compctoprim(lo, hi, &
                                  small_dens, UFA, QFA
   use bl_constants_module, only: ZERO, HALF, ONE
   use castro_util_module, only: position
-  use probdata_module, only : g
 
   use amrex_fort_module, only : rt => amrex_real
 
