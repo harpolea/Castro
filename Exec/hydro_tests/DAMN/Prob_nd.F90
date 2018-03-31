@@ -165,16 +165,16 @@ subroutine ca_initdata(level,time,lo,hi,nscal, &
 
   !$OMP PARALLEL DO PRIVATE(i, j, k, xx, yy, zz, r, h)
   do k = lo(3), hi(3)
-     zz = xlo(3) + delta(3)*dble(k-lo(3)+HALF)
+     zz = xlo(3) + delta(3)*(dble(k-lo(3))+HALF)
 
      do j = lo(2), hi(2)
-        yy = xlo(2) + delta(2)*dble(j-lo(2)+HALF)
+        yy = xlo(2) + delta(2)*(dble(j-lo(2))+HALF)
 
 
         r = yy
 
         ! circular dam
-        ! r = sqrt((yy - center(2))**2 + (zz - center(3))**2)
+        r = sqrt((yy - center(2))**2 + (zz - center(3))**2)
 
         h = h_in + 0.5e0_rt * (h_out - h_in) * (1.0e0_rt + tanh((r - damn_rad) / a))
 
@@ -183,7 +183,7 @@ subroutine ca_initdata(level,time,lo,hi,nscal, &
             state(i,j,k,1:NVAR) = 0.e0_rt
             q(i,j,k,1:NQ) = 0.e0_rt
 
-            xx = xlo(1) + delta(1)*dble(i-lo(1)+HALF)
+            xx = xlo(1) + delta(1)*(dble(i-lo(1))+HALF)
 
             q(i,j,k,QRHO) = dens_incompressible
 

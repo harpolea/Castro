@@ -346,13 +346,14 @@ contains
        do k = lo(3), hi(3)
           do j = lo(2), hi(2)
              do i = lo(1), hi(1)
-                ax = ABS(press(i+dg(1),j,k,1) - press(i,j,k,1))
+                ! ax = ABS(press(i+dg(1),j,k,1) - press(i,j,k,1))
                 ay = ABS(press(i,j+dg(2),k,1) - press(i,j,k,1))
                 az = ABS(press(i,j,k+dg(3),1) - press(i,j,k,1))
-                ax = MAX(ax,ABS(press(i,j,k,1) - press(i-dg(1),j,k,1)))
+                ! ax = MAX(ax,ABS(press(i,j,k,1) - press(i-dg(1),j,k,1)))
                 ay = MAX(ay,ABS(press(i,j,k,1) - press(i,j-dg(2),k,1)))
                 az = MAX(az,ABS(press(i,j,k,1) - press(i,j,k-dg(3),1)))
-                if ( MAX(ax,ay,az) .ge. pressgrad) then
+                ! if ( MAX(ax,ay,az) .ge. pressgrad) then
+                if ( MAX(ay,az) .ge. pressgrad) then
                    tag(i,j,k) = set
                 endif
              enddo

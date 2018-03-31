@@ -27,13 +27,15 @@ contains
       real(rt) :: u, v, w, rhoInv, xlo(3), dx(3)
       real(rt) :: q(s_lo(1):s_hi(1),s_lo(2):s_hi(2),s_lo(3):s_hi(3),NQ)
       real(rt) :: qaux(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),NQAUX)
-
       if (level <= swe_to_comp_level) then
           call swectoprim(lo, hi, &
                             state, s_lo, s_hi, &
                             q,  s_lo, s_hi, &
                             qaux, lo, hi)
       else
+
+          ! write(*,*) "enforce min e, level =", level
+
           call compctoprim(lo, hi, &
                             state, s_lo, s_hi, &
                             q,  s_lo, s_hi, &
@@ -106,8 +108,6 @@ contains
 
     have_reset = .false.
 
-    ! write(*,*) "level = ", level
-
     if (level <= swe_to_comp_level) then
         call swectoprim(lo, hi, &
                           uin, uin_lo, uin_hi, &
@@ -118,6 +118,8 @@ contains
                         qout,  uout_lo, uout_hi, &
                         qaux,  lo, hi)
     else
+
+        ! write(*,*) "enforce min density, level = ", level
         call compctoprim(lo, hi, &
                           uin, uin_lo, uin_hi, &
                           qin,  uin_lo, uin_hi, &
@@ -559,7 +561,7 @@ contains
                   q(i,j,k,QW) = 0.1_rt * uin(i,j,k,UMZ) / W
                   q(i,j,k,QFA:QFA-1+nadv) = uin(i,j,k,UFA:UFA-1+nadv) * 0.1_rt
               else
-                  q(i,j,k,QRHO) = uin(i,j,k,URHO)
+                  q(i,j,k,QRHO) = uin(i,j,k,URHO) / W
                   ! q(i,j,k,QU) = uin(i,j,k,UMX) / uin(i,j,k,URHO)
                   q(i,j,k,QV) = uin(i,j,k,UMY) / (uin(i,j,k,URHO) * W)
                   q(i,j,k,QW) = uin(i,j,k,UMZ) / (uin(i,j,k,URHO) * W)
@@ -580,18 +582,6 @@ contains
        enddo
     enddo
 
-    ! Load passively advected quantities into q
-      ! do ipassive = 1, npassive
-      !    n  = upass_map(ipassive)
-      !    iq = qpass_map(ipassive)
-      !    do k = lo(3),hi(3)
-      !       do j = lo(2),hi(2)
-      !          do i = lo(1),hi(1)
-      !             q(i,j,k,iq) = uin(i,j,k,n)/q(i,j,k,QRHO)
-      !          enddo
-      !       enddo
-      !    enddo
-      ! enddo
 
 end subroutine swectoprim
 
@@ -602,7 +592,7 @@ subroutine compctoprim(lo, hi, &
 
   use actual_network, only : nspec, naux
   use eos_module, only : eos, eos_init, initialized
-  use eos_type_module, only : eos_t, eos_input_rp, eos_input_re
+  use eos_type_module, only : eos_t, eos_input_rp, eos_input_re, eos_input_rh
   use meth_params_module, only : NVAR, URHO, UMX, UMY, UMZ, UEDEN, UEINT,&
                                  QRHO, QU, QV, QW, QREINT, QTEMP, &
                                  NQ, QC, QCSML, QGAMC, QDPDR, QDPDE, NQAUX, QFS, QFX, QGAME, QPRES, UTEMP, &
@@ -640,6 +630,8 @@ subroutine compctoprim(lo, hi, &
   eos_state % rho = dens_incompressible
   eos_state % e = 1.0_rt
 
+  ! write(*,*) "compctoprim"
+
   if (.not. initialized) call eos_init(small_dens=small_dens, small_temp=small_temp)
 
   call eos(eos_input_re, eos_state)
@@ -671,90 +663,18 @@ subroutine compctoprim(lo, hi, &
         do i = lo(1), hi(1)
             q(i,j,k,1:NQ) = 0.0_rt
 
-            ! if (uin(i,j,k,URHO) .le. ZERO) then
-            !     q(i,j,k,QRHO) = 1.0_rt
-            !     q(i,j,k,QU) = 0.1_rt * uin(i,j,k,UMX) !/ uin(i,j,k,URHO)
-            !     q(i,j,k,QV) = 0.1_rt * uin(i,j,k,UMY) !/ uin(i,j,k,URHO)
-            !     q(i,j,k,QW) = 0.1_rt * uin(i,j,k,UMZ) !/ uin(i,j,k,URHO)
-            ! else
-            !     ! Incompressible
-            !     q(i,j,k,QRHO) = 1.0_rt!uin(i,j,k,URHO)
-            !     q(i,j,k,QU) = uin(i,j,k,UMX) / uin(i,j,k,URHO)
-            !     q(i,j,k,QV) = uin(i,j,k,UMY) / uin(i,j,k,URHO)
-            !     q(i,j,k,QW) = uin(i,j,k,UMZ) / uin(i,j,k,URHO)
-            ! endif
-
-            ! eden = uin(i,j,k,UEDEN)
-            !
-            ! if (eden < ZERO) then
-            !     eden = abs(eden)
-            ! endif
-            !
-            ! ssq = sum(uin(i,j,k,UMX:UMZ)**2)
-            !
-            ! pmin = (gamma - 1.0_rt) * (eden + uin(i,j,k,URHO) - ssq / (eden + uin(i,j,k,URHO))**2 - uin(i,j,k,URHO))
-            !
-            ! pmax = (gamma - 1.0_rt) * (eden + uin(i,j,k,URHO) - ssq / (eden + uin(i,j,k,URHO)))
-            !
-            ! if (pmin < 0.0_rt) then
-            !       pmin = 0._rt
-            ! end if
-            !
-            ! call f_of_p(fmin, pmin, uin(i,j,k,:))
-            ! call f_of_p(fmax, pmax, uin(i,j,k,:))
-            !
-            ! if (fmin * fmax > 0.0_rt) then
-            !     pmin = pmin * 0.1_rt !0._rt
-            ! end if
-            !
-            ! call f_of_p(fmin, pmin, uin(i,j,k,:))
-            !
-            ! !write(*,*) "f = ", fmin, fmax, " p = ", pmin, pmax
-            !
-            ! if (fmin * fmax > 0.0_rt) then
-            !   pmax = pmax * 10._rt
-            ! end if
-            !
-            ! call zbrent(p, pmin, pmax, uin(i,j,k,:))
-            !
-            ! !write(*,*) "pressure = ", pmin, pmax
-            !
-            ! if (p /= p .or. p <= 0.0_rt) then! .or. p > 1.0_rt) then
-            !
-            !   p = abs((gamma - 1.0_rt) * ((eden + uin(i,j,k,URHO)) - ssq / (eden + uin(i,j,k,URHO))**2 - uin(i,j,k,URHO)))
-            !
-            !   !if (p > 1.0_rt) then
-            !       !p = 1.0_rt
-            !   !end if
-            ! end if
-            !
-            ! sq = sqrt((eden + p + uin(i,j,k,URHO))**2 - ssq)
-            !
-            ! if (sq /= sq) then
-            !   sq = eden + p + uin(i,j,k,URHO)
-            ! end if
-            !
-            ! h = 1.0_rt + gamma * &
-            ! (sq - p * (eden + p + uin(i,j,k,URHO)) / sq - uin(i,j,k,URHO)) / uin(i,j,k,URHO)
-            ! W2 = 1.0_rt + ssq / (uin(i,j,k,URHO) * h)**2
-
-            !write(*,*) "p, sq, eden, rho", p, sq, eden, uin(i,j,k,URHO)
-            !return
-
-            q(i,j,k,QRHO) = dens_incompressible! INCOMPRESSIBLE uin(i,j,k,URHO) * sq / (eden + p + uin(i,j,k,URHO))
-
-            ! write(*,*) uin(i,j,k,URHO) * sq / (eden + p + uin(i,j,k,URHO))
+            q(i,j,k,QRHO) = dens_incompressible! INCOMPRESSIBLE
 
             W2 = (uin(i,j,k,URHO) / dens_incompressible)**2
-            ! if ((W2 - 1.0_rt) < 1.0e-8_rt) then
-                ! eden = uin(i,j,k,UEDEN)
-                ! p = (gamma - 1.0_rt) * (eden + uin(i,j,k,URHO) - ssq / (eden + uin(i,j,k,URHO))**2 - uin(i,j,k,URHO))
+
             p = (uin(i,j,k,UEDEN) - dens_incompressible * W2 + uin(i,j,k,URHO)) / (eos_state % gam1 * W2 / (eos_state % gam1 - 1.0_rt) - 1.0_rt)
+
             rhoh = dens_incompressible + eos_state % gam1 * p / (eos_state % gam1 - 1.0_rt)
-                ! rhoh = uin(i,j,k,UEINT) * eos_state % gam1 + dens_incompressible
-            ! else
-            !     rhoh = ssq / (W2 - 1.0_rt)
-            ! endif
+
+            eos_state % rho = dens_incompressible
+            eos_state % h = rhoh / dens_incompressible
+
+            call eos(eos_input_rh, eos_state)
 
             vel(1) = uin(i,j,k,UMX) / (W2 * rhoh)
             vel(2) = uin(i,j,k,UMY) / (W2 * rhoh)
@@ -766,69 +686,19 @@ subroutine compctoprim(lo, hi, &
             vel(3) = 0.0_rt
 #endif
 
-            ! p = rhoh * W2 - uin(i,j,k,UEDEN) - uin(i,j,k,URHO)
-
             q(i,j,k,QU:QW) = vel(1:3)
 
-            q(i,j,k,QREINT) = (rhoh - q(i,j,k,QRHO)) / eos_state % gam1!p / (gamma - 1.0_rt)
+            q(i,j,k,QREINT) = eos_state % e * dens_incompressible
 
             q(i,j,k,QTEMP) = uin(i,j,k,UTEMP)
 
-            q(i,j,k,QPRES) = p
+            q(i,j,k,QPRES) = eos_state % p
 
             q(i,j,k,QFA:QFA-1+nadv) = uin(i,j,k,UFA:UFA-1+nadv) / uin(i,j,k,URHO)
             q(i,j,k,QFS:QFS-1+nspec) = q(i,j,k,QRHO) / nspec
         enddo
      enddo
   enddo
-
-  ! ! Load passively advected quatities into q
-  !   do ipassive = 1, npassive
-  !      n  = upass_map(ipassive)
-  !      iq = qpass_map(ipassive)
-  !      do k = lo(3),hi(3)
-  !         do j = lo(2),hi(2)
-  !            do i = lo(1),hi(1)
-  !                if (abs(q(i,j,k,QRHO)) > 1.0e-9_rt) then
-  !                    q(i,j,k,iq) = uin(i,j,k,n)/q(i,j,k,QRHO)
-  !                else
-  !                    q(i,j,k,iq) = 0.0_rt
-  !                endif
-  !            enddo
-  !         enddo
-  !      enddo
-  !   enddo
-
-    ! get gamc, p, T, c, csml using q state
-   !  do k = lo(3), hi(3)
-   !     do j = lo(2), hi(2)
-   !        do i = lo(1), hi(1)
-   !           xx = xlo(1) + dx(1)*dble(i-lo(1)+HALF)
-   !
-   !           eos_state % T   = q(i,j,k,QTEMP )
-   !           eos_state % rho = q(i,j,k,QRHO  )
-   !           eos_state % e   = q(i,j,k,QREINT)
-   !           eos_state % xn  = q(i,j,k,QFS:QFS+nspec-1)
-   !           eos_state % aux = q(i,j,k,QFX:QFX+naux-1)
-   !           ! eos_state % p = 0.5_rt * g * q(i,j,k,QRHO  )**2
-   !           eos_state % p = q(i,j,k,QPRES)
-   !           !q(i,j,k,QPRES)  = eos_state % p
-   !
-   !           call eos(eos_input_rp, eos_state)
-   !           !q(i,j,k,QPRES)  = eos_state % p
-   !
-   !           q(i,j,k,QTEMP)  = eos_state % T
-   !           !q(i,j,k,QREINT) = eos_state % e * q(i,j,k,QRHO)
-   !           q(i,j,k,QGAME)  = q(i,j,k,QPRES) / q(i,j,k,QREINT) + ONE
-   !
-   !           qaux(i,j,k,QDPDR)  = eos_state % dpdr_e
-   !           qaux(i,j,k,QDPDE)  = eos_state % dpde
-   !           qaux(i,j,k,QGAMC)  = eos_state % gam1
-   !           qaux(i,j,k,QC   )  = eos_state % cs
-   !           ! qaux(i,j,k,QCSML)  = max(small, small * qaux(i,j,k,QC))
-   !        enddo
-   !     enddo
-   ! enddo
 
 end subroutine compctoprim
 

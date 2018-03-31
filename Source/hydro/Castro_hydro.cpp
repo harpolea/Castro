@@ -218,11 +218,13 @@ Castro::cons_to_prim(const Real time)
         // Convert the conservative state to the primitive variable state.
         // This fills both q and qaux.
 
+        // std::cout << "cons_to_prim, level = " << level << '\n';
+
         ca_ctoprim(BL_TO_FORTRAN_BOX(qbx),
-                   BL_TO_FORTRAN_ANYD(Sborder[mfi]),
-                   BL_TO_FORTRAN_ANYD(q[mfi]),
-                   BL_TO_FORTRAN_ANYD(qaux[mfi]),
-                   &idx, &level, ZFILL(gridloc.lo()), ZFILL(dx));
+                   BL_TO_FORTRAN_3D(Sborder[mfi]),
+                   BL_TO_FORTRAN_3D(q[mfi]),
+                   BL_TO_FORTRAN_3D(qaux[mfi]),
+                   &level, ZFILL(gridloc.lo()), ZFILL(dx));
 
         // Convert the source terms expressed as sources to the conserved state to those
         // expressed as sources for the primitive state.

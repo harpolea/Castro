@@ -379,8 +379,8 @@ contains
        special_bnd_hi_x = .false.
     end if
 
-    Smax_l = maxval(abs(ql(:,:,:,QU-1+idir))) + maxval(sqrt(g * ql(:,:,:,QRHO)))
-    Smax_r = maxval(abs(qr(:,:,:,QU-1+idir))) + maxval(sqrt(g * qr(:,:,:,QRHO)))
+    Smax_l = maxval(abs(ql(:,:,:,QU-1+idir))) + maxval(sqrt(2*g * ql(:,:,:,QRHO)))
+    Smax_r = maxval(abs(qr(:,:,:,QU-1+idir))) + maxval(sqrt(2*g * qr(:,:,:,QRHO)))
     Smax = max(Smax_r, Smax_l)
 
     if (Smax /= Smax .or. (Smax+1 .eq. Smax)) then
@@ -520,11 +520,12 @@ subroutine swe_to_comp(swe, slo, shi, vertically_avgd_swe, vlo, vhi, comp, clo, 
 
             do i = lo(1), hi(1)
                 U_comp(1:NVAR) = 0.0_rt
-                xx = xlo(1) + dx(1)*dble(i-lo(1)+HALF)
+                xx = xlo(1) + dx(1)*(dble(i-lo(1))+HALF)
                 q_comp(QPRES) = 0.5_rt * dens_incompressible * g * (vertically_avgd_q_swe(1,j,k,QRHO) - xx)**2
 
                 eos_state % rho = q_comp(QRHO)
                 eos_state % p   = q_comp(QPRES)
+                eos_state % T = 100000.e0_rt ! initial guess
 
                 call eos(eos_input_rp, eos_state)
 
@@ -592,7 +593,7 @@ subroutine comp_to_swe(swe, slo, shi, comp, clo, chi, floor_comp, vlo, vhi, lo, 
 
     call compctoprim(lo2d, hi2d, floor_comp, vlo, vhi, floor_q_comp, lo2d, hi2d, qaux, clo, chi, xlo, dx, ignore_errs)
 
-    xx = dx(1)*HALF
+    xx = xlo(1) + dx(1)*HALF
 
     do k = lo(3), hi(3)
         do j = lo(2), hi(2)

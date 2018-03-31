@@ -75,9 +75,12 @@ contains
 
        ! dens, enthalpy, and xmass are inputs
 
-#ifndef ACC
-       call bl_error('EOS: eos_input_rh is not supported in this EOS.')
-#endif
+       state % p = (gamma_const-ONE) * state % rho * (state % h - ONE) / gamma_const
+       poverrho = state % p / state % rho
+       state % e = poverrho * (ONE/(gamma_const-ONE))
+       state % T = poverrho * state % mu * (ONE/R)
+       state % cs = sqrt(gamma_const * poverrho)
+       state % gam1 = gamma_const
 
     case (eos_input_tp)
 

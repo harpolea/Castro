@@ -44,7 +44,6 @@ subroutine ca_ext_src(lo,hi,&
   real(rt) :: qaux(lo(1):hi(1), lo(2):hi(2), lo(3):hi(3),NQAUX)
   real(rt) :: yy
 
-  ! write(*,*) "I am being called"
 
   ! lo and hi specify work region
   src(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),:) = ZERO ! Fill work region only

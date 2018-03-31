@@ -7,7 +7,7 @@ contains
   ! Used for a generic fill of any StateData.
 
   subroutine ca_generic_single_fill(state, s_lo, s_hi, &
-                                    domlo, domhi, delta, xlo, time, bc) &
+                                    domlo, domhi, delta, xlo, time, bc, level) &
                                     bind(C, name="ca_generic_single_fill")
 
     use amrex_fort_module, only: rt => amrex_real
@@ -15,7 +15,7 @@ contains
 
     implicit none
 
-    integer,  intent(in   ) :: s_lo(3), s_hi(3)
+    integer,  intent(in   ) :: s_lo(3), s_hi(3), level
     integer,  intent(in   ) :: bc(dim,2)
     integer,  intent(in   ) :: domlo(3), domhi(3)
     real(rt), intent(in   ) :: delta(dim), xlo(dim), time
@@ -29,7 +29,7 @@ contains
 
 
   subroutine ca_generic_multi_fill(state, s_lo, s_hi, &
-                                   domlo, domhi, delta, xlo, time, bc) &
+                                   domlo, domhi, delta, xlo, time, bc, level) &
                                    bind(C, name="ca_generic_multi_fill")
 
     use meth_params_module, only: NVAR
@@ -38,7 +38,7 @@ contains
 
     implicit none
 
-    integer,  intent(in   ) :: s_lo(3), s_hi(3)
+    integer,  intent(in   ) :: s_lo(3), s_hi(3), level
     integer,  intent(in   ) :: bc(dim,2,NVAR)
     integer,  intent(in   ) :: domlo(3), domhi(3)
     real(rt), intent(in   ) :: delta(dim), xlo(dim), time

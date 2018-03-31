@@ -110,6 +110,8 @@ contains
     real(rt) :: W, rhoh, p, rho
     type(eos_t) :: eos_state
 
+    ! write(*,*) "comp_cons_state"
+
     if (.not. initialized) call eos_init(small_dens=small_dens, small_temp=small_temp)
 
     call calculate_scalar_W(q(QU:QW), W)
@@ -125,10 +127,10 @@ contains
     eos_state % p = q(QPRES)
     eos_state % T = q(QTEMP)
 
-    call eos(eos_input_re, eos_state)
+    call eos(eos_input_rp, eos_state)
 
     rhoh = eos_state % gam1 * q(QREINT) + rho
-    p = eos_state % p
+    p = q(QPRES) !eos_state % p
 
     ! since we advect all 3 velocity components regardless of dimension, this
     ! will be general
@@ -172,7 +174,7 @@ contains
     real(rt)         :: u_flx
 
     if (idir == 1) then
-       u_flx = q(QU)
+       u_flx = 0.0_rt
     elseif (idir == 2) then
        u_flx = q(QV)
     elseif (idir == 3) then
@@ -187,11 +189,11 @@ contains
 
     F(URHO) = U(URHO) * u_flx
 
-    F(UMX) = 0.0_rt!U(UMX) * u_flx
+    ! F(UMX) = 0.0_rt!U(UMX) * u_flx
     F(UMY) = U(UMY) * u_flx
     F(UMZ) = U(UMZ) * u_flx
 
-    F(UMX-1+idir) = F(UMX-1+idir) + 0.5_rt * g * q(QRHO)**2
+    F(UMX-1+idir) = F(UMX-1+idir) + 0.5_rt * 0.5_rt*g * q(QRHO)**2
 
 #if BL_SPACEDIM == 1
     F(UMY) = 0.0_rt
@@ -199,6 +201,12 @@ contains
 #if BL_SPACEDIM <= 2
     F(UMZ) = 0.0_rt
 #endif
+
+    F(UMX) = 0.0_rt
+
+   !  if (idir == 1) then
+   !     F(URHO) = F(URHO) + U(URHO) * g * 1.0e-2_rt
+   ! endif
 
     F(UEINT) = U(UEINT) * u_flx
     F(UEDEN) = (U(UEDEN) + 0.5_rt * g * q(QRHO)**2) * u_flx

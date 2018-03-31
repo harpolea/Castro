@@ -41,7 +41,7 @@ subroutine ca_mol_single_stage(time, level, &
   use amrex_fort_module, only : rt => amrex_real
   use eos_type_module, only : eos_t, eos_input_rt
   use network, only : nspec, naux
-  use probdata_module, only: swe_to_comp_level
+  use probdata_module, only: swe_to_comp_level, dens_incompressible
   use prob_params_module, only : dg
 
   implicit none
@@ -137,6 +137,8 @@ subroutine ca_mol_single_stage(time, level, &
                    q,     q_lo,   q_hi, &
                    qaux, qa_lo,  qa_hi)
    else
+
+       ! write(*,*) "castro_mol_nd, level = ", level
        call compctoprim(q_lo, q_hi, &
                     uin, uin_lo, uin_hi, &
                     q,     q_lo,   q_hi, &
@@ -208,6 +210,10 @@ subroutine ca_mol_single_stage(time, level, &
 
   do n = 1, NQ
 
+      if (level > swe_to_comp_level .and. n .eq. QRHO) then
+          q(q_lo(1):q_hi(1), q_lo(2):q_hi(2), q_lo(3):q_hi(3),n) = dens_incompressible
+      else
+
     call compute_reconstruction_tvd(q(:,:,:,n), q_lo, q_hi, &
                          sxm, sxp, &
 #if BL_SPACEDIM >= 2
@@ -218,6 +224,9 @@ subroutine ca_mol_single_stage(time, level, &
 #endif
                          st_lo, st_hi, &
                          lo, hi, dx)
+
+
+    endif
 
     ! Construct the interface states -- this is essentially just a
     ! reshuffling of interface states from zone-center indexing to

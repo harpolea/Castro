@@ -6,11 +6,11 @@ module interpolate_module
   contains
 
       function interpolate(r, npts_model, model_r, model_var, iloc)
-      
+
 !     given the array of model coordinates (model_r), and variable (model_var),
 !     find the value of model_var at point r using linear interpolation.
 !     Eventually, we can do something fancier here.
-      
+
       use amrex_fort_module, only : rt => amrex_real
       real(rt)        , intent(in   ) :: r
       integer         , intent(in   ) :: npts_model
@@ -21,14 +21,14 @@ module interpolate_module
       ! Local variables
       integer                         :: id
       real(rt)                        :: slope,minvar,maxvar
-      
+
 !     find the location in the coordinate array where we want to interpolate
       if (present(iloc)) then
          id = iloc
       else
          id = locate(r, npts_model, model_r)
       end if
-      
+
       if (id .eq. 1) then
 
          slope = (model_var(id+1) - model_var(id))/(model_r(id+1) - model_r(id))
@@ -39,7 +39,7 @@ module interpolate_module
          maxvar = max(model_var(id+1),model_var(id))
          interpolate = max(interpolate,minvar)
          interpolate = min(interpolate,maxvar)
-         
+
       else if (id .eq. npts_model) then
 
          slope = (model_var(id) - model_var(id-1))/(model_r(id) - model_r(id-1))
@@ -156,7 +156,7 @@ module interpolate_module
       derivs(1) = c(2) / (model_x(ix+1)-model_x(ix))
       derivs(2) = c(3) / (model_y(iy+1)-model_y(iy))
       derivs(3) = c(4) / (model_z(iz+1)-model_z(iz))
-      
+
     end subroutine tri_interpolate
 
 
@@ -164,7 +164,7 @@ module interpolate_module
       use amrex_fort_module, only : rt => amrex_real
       integer, intent(in) :: n
       real(rt)        , intent(in) :: x, xs(n)
-      integer :: locate      
+      integer :: locate
 
       integer :: ilo, ihi, imid
 
@@ -181,15 +181,72 @@ module interpolate_module
             imid = (ilo+ihi)/2
             if (x .le. xs(imid)) then
                ihi = imid
-            else 
+            else
                ilo = imid
             end if
          end do
-         
+
          locate = ihi
 
       end if
 
     end function locate
+
+    function interpolate_noparser(model_var, mlo, mhi, id) result(interpolate)
+
+    !     given the array of model coordinates (model_r), and variable (model_var),
+    !     find the value of model_var at point r using linear interpolation.
+    !     Eventually, we can do something fancier here.
+    ! do above interpolation but without the model parser module
+
+       use amrex_fort_module, only : rt => amrex_real
+       integer, intent(in)   :: id, mlo, mhi
+       real(rt)        , intent(in   ) :: model_var(mlo:mhi)
+       real(rt)                        :: interpolate
+
+       ! Local variables
+       real(rt)                        :: slope,minvar,maxvar
+
+    !     find the location in the coordinate array where we want to interpolate
+
+       if (id .eq. 1) then
+
+          slope = (model_var(id+1) - model_var(id))*0.5_rt
+          interpolate = slope + model_var(id)
+
+          ! safety check to make sure interpolate lies within the bounding points
+          minvar = min(model_var(id+1),model_var(id))
+          maxvar = max(model_var(id+1),model_var(id))
+          interpolate = max(interpolate,minvar)
+          interpolate = min(interpolate,maxvar)
+
+      else if (id .eq. mhi) then
+
+          slope = (model_var(id) - model_var(id-1))*0.5_rt
+          interpolate = slope + model_var(id)
+
+          ! safety check to make sure interpolate lies within the bounding points
+          minvar = min(model_var(id),model_var(id-1))
+          maxvar = max(model_var(id),model_var(id-1))
+          interpolate = max(interpolate,minvar)
+          interpolate = min(interpolate,maxvar)
+
+       else
+
+
+         slope = (model_var(id+1) - model_var(id))*0.5_rt
+         interpolate = slope + model_var(id)
+
+             ! ! safety check to make sure interpolate lies within the bounding points
+             ! minvar = min(model_var(id+1),model_var(id))
+             ! maxvar = max(model_var(id+1),model_var(id))
+             ! interpolate = max(interpolate,minvar)
+             ! interpolate = min(interpolate,maxvar)
+
+
+       endif
+
+    end function interpolate_noparser
+
 
 end module interpolate_module

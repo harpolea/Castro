@@ -98,7 +98,7 @@ extern "C"
   void ca_ctoprim(const int* lo, const int* hi,
 	          const amrex::Real* u, const int* u_lo, const int* u_hi,
 		  amrex::Real* q, const int* q_lo, const int* q_hi,
-		  amrex::Real* qaux, const int* qa_lo, const int* qa_hi, const int* idx, const int* level, const amrex::Real* xlo, const amrex::Real* dx);
+		  amrex::Real* qaux, const int* qa_lo, const int* qa_hi, const int* level, const amrex::Real* xlo, const amrex::Real* dx);
 
   void ca_getbase(const int* lo, const int* hi,
 	          const amrex::Real* s, const int* slo, const int* shi,
@@ -196,13 +196,13 @@ void ca_compute_floor_state
     (BL_FORT_FAB_ARG_3D(state),
      const int* dlo, const int* dhi,
      const amrex::Real* dx, const amrex::Real* glo,
-     const amrex::Real* time, const int* bc);
+     const amrex::Real* time, const int* bc, int * level);
 
   void ca_generic_multi_fill
     (BL_FORT_FAB_ARG_3D(state),
      const int* dlo, const int* dhi,
      const amrex::Real* dx, const amrex::Real* glo,
-     const amrex::Real* time, const int* bc);
+     const amrex::Real* time, const int* bc, int * level);
 
 #ifdef DIMENSION_AGNOSTIC
 
@@ -210,49 +210,49 @@ void ca_compute_floor_state
     (BL_FORT_FAB_ARG_3D(state),
      const int* dlo, const int* dhi,
      const amrex::Real* dx, const amrex::Real* glo,
-     const amrex::Real* time, const int* bc);
+     const amrex::Real* time, const int* bc, int * level);
 
   void ca_denfill
     (BL_FORT_FAB_ARG_3D(state),
      const int* dlo, const int* dhi,
      const amrex::Real* dx, const amrex::Real* glo,
-     const amrex::Real* time, const int* bc);
+     const amrex::Real* time, const int* bc, int * level);
 
   void ca_xmomfill
     (BL_FORT_FAB_ARG_3D(state),
      const int* dlo, const int* dhi,
      const amrex::Real* dx, const amrex::Real* glo,
-     const amrex::Real* time, const int* bc);
+     const amrex::Real* time, const int* bc, int * level);
 
   void ca_ymomfill
     (BL_FORT_FAB_ARG_3D(state),
      const int* dlo, const int* dhi,
      const amrex::Real* dx, const amrex::Real* glo,
-     const amrex::Real* time, const int* bc);
+     const amrex::Real* time, const int* bc, int * level);
 
   void ca_zmomfill
     (BL_FORT_FAB_ARG_3D(state),
      const int* dlo, const int* dhi,
      const amrex::Real* dx, const amrex::Real* glo,
-     const amrex::Real* time, const int* bc);
+     const amrex::Real* time, const int* bc, int * level);
 
   void ca_zerofill
     (BL_FORT_FAB_ARG_3D(state),
      const int* dlo, const int* dhi,
      const amrex::Real* dx, const amrex::Real* glo,
-     const amrex::Real* time, const int* bc);
+     const amrex::Real* time, const int* bc, int * level);
 
   void ca_default_fill
     (BL_FORT_FAB_ARG_3D(state),
      const int* dlo, const int* dhi,
      const amrex::Real* dx, const amrex::Real* glo,
-     const amrex::Real* time, const int* bc);
+     const amrex::Real* time, const int* bc, int * level);
 
   inline void ca_nullfill
     (BL_FORT_FAB_ARG_3D(state),
      const int* dlo, const int* dhi,
      const amrex::Real* dx, const amrex::Real* glo,
-     const amrex::Real* time, const int* bc)
+     const amrex::Real* time, const int* bc, int * level)
 #ifdef __cplusplus
   { amrex::Abort("Not supposed to call ca_nullfill"); }
 #else

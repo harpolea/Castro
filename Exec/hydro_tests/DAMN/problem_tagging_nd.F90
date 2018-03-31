@@ -19,6 +19,7 @@ contains
                               bind(C, name="set_problem_tags")
 
     use meth_params_module, only : NVAR, NQ, QU, QW, NQAUX
+    use prob_params_module, only: center
     use probdata_module, only: swe_to_comp_level, damn_rad
     use advection_util_module, only: compctoprim, swectoprim
     implicit none
@@ -34,7 +35,7 @@ contains
     integer, intent(in)          :: level,set,clear
 
     integer :: i, j, k
-    real(rt) :: yy
+    real(rt) :: yy, zz, r
     real(rt) :: q(lo(1):hi(1), lo(2):hi(2), lo(3):hi(3), NQ)
     real(rt) :: qaux(lo(1):hi(1), lo(2):hi(2), lo(3):hi(3),NQAUX)
     real(rt) :: speed, press
@@ -51,6 +52,20 @@ contains
               speed = sqrt(sum(q(i,j,k,QU:QW)**2))
               ! write(*,*) "speed = ", speed
               if (speed .ge. speederr) then
+                  tag(i,j,k) = set
+              endif
+          enddo
+       enddo
+    enddo
+
+    ! rad dam
+    do k = lo(3), hi(3)
+        zz = xlo(3) + dx(3)*dble(k-lo(3)+0.5_rt)
+        do j = lo(2), hi(2)
+           yy = xlo(2) + dx(2)*dble(j-lo(2)+0.5_rt)
+           r = sqrt((yy - center(2))**2 + (zz - center(3))**2)
+           do i = lo(1), hi(1)
+              if (r .le. 1.25_rt * damn_rad) then
                   tag(i,j,k) = set
               endif
           enddo

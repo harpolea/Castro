@@ -61,6 +61,8 @@ subroutine smooth_initial_data(dat, dlo, dhi, lo, hi, delta, xlo) bind(C, name="
 
     integer :: smooth_zone
 
+    return
+
     ! radius of zone to smooth over
     smooth_zone = 2
 
