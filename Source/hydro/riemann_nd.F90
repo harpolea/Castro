@@ -347,8 +347,8 @@ contains
        special_bnd_hi_x = .false.
     end if
 
-    Smax_l = maxval(abs(ql(:,:,:,QU-1+idir))) + maxval(sqrt(g * ql(:,:,:,QRHO)))
-    Smax_r = maxval(abs(qr(:,:,:,QU-1+idir))) + maxval(sqrt(g * qr(:,:,:,QRHO)))
+    Smax_l = maxval(abs(ql(:,:,:,QU-1+idir))) + maxval(sqrt(2*g * ql(:,:,:,QRHO)))
+    Smax_r = maxval(abs(qr(:,:,:,QU-1+idir))) + maxval(sqrt(2*g * qr(:,:,:,QRHO)))
     Smax = max(Smax_r, Smax_l)
 
     if (Smax /= Smax .or. (Smax+1 .eq. Smax)) then
@@ -430,7 +430,7 @@ subroutine swe_to_comp(swe, slo, shi, vertically_avgd_swe, vlo, vhi, comp, clo, 
     use meth_params_module, only: NQ, QVAR, QRHO, QU, QV, QW, &
          NVAR, URHO, UMX, UMY, UMZ, NQAUX, QTEMP, UTEMP, UEDEN, UEINT, &
          QPRES, UFS, UFA, QFA, outflow_data_new, ny, nz, n_outflow_cpts
-    use probdata_module, only : g, eos_K, rho_from_height, p_from_rho
+    use probdata_module, only : g, eos_K, rho_from_height, p_from_height
     use actual_eos_module, only: gamma_const
     use eos_module, only : eos
     use eos_type_module, only : eos_t, eos_input_rp
@@ -468,6 +468,8 @@ subroutine swe_to_comp(swe, slo, shi, vertically_avgd_swe, vlo, vhi, comp, clo, 
 
     call swectoprim(lo2d, hi2d, vertically_avgd_swe, vlo, vhi, vertically_avgd_q_swe, lo2d, hi2d, qaux, slo, shi, .true.)
 
+    ! write(*,*) "average height", vertically_avgd_q_swe(1,lo(2),lo(3),QRHO)
+
     do k = lo(3), hi(3)
         do j = lo(2), hi(2)
             q_comp(1:NQ) = vertically_avgd_q_swe(1,j,k,1:NQ)
@@ -475,14 +477,15 @@ subroutine swe_to_comp(swe, slo, shi, vertically_avgd_swe, vlo, vhi, comp, clo, 
 
             do i = lo(1), hi(1)
                 U_comp(1:NVAR) = 0.0_rt
-                xx = xlo(1) + dx(1)*dble(i-lo(1)+HALF)
+                xx = xlo(1) + dx(1)*(dble(i-lo(1))+HALF)
 
                 q_comp(QRHO) = rho_from_height(h, xx)
 
-                q_comp(QPRES) = p_from_rho(q_comp(QRHO))
+                q_comp(QPRES) = p_from_height(h, xx)
 
                 eos_state % rho = q_comp(QRHO)
                 eos_state % p   = q_comp(QPRES)
+                eos_state % T = 100000.e0_rt ! initial guess
 
                 call eos(eos_input_rp, eos_state)
 
@@ -545,6 +548,8 @@ subroutine comp_to_swe(swe, slo, shi, comp, clo, chi, floor_comp, vlo, vhi, lo, 
     call compctoprim(lo2d, hi2d, floor_comp, vlo, vhi, floor_q_comp, lo2d, hi2d, qaux, clo, chi, xlo, dx, ignore_errs)
 
     xx = dx(1)*HALF
+
+    ! write(*,*) "floor p", floor_q_comp(1,lo(2),lo(3),QPRES)
 
     do k = lo(3), hi(3)
         do j = lo(2), hi(2)

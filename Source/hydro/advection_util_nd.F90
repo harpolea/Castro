@@ -490,7 +490,7 @@ contains
                                    small_dens, QFA, QFS, UFA, nadv
     use bl_constants_module, only: ZERO, HALF, ONE
     use castro_util_module, only: position
-    use probdata_module, only : g, eos_K
+    use probdata_module, only : g, eos_K, p_from_height
     use actual_eos_module, only: gamma_const
 
     use amrex_fort_module, only : rt => amrex_real
@@ -574,7 +574,7 @@ contains
 #if BL_SPACEDIM <= 2
               q(i,j,k,QW) = 0.0_rt
 #endif
-              q(i,j,k,QPRES) = (q(i,j,k,QRHO) / eos_K)**gamma_const
+              q(i,j,k,QPRES) = p_from_height(q(i,j,k,QRHO), 0.0_rt)
               q(i,j,k,QREINT) = uin(i,j,k,UEINT)
               q(i,j,k,QTEMP) = uin(i,j,k,UTEMP)
               q(i,j,k,QFS:QFS-1+nspec) = q(i,j,k,QRHO) / nspec
@@ -582,19 +582,6 @@ contains
           enddo
        enddo
     enddo
-
-    ! Load passively advected quantities into q
-      ! do ipassive = 1, npassive
-      !    n  = upass_map(ipassive)
-      !    iq = qpass_map(ipassive)
-      !    do k = lo(3),hi(3)
-      !       do j = lo(2),hi(2)
-      !          do i = lo(1),hi(1)
-      !             q(i,j,k,iq) = uin(i,j,k,n)/q(i,j,k,QRHO)
-      !          enddo
-      !       enddo
-      !    enddo
-      ! enddo
 
 end subroutine swectoprim
 
@@ -671,7 +658,6 @@ subroutine compctoprim(lo, hi, &
                 q(i,j,k,QV) = 0.1_rt * uin(i,j,k,UMY)
                 q(i,j,k,QW) = 0.1_rt * uin(i,j,k,UMZ)
             else
-                ! Incompressible
                 q(i,j,k,QRHO) = uin(i,j,k,URHO)
                 q(i,j,k,QU) = uin(i,j,k,UMX) / uin(i,j,k,URHO)
                 q(i,j,k,QV) = uin(i,j,k,UMY) / uin(i,j,k,URHO)
@@ -730,7 +716,7 @@ subroutine compctoprim(lo, hi, &
 
             q(i,j,k,QRHO) = uin(i,j,k,URHO) * sq / (eden + p + uin(i,j,k,URHO))
 
-            W2 = (uin(i,j,k,URHO) / q(i,j,k,QRHO))**2
+            ! W2 = (uin(i,j,k,URHO) / q(i,j,k,QRHO))**2
             ! if ((W2 - 1.0_rt) < 1.0e-8_rt) then
                 ! eden = uin(i,j,k,UEDEN)
                 ! p = (gamma - 1.0_rt) * (eden + uin(i,j,k,URHO) - ssq / (eden + uin(i,j,k,URHO))**2 - uin(i,j,k,URHO))
@@ -765,22 +751,6 @@ subroutine compctoprim(lo, hi, &
      enddo
   enddo
 
-  ! ! Load passively advected quatities into q
-  !   do ipassive = 1, npassive
-  !      n  = upass_map(ipassive)
-  !      iq = qpass_map(ipassive)
-  !      do k = lo(3),hi(3)
-  !         do j = lo(2),hi(2)
-  !            do i = lo(1),hi(1)
-  !                if (abs(q(i,j,k,QRHO)) > 1.0e-9_rt) then
-  !                    q(i,j,k,iq) = uin(i,j,k,n)/q(i,j,k,QRHO)
-  !                else
-  !                    q(i,j,k,iq) = 0.0_rt
-  !                endif
-  !            enddo
-  !         enddo
-  !      enddo
-  !   enddo
 
 end subroutine compctoprim
 

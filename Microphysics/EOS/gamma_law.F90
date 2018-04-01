@@ -69,6 +69,7 @@ contains
        state % cv = R / (state % mu * (gamma_const-ONE))
        state % e = state % cv * state % T
        state % p = (gamma_const-ONE) * state % rho * state % e
+       state % cs = sqrt(gamma_const * state % p / state % rho)
        state % gam1 = gamma_const
 
     case (eos_input_rh)
@@ -94,6 +95,7 @@ contains
        poverrho = state % p / state % rho
        state % T = poverrho * state % mu * (ONE/R)
        state % e = poverrho * (ONE/(gamma_const-ONE))
+       state % cs = sqrt(gamma_const * poverrho)
        state % gam1 = gamma_const
 
     case (eos_input_re)

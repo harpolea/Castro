@@ -17,10 +17,10 @@ contains
     use prob_params_module, only: dim
     use bl_constants_module
     use amrex_fort_module, only : rt => amrex_real
-    use probdata_module, only : g, swe_to_comp_level
+    use probdata_module, only : g, swe_to_comp_level, rho_from_height, p_from_rho
     use advection_util_module, only: compctoprim, swectoprim
     use eos_module, only: eos
-    use eos_type_module, only: eos_t, eos_input_re
+    use eos_type_module, only: eos_t, eos_input_rp
 
     implicit none
 
@@ -46,14 +46,22 @@ contains
 
     ! Call EOS for the purpose of computing sound speed
 
+    ! write(*,*) q(lo(1):hi(1), lo(2):hi(2), lo(3):hi(3),QRHO )
+
     do k = lo(3), hi(3)
        do j = lo(2), hi(2)
           do i = lo(1), hi(1)
-              eos_state % rho = q(i,j,k,QRHO )
-              eos_state % T   = q(i,j,k,QTEMP)
-              eos_state % e   = q(i,j,k,QREINT) / q(i,j,k,QRHO )
+              if (level > swe_to_comp_level) then
+                  eos_state % rho = q(i,j,k,QRHO )
+                  eos_state % T   = 1000000
+                  eos_state % p   = q(i,j,k,QPRES)
+              else
+                  eos_state % rho = rho_from_height(q(i,j,k,QRHO ), dx(1)*0.5_rt)
+                  eos_state % T   = 1000000
+                  eos_state % p = p_from_rho(eos_state % rho)
+              endif
 
-              call eos(eos_input_re, eos_state)
+              call eos(eos_input_rp, eos_state)
 
              ! Compute velocity and then calculate CFL timestep.
 
@@ -61,7 +69,7 @@ contains
              uy = q(i,j,k,QV)
              uz = q(i,j,k,QW)
 
-             c = eos_state % cs
+             c = min(1.0_rt, eos_state % cs)
 
              dt1 = dx(1)/(c + abs(ux))
              if (dim >= 2) then
@@ -104,13 +112,13 @@ contains
                                bind(C, name="ca_check_timestep")
 
     use bl_constants_module, only: HALF, ONE
-    use meth_params_module, only: NVAR, URHO, UMX, UMZ, cfl, NQ, QRHO, QREINT, QU, QW, QTEMP, NQAUX
+    use meth_params_module, only: NVAR, URHO, UMX, UMZ, cfl, NQ, QRHO, QREINT, QU, QW, QTEMP, NQAUX, QPRES
     use prob_params_module, only: dim
-    use probdata_module, only : g, swe_to_comp_level
+    use probdata_module, only : g, swe_to_comp_level, rho_from_height, p_from_rho
     use network, only: nspec, naux
     use amrex_fort_module, only : rt => amrex_real
     use eos_module, only: eos
-    use eos_type_module, only: eos_t, eos_input_re
+    use eos_type_module, only: eos_t, eos_input_rp
     use advection_util_module, only: compctoprim, swectoprim
 
     implicit none
@@ -162,17 +170,23 @@ contains
              ! want to trigger a retry if the timestep strongly violated
              ! the stability criterion.
 
-             eos_state % rho = q_new(i,j,k,QRHO )
-             eos_state % T   = q_new(i,j,k,QTEMP)
-             eos_state % p   = q_new(i,j,k,QREINT) / q_new(i,j,k,QRHO )
+             if (level > swe_to_comp_level) then
+                 eos_state % rho = q_old(i,j,k,QRHO )
+                 eos_state % T   = 100000
+                 eos_state % p   = q_old(i,j,k,QPRES)
+             else
+                 eos_state % rho = rho_from_height(q_new(i,j,k,QRHO ), dx(1)*0.5_rt)
+                 eos_state % T   = 100000
+                 eos_state % p = p_from_rho(eos_state % rho)
+             endif
 
-             call eos(eos_input_re, eos_state)
+             call eos(eos_input_rp, eos_state)
 
             v = HALF * (q_old(i,j,k,QU:QW) + &
                 s_new(i,j,k,QU:QW))
             h = HALF * (q_old(i,j,k,QRHO) + q_new(i,j,k,QRHO))
 
-            c = eos_state % cs
+            c = min(1.0_rt, eos_state % cs)
 
             tau_CFL = minval(dx(1:dim) / (c + abs(v(1:dim))))
 

@@ -466,13 +466,12 @@ contains
                         bind(C, name="ca_derpres")
 
     use network, only: nspec, naux
-    use eos_module, only: eos
-    use eos_type_module, only: eos_t, eos_input_re
-    use meth_params_module, only: URHO, UEINT, UTEMP, UFS, UFX
+    use meth_params_module, only: QRHO, QPRES, NQ, NQAUX
     use bl_constants_module
     use amrex_fort_module, only : rt => amrex_real
     use probdata_module, only: swe_to_comp_level, g, eos_K
     use actual_eos_module, only: gamma_const
+    use advection_util_module, only: compctoprim, swectoprim
 
     implicit none
 
@@ -485,35 +484,38 @@ contains
     real(rt), intent(in) :: dx(3), xlo(3), time, dt
     integer, intent(in) :: bc(3,2,ncomp_u), level, grid_no
 
-    real(rt)         :: rhoInv, xx
+    real(rt)         :: xx
     integer          :: i, j, k
+    real(rt) :: q(lo(1):hi(1), lo(2):hi(2), lo(3):hi(3), NQ)
+    real(rt) :: qaux(lo(1):hi(1), lo(2):hi(2), lo(3):hi(3), NQAUX)
 
-    type (eos_t) :: eos_state
 
-    do k = lo(3), hi(3)
-       do j = lo(2), hi(2)
-          do i = lo(1), hi(1)
-             rhoInv = ONE / u(i,j,k,URHO)
-             if (level <= swe_to_comp_level) then
+    if (level <= swe_to_comp_level) then
 
+        do k = lo(3), hi(3)
+           do j = lo(2), hi(2)
+              do i = lo(1), hi(1)
                  xx = xlo(1) + dx(1)*dble(i-lo(1)+HALF)
-                 p(i,j,k,1) = ((gamma_const - 1._rt)/gamma_const * g * eos_K * (u(i,j,k,URHO) - xx)) ** (gamma_const / (gamma_const - 1._rt))
 
-             else
+                 p(i,j,k,1) = ((gamma_const - 1._rt)/gamma_const * g * eos_K * (q(i,j,k,QRHO) - xx)) ** (gamma_const / (gamma_const - 1._rt))
 
-                 eos_state % rho  = u(i,j,k,URHO)
-                 eos_state % T    = u(i,j,k,UTEMP)
-                 eos_state % e    = u(i,j,k,UEINT) * rhoInv
-                 eos_state % xn   = u(i,j,k,UFS:UFS+nspec-1) * rhoInv
-                 eos_state % aux  = u(i,j,k,UFX:UFX+naux-1) * rhoInv
-
-                 call eos(eos_input_re, eos_state)
-
-                 p(i,j,k,1) = eos_state % p
-             endif
+             enddo
           enddo
        enddo
-    enddo
+
+
+    else
+
+        call compctoprim(lo, hi, u, u_lo, u_hi, q, lo, hi, qaux, lo, hi, xlo, dx, .true.)
+
+        do k = lo(3), hi(3)
+           do j = lo(2), hi(2)
+              do i = lo(1), hi(1)
+                 p(i,j,k,1) = q(i,j,k,QPRES)
+              enddo
+           enddo
+        enddo
+    endif
 
   end subroutine ca_derpres
 

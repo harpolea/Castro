@@ -168,7 +168,7 @@ contains
     real(rt)         :: u_flx
 
     if (idir == 1) then
-       u_flx = q(QU)
+       u_flx = 0.0_rt!q(QU)
     elseif (idir == 2) then
        u_flx = q(QV)
     elseif (idir == 3) then
@@ -187,7 +187,7 @@ contains
     F(UMY) = U(UMY) * u_flx
     F(UMZ) = U(UMZ) * u_flx
 
-    F(UMX-1+idir) = F(UMX-1+idir) + 0.5_rt * g * q(QRHO)**2
+    F(UMX-1+idir) = F(UMX-1+idir) + 0.5_rt * 0.5_rt*g * q(QRHO)**2
 
 #if BL_SPACEDIM == 1
     F(UMY) = 0.0_rt
@@ -195,6 +195,8 @@ contains
 #if BL_SPACEDIM <= 2
     F(UMZ) = 0.0_rt
 #endif
+
+    F(UMX) = 0.0_rt
 
     F(UEINT) = U(UEINT) * u_flx
     F(UEDEN) = (U(UEDEN) + 0.5_rt * g * q(QRHO)**2) * u_flx

@@ -1,0 +1,8 @@
+CEXE_headers += Problem_Derives.H
+FEXE_headers += Problem_Derive_F.H
+
+
+ca_f90EXE_sources += probdata.f90
+ca_F90EXE_sources += problem_tagging_nd.F90
+ca_F90EXE_sources += problem_derive_nd.F90
+ca_F90EXE_sources += bc_fill_nd.F90
