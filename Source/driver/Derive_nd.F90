@@ -492,6 +492,8 @@ contains
 
     if (level <= swe_to_comp_level) then
 
+        call swectoprim(lo, hi, u, u_lo, u_hi, q, lo, hi, qaux, lo, hi, .true.)
+
         do k = lo(3), hi(3)
            do j = lo(2), hi(2)
               do i = lo(1), hi(1)

@@ -180,12 +180,13 @@ subroutine ca_initdata(level,time,lo,hi,nscal, &
         r = yy
 
         ! circular dam
-        r = sqrt((yy - center(2))**2 + (zz - center(3))**2)
+        ! r = sqrt((yy - center(2))**2 + (zz - center(3))**2)
 
-        h = h_in + 0.5e0_rt * (h_out - h_in) * (1.0e0_rt + tanh((r - damn_rad) / a))
+        ! h = h_in + 0.5e0_rt * (h_out - h_in) * (1.0e0_rt + tanh((r - damn_rad) / a))
 
         ! gaussian profile
-        ! h = h_out + a * (h_in-h_out) / sqrt(2.0_rt * 3.141526535_rt * a**2) * exp(-(r - center(2))**2 / (2.0_rt * a**2))
+        a = 0.1_rt * (probhi(2) - problo(2)) ! width of gaussian
+        h = h_out + a * (h_in-h_out) / sqrt(2.0_rt * 3.141526535_rt * a**2) * exp(-(r - center(2))**2 / (2.0_rt * a**2))
 
         do i = lo(1), hi(1)
 
