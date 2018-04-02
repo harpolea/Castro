@@ -18,7 +18,7 @@ subroutine amrex_probinit (init,name,namlen,problo,probhi) bind(c)
    integer :: untin
    integer :: i
 
-   namelist /fortin/ h_in, h_out, damn_rad, g, swe_to_comp_level, p_ambient, dens_ambient, exp_energy, &
+   namelist /fortin/ h_in, h_out, g, swe_to_comp_level, p_ambient, dens_ambient, exp_energy, &
         nsub, temp_ambient, eos_K
 
    integer, parameter :: maxlen=127
@@ -47,7 +47,6 @@ subroutine amrex_probinit (init,name,namlen,problo,probhi) bind(c)
 
    h_in = 2.e0_rt
    h_out = 1.e0_rt
-   damn_rad = 2.e-1_rt
 
    g = 1.0e0_rt
    p_ambient = 1.e-5_rt        ! ambient pressure (in erg/cc)
@@ -154,8 +153,8 @@ subroutine ca_initdata(level,time,lo,hi,nscal, &
 
   if (.not. initialized) call eos_init(small_dens=small_dens, small_temp=small_temp)
 
-  eos_state % p = 0._rt
-  eos_state % rho = 0._rt
+  eos_state % p = 0.0_rt
+  eos_state % rho = 0.0_rt
 
   dye = ZERO
 
@@ -165,10 +164,7 @@ subroutine ca_initdata(level,time,lo,hi,nscal, &
       write(*,*) "Initialising level ", level, " with compressible data"
   endif
 
-  a = 0.0005e0_rt ! characteristic size of layer between states
-  ! a = 0.1_rt * (probhi(2) - problo(2)) ! width of gaussian
-
-  ! write(*,*) damn_rad
+  a = 0.0005_rt ! characteristic size of layer between states
 
   !$OMP PARALLEL DO PRIVATE(i, j, k, xx, yy, zz, r, h, eos_state, eint)
   do k = lo(3), hi(3)
@@ -177,24 +173,19 @@ subroutine ca_initdata(level,time,lo,hi,nscal, &
      do j = lo(2), hi(2)
         yy = xlo(2) + delta(2)*(dble(j-lo(2))+HALF)
 
-        r = yy
+        r = sqrt((yy - 1.33_rt*center(2))**2 + (zz - 1.33_rt*center(3))**2)
 
-        ! circular dam
-        ! r = sqrt((yy - center(2))**2 + (zz - center(3))**2)
-
-        h = h_in + 0.5e0_rt * (h_out - h_in) * (1.0e0_rt + tanh((r - damn_rad) / a))
-
-        ! gaussian profile
-        ! h = h_out + a * (h_in-h_out) / sqrt(2.0_rt * 3.141526535_rt * a**2) * exp(-(r - center(2))**2 / (2.0_rt * a**2))
+        ! gonna make the peak have a radius of 2 cells
+        h = h_in + 0.5_rt * (h_out - h_in) * (1.0_rt + tanh((r - delta(2)*2.0_rt) / a))
 
         do i = lo(1), hi(1)
 
-            state(i,j,k,1:NVAR) = 0.e0_rt
-            q(i,j,k,1:NQ) = 0.e0_rt
+            state(i,j,k,1:NVAR) = 0.0_rt
+            q(i,j,k,1:NQ) = 0.0_rt
 
             xx = xlo(1) + delta(1)*(dble(i-lo(1))+HALF)
 
-            eos_state % rho = eos_K**(gamma_const/(gamma_const-1._rt)) * ((gamma_const-1._rt)/gamma_const * g * (h-xx))**(1._rt / (gamma_const-1._rt))
+            eos_state % rho = eos_K**(gamma_const/(gamma_const-1.0_rt)) * ((gamma_const-1.0_rt)/gamma_const * g * (h-xx))**(1.0_rt / (gamma_const-1.0_rt))
 
             eos_state % p = (eos_state % rho / eos_K)**gamma_const
 
@@ -202,12 +193,12 @@ subroutine ca_initdata(level,time,lo,hi,nscal, &
             q(i,j,k,QRHO) = eos_state % rho
 
             eos_state % xn(:) = xn_zone(:)
-            eos_state%T = 100000.e0_rt ! initial guess
+            eos_state%T = 100000.0_rt ! initial guess
 
             call eos(eos_input_rp, eos_state)
 
             eint = q(i,j,k,QRHO) * eos_state % e
-            q(i,j,k,QU:QW) = 0.e0_rt
+            q(i,j,k,QU:QW) = 0.0_rt
             q(i,j,k,QW) = 0.0_rt
 
             q(i,j,k,QREINT) = eint !+ &

@@ -69,18 +69,31 @@ contains
     !    enddo
     ! enddo
 
+
     !rad dam
-    ! do k = lo(3), hi(3)
-    !     do j = lo(2), hi(2)
-    !        yy = xlo(2) + dx(2)*dble(j-lo(2)+0.5_rt)
-    !        r = sqrt((yy - center(2))**2)
-    !        do i = lo(1), hi(1)
-    !           if (r .le. 0.2_rt * damn_rad) then
-    !               tag(i,j,k) = set
-    !           endif
-    !       enddo
-    !    enddo
-    ! enddo
+    do k = lo(3), hi(3)
+        zz = xlo(3) + dx(3)*dble(k-lo(3)+0.5_rt)
+        do j = lo(2), hi(2)
+           yy = xlo(2) + dx(2)*dble(j-lo(2)+0.5_rt)
+           q_comp(QV) = 0.0_rt
+#if BL_SPACEDIM <= 2
+           r = sqrt((yy - center(2))**2)
+           do i = lo(1), hi(1)
+              if (r .le. 0.8_rt * damn_rad) then
+                  tag(i,j,k) = set
+              endif
+          enddo
+#endif
+#if BL_SPACEDIM ==3
+           r = sqrt((yy - center(2))**2 + (zz - center(3))**2)
+           do i = lo(1), hi(1)
+              if (r .le. 1.2_rt * damn_rad) then
+                  tag(i,j,k) = set
+              endif
+          enddo
+#endif
+       enddo
+    enddo
 
     ! If it's the swe_to_comp_level or coarser, need to make sure that
     ! any refinement happens uniformly in vertical direction
