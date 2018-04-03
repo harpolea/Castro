@@ -26,7 +26,7 @@ contains
 
     integer, intent(in) :: lo(3), hi(3), level
     integer, intent(in) :: u_lo(3), u_hi(3)
-    real(rt), intent(in) :: u(u_lo(1):u_hi(1),u_lo(2):u_hi(2),u_lo(3):u_hi(3),NVAR)
+    real(rt), intent(inout) :: u(u_lo(1):u_hi(1),u_lo(2):u_hi(2),u_lo(3):u_hi(3),NVAR)
     real(rt), intent(in) :: dx(3), xlo(3)
     real(rt), intent(inout) :: dt
 
@@ -126,8 +126,8 @@ contains
     integer, intent(in) :: lo(3), hi(3), level
     integer, intent(in) :: so_lo(3), so_hi(3)
     integer, intent(in) :: sn_lo(3), sn_hi(3)
-    real(rt), intent(in) :: s_old(so_lo(1):so_hi(1),so_lo(2):so_hi(2),so_lo(3):so_hi(3),NVAR)
-    real(rt), intent(in) :: s_new(sn_lo(1):sn_hi(1),sn_lo(2):sn_hi(2),sn_lo(3):sn_hi(3),NVAR)
+    real(rt), intent(inout) :: s_old(so_lo(1):so_hi(1),so_lo(2):so_hi(2),so_lo(3):so_hi(3),NVAR)
+    real(rt), intent(inout) :: s_new(sn_lo(1):sn_hi(1),sn_lo(2):sn_hi(2),sn_lo(3):sn_hi(3),NVAR)
     real(rt), intent(in) :: dx(3), dt_old, xlo(3)
     real(rt), intent(inout) :: dt_new
 

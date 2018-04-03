@@ -19,9 +19,9 @@ module probdata_module
           real(rt), intent(in) :: h, x
           real(rt) :: rho
 
-          rho = eos_K**(gamma_const/(gamma_const-1._rt)) * &
-              ((gamma_const-1._rt)/gamma_const * g * &
-              (h-x))**(1._rt / (gamma_const-1._rt))
+          rho = eos_K**(gamma_const/(gamma_const-1.0_rt)) * &
+              ((gamma_const-1.0_rt)/gamma_const * g * &
+              (h-x))**(1.0_rt / (gamma_const-1.0_rt))
 
       end function rho_from_height
 
@@ -33,8 +33,8 @@ module probdata_module
           real(rt), intent(in) :: h, x
           real(rt) :: p
 
-          p = ((gamma_const - 1._rt) / gamma_const * g * eos_K * &
-            (h - x))**(gamma_const / (gamma_const - 1._rt))
+          p = ((gamma_const - 1.0_rt) / gamma_const * g * eos_K * &
+            (h - x))**(gamma_const / (gamma_const - 1.0_rt))
 
       end function p_from_height
 
@@ -46,8 +46,8 @@ module probdata_module
           real(rt), intent(in) :: p, x
           real(rt) :: h
 
-          h = x + gamma_const / (gamma_const-1._rt) * &
-              1._rt / (g * eos_K) * p**((gamma_const-1._rt)/gamma_const)
+          h = x + gamma_const / (gamma_const-1.0_rt) * &
+              1.0_rt / (g * eos_K) * p**((gamma_const-1.0_rt)/gamma_const)
 
       end function height_from_p
 
@@ -71,7 +71,7 @@ module probdata_module
           real(rt), intent(in) :: p
           real(rt) :: rho
 
-          rho = eos_K * p**(1._rt / gamma_const)
+          rho = eos_K * p**(1.0_rt / gamma_const)
 
       end function rho_from_p
 

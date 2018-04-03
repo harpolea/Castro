@@ -22,10 +22,10 @@
                         new_state,ns_lo,ns_hi,&
                         src,src_lo,src_hi,problo,dx,time,dt,level,xlo)
 
-    use bl_constants_module, only: ZERO, HALF
-    use meth_params_module, only : NVAR, UMX, UMY, QU, QV, URHO, NQ, NQAUX, UEDEN
+    use bl_constants_module, only: ZERO
+    use meth_params_module, only : NVAR, UMX, QU, URHO, NQ, NQAUX, UEDEN
     use probdata_module, only: swe_to_comp_level, g
-    use advection_util_module, only: compctoprim, swectoprim
+    use advection_util_module, only: compctoprim
 
     use amrex_fort_module, only : rt => amrex_real
     implicit none
@@ -35,14 +35,13 @@
     integer, intent(in)          :: ns_lo(3),ns_hi(3)
     integer, intent(in)          :: src_lo(3),src_hi(3)
     real(rt), intent(in)         :: old_state(os_lo(1):os_hi(1),os_lo(2):os_hi(2),os_lo(3):os_hi(3),NVAR)
-    real(rt), intent(in)         :: new_state(ns_lo(1):ns_hi(1),ns_lo(2):ns_hi(2),ns_lo(3):ns_hi(3),NVAR)
+    real(rt), intent(inout)         :: new_state(ns_lo(1):ns_hi(1),ns_lo(2):ns_hi(2),ns_lo(3):ns_hi(3),NVAR)
     real(rt), intent(inout)         :: src(src_lo(1):src_hi(1),src_lo(2):src_hi(2),src_lo(3):src_hi(3),NVAR)
     real(rt), intent(in)         :: problo(3),dx(3),time,dt,xlo(3)
 
     integer :: i, j, k
     real(rt) :: q(lo(1):hi(1), lo(2):hi(2), lo(3):hi(3), NQ)
     real(rt) :: qaux(lo(1):hi(1), lo(2):hi(2), lo(3):hi(3),NQAUX)
-    real(rt) :: yy
 
     ! write(*,*) "I am being called"
 
@@ -64,17 +63,6 @@
             enddo
         enddo
 
-    ! else
-    !     call swectoprim(lo, hi, new_state, ns_lo, ns_hi, q, lo, hi, qaux, lo, hi)
-    !
-    !     do j = lo(2), hi(2)
-    !         yy = xlo(2) + dx(2)*dble(j-lo(2)+HALF)
-    !
-    !         src(lo(1):hi(1),j,lo(3):hi(3),URHO) = -new_state(lo(1):hi(1),j,lo(3):hi(3),URHO) * q(lo(1):hi(1),j,lo(3):hi(3),QV) / yy
-    !
-    !         src(lo(1):hi(1),j,lo(3):hi(3),UMY) = -new_state(lo(1):hi(1),j,lo(3):hi(3),UMY) * q(lo(1):hi(1),j,lo(3):hi(3),QV) / yy
-    !
-    !     enddo
     endif
 
   end subroutine ca_ext_src

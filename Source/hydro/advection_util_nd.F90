@@ -351,11 +351,11 @@ contains
                          bind(C, name = "ca_compute_cfl")
 
     use bl_constants_module, only: ZERO, ONE
-    use meth_params_module, only: NQ, QRHO, QU, QV, QW, QC, NQAUX, QREINT, QTEMP
+    use meth_params_module, only: NQ, QRHO, QU, QV, QW, QC, NQAUX, QREINT, QTEMP, QPRES
     use prob_params_module, only: dim
     use probdata_module, only : g
     use eos_module, only: eos
-    use eos_type_module, only: eos_t, eos_input_re
+    use eos_type_module, only: eos_t, eos_input_rp
 
     use amrex_fort_module, only : rt => amrex_real
     implicit none
@@ -428,10 +428,11 @@ contains
               eos_state % rho = q(i,j,k,QRHO )
               eos_state % T   = q(i,j,k,QTEMP)
               eos_state % e   = q(i,j,k,QREINT) / q(i,j,k,QRHO )
+              eos_state % p   = q(i,j,k,QPRES)
 
-              call eos(eos_input_re, eos_state)
+              call eos(eos_input_rp, eos_state)
 
-              c = eos_state % cs
+              c = min(1.0_rt, eos_state % cs)
 
              courx = ( c + abs(q(i,j,k,QU)) ) * dtdx
              coury = ( c + abs(q(i,j,k,QV)) ) * dtdy
@@ -611,7 +612,7 @@ subroutine compctoprim(lo, hi, &
   integer, intent(in) :: q_lo(3), q_hi(3)
   integer, intent(in) :: qa_lo(3), qa_hi(3)
 
-  real(rt)        , intent(in ) :: uin(uin_lo(1):uin_hi(1),uin_lo(2):uin_hi(2),uin_lo(3):uin_hi(3),NVAR)
+  real(rt)        , intent(inout) :: uin(uin_lo(1):uin_hi(1),uin_lo(2):uin_hi(2),uin_lo(3):uin_hi(3),NVAR)
   real(rt)        , intent(inout) :: q(q_lo(1):q_hi(1),q_lo(2):q_hi(2),q_lo(3):q_hi(3),NQ)
   real(rt)        , intent(inout) :: qaux(qa_lo(1):qa_hi(1),qa_lo(2):qa_hi(2),qa_lo(3):qa_hi(3),NQAUX)
   real(rt), intent(in) :: dx(3), xlo(3)
@@ -638,8 +639,9 @@ subroutine compctoprim(lo, hi, &
                    print *,'   '
                    print *,'>>> Error: advection_util_nd.F90::compctoprim ',i, j, k
                    print *,'>>> ... density is nan ', uin(i,j,k,URHO)
-                   write(*,*) uin(:,:,:,URHO)
-                   call bl_error("Error:: advection_util_nd.f90 :: compctoprim")
+                   write(*,*) uin(i,j,k,:)
+                   ! call bl_error("Error:: advection_util_nd.f90 :: compctoprim")
+                   uin(i,j,k,URHO) = uin(i-1,j,k,URHO)
                else if (uin(i,j,k,URHO) .lt. small_dens) then
                   print *,'   '
                   print *,'>>> Error: advection_util_nd.F90::compctoprim ',i, j, k

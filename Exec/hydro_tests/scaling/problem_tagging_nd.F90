@@ -19,7 +19,7 @@ contains
                               bind(C, name="set_problem_tags")
 
     use meth_params_module, only : NVAR, NQ, QU, QW, NQAUX
-    use probdata_module, only: swe_to_comp_level, damn_rad
+    use probdata_module, only: swe_to_comp_level
     use advection_util_module, only: compctoprim, swectoprim
     use prob_params_module, only : center
     implicit none
@@ -27,7 +27,7 @@ contains
     integer, intent(in)          :: lo(3),hi(3)
     integer, intent(in)          :: state_lo(3),state_hi(3)
     integer, intent(in)          :: tag_lo(3),tag_hi(3)
-    real(rt), intent(in)         :: state(state_lo(1):state_hi(1), &
+    real(rt), intent(inout)         :: state(state_lo(1):state_hi(1), &
                         state_lo(2):state_hi(2), &
                         state_lo(3):state_hi(3),NVAR)
     integer, intent(inout)         :: tag(tag_lo(1):tag_hi(1),tag_lo(2):tag_hi(2),tag_lo(3):tag_hi(3))

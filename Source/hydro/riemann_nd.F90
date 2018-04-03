@@ -521,7 +521,7 @@ subroutine comp_to_swe(swe, slo, shi, comp, clo, chi, floor_comp, vlo, vhi, lo, 
 
     integer, intent(in)   :: slo(3), shi(3), clo(3), chi(3), lo(3), hi(3), vlo(3), vhi(3)
     real(rt), intent(inout)  :: swe(slo(1):shi(1), slo(2):shi(2), slo(3):shi(3), NVAR)
-    real(rt), intent(in) :: comp(clo(1):chi(1), clo(2):chi(2), clo(3):chi(3), NVAR)
+    real(rt), intent(inout) :: comp(clo(1):chi(1), clo(2):chi(2), clo(3):chi(3), NVAR)
     real(rt), intent(inout) :: floor_comp(vlo(1):vhi(1), vlo(2):vhi(2), vlo(3):vhi(3), NVAR)
     real(rt), intent(in) :: xlo(3), dx(3)
     logical, optional, intent(in) :: ignore_errors

@@ -1,8 +1,8 @@
 &fortin
 
-  g = 1.0d-1
-  swe_to_comp_level = 5
-  eos_K = 1.0
+  g = 2.0d-1
+  swe_to_comp_level = -5
+  eos_K = 10
 
 
 /
@@ -26,6 +26,6 @@
 &extern
 
   eos_assume_neutral = T
-  eos_gamma = 1.666667
+  eos_gamma = 1.4 !666667
 
 /

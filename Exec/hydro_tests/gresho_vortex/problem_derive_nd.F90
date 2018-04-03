@@ -10,9 +10,9 @@ subroutine ca_derheight(h,h_lo,h_hi,nh, &
     ! Calculate height
     !
     use amrex_fort_module, only : rt => amrex_real
-    use probdata_module, only: swe_to_comp_level
-    use meth_params_module, only: QRHO, NQ, NQAUX, NVAR
-    use advection_util_module, only: swectoprim
+    use probdata_module, only: swe_to_comp_level, height_from_p
+    use meth_params_module, only: QRHO, NQ, NQAUX, NVAR, QPRES
+    use advection_util_module, only: swectoprim, compctoprim
     use riemann_module, only: comp_to_swe
     implicit none
 
@@ -23,7 +23,7 @@ subroutine ca_derheight(h,h_lo,h_hi,nh, &
     integer, intent(in) :: bc(3,2,nc)
     real(rt), intent(in) :: dx(3), xlo(3), time, dt
     real(rt), intent(inout) :: h(h_lo(1):h_hi(1),h_lo(2):h_hi(2),h_lo(3):h_hi(3),nh)
-    real(rt), intent(in) ::    u(d_lo(1):d_hi(1),d_lo(2):d_hi(2),d_lo(3):d_hi(3),nc)
+    real(rt), intent(inout) ::    u(d_lo(1):d_hi(1),d_lo(2):d_hi(2),d_lo(3):d_hi(3),nc)
     integer, intent(in) :: level, grid_no
 #if BL_SPACEDIM == 2
     real(rt), intent(in)  :: horizontal_comp(NVAR, 0:nx(2)-1)
@@ -51,20 +51,33 @@ subroutine ca_derheight(h,h_lo,h_hi,nh, &
     vhi = [1, hi(2), hi(3)]
 
     if (level > swe_to_comp_level) then
-        call comp_to_swe(swe, lo, hi, u(:,:,:,1:NVAR), d_lo, d_hi, vertically_avgd_comp, vlo, vhi, lo, hi, xlo, dx, .false.)
+        ! call comp_to_swe(swe, lo, hi, u(:,:,:,1:NVAR), d_lo, d_hi, vertically_avgd_comp, vlo, vhi, lo, hi, xlo, dx, .false.)
+        !
+        ! call swectoprim(lo, hi, swe, lo, hi, q, lo, hi, qaux, lo, hi, .false.)
 
-        call swectoprim(lo, hi, swe, lo, hi, q, lo, hi, qaux, lo, hi, .false.)
+        call compctoprim(lo, hi, u(:,:,:,1:NVAR), d_lo, d_hi, q, lo, hi, qaux, lo, hi, xlo, dx, .false.)
+
+        do k = lo(3), hi(3)
+           do j = lo(2), hi(2)
+              do i = lo(1), hi(1)
+                  xx = xlo(1) + dx(1)*(dble(i-lo(1))+0.5_rt)
+                  h(i,j,k,1) = height_from_p(q(i,j,k,QPRES), xx)
+              enddo
+           enddo
+        enddo
     else
         call swectoprim(lo, hi, u(:,:,:,1:NVAR), d_lo, d_hi, q, lo, hi, qaux, lo, hi, .false.)
+
+        do k = lo(3), hi(3)
+           do j = lo(2), hi(2)
+              do i = lo(1), hi(1)
+                  h(i,j,k,1) = q(i,j,k,QRHO)
+              enddo
+           enddo
+        enddo
     endif
 
-    do k = lo(3), hi(3)
-       do j = lo(2), hi(2)
-          do i = lo(1), hi(1)
-              h(i,j,k,1) = q(i,j,k,QRHO)
-          enddo
-       enddo
-    enddo
+
 
 end subroutine ca_derheight
 
@@ -89,7 +102,7 @@ subroutine ca_derprimu(v,v_lo,v_hi,nv, &
     integer, intent(in) :: bc(3,2,nc)
     real(rt), intent(in) :: dx(3), xlo(3), time, dt
     real(rt), intent(inout) :: v(v_lo(1):v_hi(1),v_lo(2):v_hi(2),v_lo(3):v_hi(3),nv)
-    real(rt), intent(in) ::    u(d_lo(1):d_hi(1),d_lo(2):d_hi(2),d_lo(3):d_hi(3),nc)
+    real(rt), intent(inout) ::    u(d_lo(1):d_hi(1),d_lo(2):d_hi(2),d_lo(3):d_hi(3),nc)
     integer, intent(in) :: level, grid_no
 
     real(rt) :: xx, p
@@ -134,7 +147,7 @@ subroutine ca_derprimv(v,v_lo,v_hi,nv, &
     integer, intent(in) :: bc(3,2,nc)
     real(rt), intent(in) :: dx(3), xlo(3), time, dt
     real(rt), intent(inout) :: v(v_lo(1):v_hi(1),v_lo(2):v_hi(2),v_lo(3):v_hi(3),nv)
-    real(rt), intent(in) ::    u(d_lo(1):d_hi(1),d_lo(2):d_hi(2),d_lo(3):d_hi(3),nc)
+    real(rt), intent(inout) ::    u(d_lo(1):d_hi(1),d_lo(2):d_hi(2),d_lo(3):d_hi(3),nc)
     integer, intent(in) :: level, grid_no
 
     real(rt) :: xx, p
@@ -179,7 +192,7 @@ subroutine ca_derprimw(v,v_lo,v_hi,nv, &
     integer, intent(in) :: bc(3,2,nc)
     real(rt), intent(in) :: dx(3), xlo(3), time, dt
     real(rt), intent(inout) :: v(v_lo(1):v_hi(1),v_lo(2):v_hi(2),v_lo(3):v_hi(3),nv)
-    real(rt), intent(in) ::    u(d_lo(1):d_hi(1),d_lo(2):d_hi(2),d_lo(3):d_hi(3),nc)
+    real(rt), intent(inout) ::    u(d_lo(1):d_hi(1),d_lo(2):d_hi(2),d_lo(3):d_hi(3),nc)
     integer, intent(in) :: level, grid_no
 
     real(rt) :: xx, p
@@ -226,7 +239,7 @@ subroutine ca_derprimrho(rho,r_lo,r_hi,nr, &
     integer, intent(in) :: bc(3,2,nc)
     real(rt), intent(in) :: dx(3), xlo(3), time, dt
     real(rt), intent(inout) :: rho(r_lo(1):r_hi(1),r_lo(2):r_hi(2),r_lo(3):r_hi(3),nr)
-    real(rt), intent(in) ::    u(d_lo(1):d_hi(1),d_lo(2):d_hi(2),d_lo(3):d_hi(3),nc)
+    real(rt), intent(inout) ::    u(d_lo(1):d_hi(1),d_lo(2):d_hi(2),d_lo(3):d_hi(3),nc)
     integer, intent(in) :: level, grid_no
 #if BL_SPACEDIM == 2
     real(rt), intent(in)  :: horizontal_comp(NVAR, 0:nx(2)-1)
@@ -293,7 +306,7 @@ subroutine ca_derW(w,w_lo,w_hi,nw, &
     integer, intent(in) :: bc(3,2,nc)
     real(rt), intent(in) :: dx(3), xlo(3), time, dt
     real(rt), intent(inout) :: w(w_lo(1):w_hi(1),w_lo(2):w_hi(2),w_lo(3):w_hi(3),nw)
-    real(rt), intent(in) ::    u(d_lo(1):d_hi(1),d_lo(2):d_hi(2),d_lo(3):d_hi(3),nc)
+    real(rt), intent(inout) ::    u(d_lo(1):d_hi(1),d_lo(2):d_hi(2),d_lo(3):d_hi(3),nc)
     integer, intent(in) :: level, grid_no
 
     real(rt) :: xx, p
@@ -337,7 +350,7 @@ subroutine ca_dereint(e,e_lo,e_hi,ncomp_e, &
   integer, intent(in) :: u_lo(3), u_hi(3), ncomp_u
   integer, intent(in) :: domlo(3), domhi(3)
   real(rt), intent(inout) :: e(e_lo(1):e_hi(1),e_lo(2):e_hi(2),e_lo(3):e_hi(3),ncomp_e)
-  real(rt), intent(in) :: u(u_lo(1):u_hi(1),u_lo(2):u_hi(2),u_lo(3):u_hi(3),ncomp_u)
+  real(rt), intent(inout) :: u(u_lo(1):u_hi(1),u_lo(2):u_hi(2),u_lo(3):u_hi(3),ncomp_u)
   real(rt), intent(in) :: dx(3), xlo(3), time, dt
   integer, intent(in) :: bc(3,2,ncomp_u), level, grid_no
 #if BL_SPACEDIM == 2
@@ -401,7 +414,7 @@ subroutine ca_derprimspeed(m,m_lo,m_hi,ncomp_m, &
   integer, intent(in) :: u_lo(3), u_hi(3), ncomp_u
   integer, intent(in) :: domlo(3), domhi(3)
   real(rt), intent(inout) :: m(m_lo(1):m_hi(1),m_lo(2):m_hi(2),m_lo(3):m_hi(3),ncomp_m)
-  real(rt), intent(in) :: u(u_lo(1):u_hi(1),u_lo(2):u_hi(2),u_lo(3):u_hi(3),ncomp_u)
+  real(rt), intent(inout) :: u(u_lo(1):u_hi(1),u_lo(2):u_hi(2),u_lo(3):u_hi(3),ncomp_u)
   real(rt), intent(in) :: dx(3), xlo(3), time, dt
   integer, intent(in) :: bc(3,2,ncomp_u), level, grid_no
 
@@ -446,7 +459,7 @@ subroutine ca_derpressgrad(g,g_lo,g_hi,ncomp_g, &
   integer, intent(in) :: u_lo(3), u_hi(3), ncomp_u
   integer, intent(in) :: domlo(3), domhi(3)
   real(rt), intent(inout) :: g(g_lo(1):g_hi(1),g_lo(2):g_hi(2),g_lo(3):g_hi(3),ncomp_g)
-  real(rt), intent(in) :: u(u_lo(1):u_hi(1),u_lo(2):u_hi(2),u_lo(3):u_hi(3),ncomp_u)
+  real(rt), intent(inout) :: u(u_lo(1):u_hi(1),u_lo(2):u_hi(2),u_lo(3):u_hi(3),ncomp_u)
   real(rt), intent(in) :: dx(3), xlo(3), time, dt
   integer, intent(in) :: bc(3,2,ncomp_u), level, grid_no
 

@@ -49,23 +49,6 @@ contains
        call filcc_nd(adv(:,:,:,n),adv_lo,adv_hi,domlo,domhi,delta,xlo,bc(:,:,n))
     enddo
 
-    ! return
-    !
-    ! do n = 1,NVAR
-    !     do i = 2,3
-    !         do j = 1,2
-    !             call filcc_nd(adv(:,:,:,n),adv_lo,adv_hi, &
-    !                        domlo,domhi,delta,xlo,bc(i,j,n))
-    !        enddo
-    !    enddo
-    !    if (level <= swe_to_comp_level) then
-    !        do j = 1,2
-    !            call filcc_nd(adv(:,:,:,n),adv_lo,adv_hi, &
-    !                       domlo,domhi,delta,xlo,bc(1,j,n))
-    !       enddo
-    !    endif
-    ! enddo
-
     if (level > swe_to_comp_level) then
 
         call ca_ctoprim(adv_lo, adv_hi, adv, adv_lo, adv_hi, qprim, adv_lo, adv_hi, qaux, adv_lo, adv_hi, level, xlo, delta)
@@ -110,7 +93,9 @@ contains
               ! this do loop counts backwards since we want to work downward
               do k = adv_lo(3), adv_hi(3)
                   do j = adv_lo(2), adv_hi(2)
+
                       h = height_from_p(qprim(domlo(1),j,k,QPRES), xlo(1) + delta(1)*(dble(domlo(1)-adv_lo(1)) + 0.5e0_rt))
+
                      do i = domlo(1)-1, adv_lo(1),-1
                          x = xlo(1) + delta(1)*(dble(i-adv_lo(1)) + 0.5e0_rt)
 
@@ -154,6 +139,7 @@ contains
 
               do k=adv_lo(3),adv_hi(3)
                   do j=adv_lo(2),adv_hi(2)
+
                       h = height_from_p(qprim(domhi(1),j,k,QPRES), xlo(1) + delta(1)*(dble(domhi(1)-adv_lo(1)) + 0.5e0_rt))
 
                      do i=domhi(1)+1,adv_hi(1)
@@ -161,14 +147,6 @@ contains
 
                         ! set all the variables even though we're testing on URHO
                         if (n .eq. URHO) then
-
-                           dens_zone = interpolate_noparser(adv(:,j,k,URHO),adv_lo(1),adv_hi(1),i)
-
-                           temp_zone = interpolate_noparser(adv(:,j,k,UTEMP),adv_lo(1),adv_hi(1),i)
-
-                           do q = 1, nspec
-                              X_zone(q) = interpolate_noparser(adv(:,j,k,UFS-1+q),adv_lo(1),adv_hi(1),i)
-                           enddo
 
                            dens_zone = rho_from_height(h, x)
                            pres_zone = p_from_rho(dens_zone)
@@ -237,6 +215,8 @@ contains
 
     if (level > swe_to_comp_level) then
 
+        return
+
         !     YLO
         if ( bc(2,1,1).eq.EXT_DIR .and. adv_lo(2).lt.domlo(2)) then
            call bl_error("We shoundn't be here (ylo denfill)")
@@ -278,6 +258,25 @@ contains
                end do
             end do
         end if
+
+    else
+
+        if (adv_lo(1).lt.domlo(1)) then
+            do k = adv_lo(3), adv_hi(3)
+                do j = adv_lo(2), adv_hi(2)
+                   adv(adv_lo(1):domlo(1)-1, j, k) = adv(domlo(1), j,k)
+               enddo
+           enddo
+        end if
+
+        !     XHI
+        if (adv_hi(1).gt.domhi(1)) then
+            do k = adv_lo(3), adv_hi(3)
+                do j = adv_lo(2), adv_hi(2)
+                   adv(domhi(1)+1:adv_hi(1), j, k) = adv(domhi(1), j, k)
+               enddo
+           enddo
+       endif
 
     endif
 

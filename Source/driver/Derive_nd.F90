@@ -480,7 +480,7 @@ contains
     integer, intent(in) :: u_lo(3), u_hi(3), ncomp_u
     integer, intent(in) :: domlo(3), domhi(3)
     real(rt), intent(inout) :: p(p_lo(1):p_hi(1),p_lo(2):p_hi(2),p_lo(3):p_hi(3),ncomp_p)
-    real(rt), intent(in) :: u(u_lo(1):u_hi(1),u_lo(2):u_hi(2),u_lo(3):u_hi(3),ncomp_u)
+    real(rt), intent(inout) :: u(u_lo(1):u_hi(1),u_lo(2):u_hi(2),u_lo(3):u_hi(3),ncomp_u)
     real(rt), intent(in) :: dx(3), xlo(3), time, dt
     integer, intent(in) :: bc(3,2,ncomp_u), level, grid_no
 
@@ -492,7 +492,7 @@ contains
 
     if (level <= swe_to_comp_level) then
 
-        call swectoprim(lo, hi, u, u_lo, u_hi, q, lo, hi, qaux, lo, hi, .true.)
+        call swectoprim(lo, hi, u, u_lo, u_hi, q, lo, hi, qaux, lo, hi, .false.)
 
         do k = lo(3), hi(3)
            do j = lo(2), hi(2)
@@ -508,7 +508,7 @@ contains
 
     else
 
-        call compctoprim(lo, hi, u, u_lo, u_hi, q, lo, hi, qaux, lo, hi, xlo, dx, .true.)
+        call compctoprim(lo, hi, u, u_lo, u_hi, q, lo, hi, qaux, lo, hi, xlo, dx, .false.)
 
         do k = lo(3), hi(3)
            do j = lo(2), hi(2)

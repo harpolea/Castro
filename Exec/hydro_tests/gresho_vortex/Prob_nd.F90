@@ -118,14 +118,14 @@ subroutine ca_initdata(level,time,lo,hi,nscal, &
 
   integer :: i, j, k, jj, kk
 
-  real(rt)         :: reint, p, u_phi, u_tot, p0, rho0
+  real(rt)         :: reint, p, u_phi, u_tot, p0, u0
   real(rt)         :: q(state_lo(1):state_hi(1),state_lo(2):state_hi(2),state_lo(3):state_hi(3),NQ)
   type(eos_t) :: eos_state
 
   if (level <= swe_to_comp_level) then
       write(*,*) "Initialising level ", level, " with SWE data"
   else
-      write(*,*) "Initialising level ", level, " with incompressible data"
+      write(*,*) "Initialising level ", level, " with compressible data"
   endif
 
   eos_state % rho = 1.0_rt
@@ -136,8 +136,8 @@ subroutine ca_initdata(level,time,lo,hi,nscal, &
   call eos(eos_input_re, eos_state)
 
   ! M = 0.1, uphi = 0.25
-  p0 = ((gamma_const-1._rt)/gamma_const * g * eos_K * 5._rt)**(gamma_const / (gamma_const - 1._rt))
-  rho0 = eos_K * p0**(1._rt / gamma_const)
+  p0 = 0.01!((gamma_const-1._rt)/gamma_const * g * eos_K * 0.4_rt)**(gamma_const / (gamma_const - 1._rt))
+  u0 = 0.1!eos_K * p0**(1._rt / gamma_const)
 
   !$OMP PARALLEL DO PRIVATE(i, j, k, xx, yy, zz, r, h, u_phi, reint, u_tot, p, yc, zc, jj, kk)
   do k = lo(3), hi(3)
@@ -157,19 +157,21 @@ subroutine ca_initdata(level,time,lo,hi,nscal, &
             do jj = 0, nsub-1
                yy = yl + delta(2)*dble(jj+0.5_rt)/nsub
 
+               ! R = 0.2, u0 = 0.1
+
                r = sqrt((yy - center(2))**2 + (zz - center(3))**2)
 
                if (r < 0.2_rt) then
-                  u_phi = 5.0_rt*r
-                  p = p0 + rho0 * 12.5_rt*r**2
+                  u_phi = 0.5_rt*r
+                  p = p0 + u0**2 * 12.5_rt*r**2
 
                else if (r < 0.4_rt) then
-                  u_phi = 2.0_rt - 5.0_rt*r
-                  p = p0 + rho0 * (12.5_rt*r**2 + 4.0_rt*(1.0_rt - 5.0_rt*r - log(0.2_rt) + log(r)))
+                  u_phi = 0.2_rt - 0.5_rt*r
+                  p = p0 + u0**2 * (12.5_rt*r**2 + 4.0_rt*(1.0_rt - 5.0_rt*r - log(0.2_rt) + log(r)))
 
                else
                   u_phi = 0.0_rt
-                  p = p0 - rho0 * (2.0_rt - 4.0_rt*log(2.0_rt))
+                  p = p0 - u0**2 * (2.0_rt - 4.0_rt*log(2.0_rt))
                endif
 
                u_tot = u_tot + u_phi
@@ -182,7 +184,7 @@ subroutine ca_initdata(level,time,lo,hi,nscal, &
        reint = reint/(nsub*nsub)
        p = (eos_state % gam1 - 1.0_rt) * reint
 
-       h = height_from_p(p, 0._rt)
+       h = height_from_p(p, 0.0_rt)
 
        ! velocity is based on the reference velocity, q_r
        yc = yl + 0.5_rt*delta(2)
@@ -191,10 +193,14 @@ subroutine ca_initdata(level,time,lo,hi,nscal, &
        r = sqrt((z - center(3))**2 + (y - center(2))**2)
 
        q(lo(1):hi(1),j,k,QU) = 0.0_rt
-       q(lo(1):hi(1),j,k,QV) = -rho0*q_r*u_phi*((zc-center(3))/r)  ! -sin(phi) = z/r
-       q(lo(1):hi(1),j,k,QW) = rho0*q_r*u_phi*((yc-center(2))/r)
+       q(lo(1):hi(1),j,k,QV) = -u_phi*((zc-center(3))/r)  ! -sin(phi) = z/r
+       q(lo(1):hi(1),j,k,QW) = u_phi*((yc-center(2))/r)
 
        do i = lo(1), hi(1)
+
+           state(i,j,k,1:NVAR) = 0.e0_rt
+           q(i,j,k,1:NQ) = 0.e0_rt
+
            xx = xlo(1) + delta(1)*dble(i-lo(1)+HALF)
 
            q(i,j,k,QPRES) = p_from_height(h, xx)
@@ -210,8 +216,8 @@ subroutine ca_initdata(level,time,lo,hi,nscal, &
 
            reint = q(i,j,k,QRHO) * eos_state % e
 
-           q(i,j,k,QREINT) = reint +  &
-                0.5_rt*sum(q(i,j,k,QU:QW)**2)*q(i,j,k,QRHO)
+           q(i,j,k,QREINT) = reint !+  &
+                ! 0.5_rt*sum(q(i,j,k,QU:QW)**2)*q(i,j,k,QRHO)
 
            q(i,j,k,QTEMP) = eos_state % T
 

@@ -21,12 +21,13 @@ contains
     use meth_params_module, only : NVAR, NQ, QU, QW, NQAUX
     use probdata_module, only: swe_to_comp_level
     use advection_util_module, only: compctoprim, swectoprim
+    use prob_params_module, only : center
     implicit none
 
     integer, intent(in)          :: lo(3),hi(3)
     integer, intent(in)          :: state_lo(3),state_hi(3)
     integer, intent(in)          :: tag_lo(3),tag_hi(3)
-    real(rt), intent(in)         :: state(state_lo(1):state_hi(1), &
+    real(rt), intent(inout)         :: state(state_lo(1):state_hi(1), &
                         state_lo(2):state_hi(2), &
                         state_lo(3):state_hi(3),NVAR)
     integer, intent(inout)         :: tag(tag_lo(1):tag_hi(1),tag_lo(2):tag_hi(2),tag_lo(3):tag_hi(3))
@@ -36,13 +37,27 @@ contains
     integer :: i, j, k
     real(rt) :: q(lo(1):hi(1), lo(2):hi(2), lo(3):hi(3), NQ)
     real(rt) :: qaux(lo(1):hi(1), lo(2):hi(2), lo(3):hi(3),NQAUX)
-    real(rt) :: speed
+    real(rt) :: speed, zz, yy, r
 
     if (level > swe_to_comp_level) then
         call compctoprim(lo, hi, state, state_lo, state_hi, q, lo, hi, qaux, lo, hi, xlo, dx, .false.)
     else
         call swectoprim(lo, hi, state, state_lo, state_hi, q, lo, hi, qaux, lo, hi, .false.)
     endif
+
+    !rad dam
+    do k = lo(3), hi(3)
+        zz = xlo(3) + dx(3)*dble(k-lo(3)+0.5_rt)
+        do j = lo(2), hi(2)
+           yy = xlo(2) + dx(2)*dble(j-lo(2)+0.5_rt)
+           r = sqrt((yy - center(2))**2 + (zz - center(3))**2)
+           do i = lo(1), hi(1)
+              if (r .le. 0.25_rt) then
+                  tag(i,j,k) = set
+              endif
+          enddo
+       enddo
+    enddo
 
     do k = lo(3), hi(3)
        do j = lo(2), hi(2)
