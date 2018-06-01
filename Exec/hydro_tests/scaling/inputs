@@ -3,7 +3,7 @@
 
 
 # ------------------  INPUTS TO MAIN PROGRAM  -------------------
-stop_time = 0.05
+stop_time = 0.0002
 max_step = 0
 
 # PROBLEM SIZE & GEOMETRY
@@ -14,7 +14,7 @@ geometry.prob_hi     = 0.0625 0.5 0.5
 castro.center        = 0.0315 0.25 0.25
 
 amr.n_cell = 8 64 64 #  16 2048 for 1d sr rad dam
-amr.max_level        = 0        # maximum level number allowed; base level is 0
+amr.max_level        = 4      # maximum level number allowed; base level is 0
 
 amr.max_grid_size    = 64
 
@@ -53,9 +53,9 @@ amr.grid_log          = grid_diag.out   # name of grid logging file
 
 # REFINEMENT / REGRIDDING
 amr.ref_ratio       = 2   # refinement ratio
-amr.regrid_int      = 2   # how often to regrid
+amr.regrid_int      = 2000000   # how often to regrid
 amr.blocking_factor = 8         # block factor in grid generation
-amr.n_error_buf     = 4   # number of buffer cells in error est
+amr.n_error_buf     = 1   # number of buffer cells in error est
 
 # CHECKPOINT FILES
 amr.checkpoint_files_output = 0

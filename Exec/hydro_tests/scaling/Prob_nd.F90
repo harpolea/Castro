@@ -176,7 +176,7 @@ subroutine ca_initdata(level,time,lo,hi,nscal, &
         r = sqrt((yy - 1.33_rt*center(2))**2 + (zz - 1.33_rt*center(3))**2)
 
         ! gonna make the peak have a radius of 2 cells
-        h = h_in + 0.5_rt * (h_out - h_in) * (1.0_rt + tanh((r - delta(2)*2.0_rt) / a))
+        h = h_in + 0.5_rt * (h_out - h_in) * (1.0_rt + tanh((r - 1.0e-2_rt) / a))
 
         do i = lo(1), hi(1)
 

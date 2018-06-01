@@ -1,24 +1,24 @@
 &fortin
 
-   h_in = 0.9
-   h_out = 0.85
+   h_in = 0.8
+   h_out = 0.78
    g = 1.0d-1
    p_ambient = 1.d-6
    exp_energy = 1.0d-5
    dens_ambient = 1.0
    nsub = 10
-   swe_to_comp_level = 0
+   swe_to_comp_level = -20
    eos_K = 1.0d1
 
 /
 
 &tagging
 
-  dengrad = 0.01
-  max_dengrad_lev = 5
-  velgrad = 0.01
-  max_velgrad_lev = 5
-  pressgrad = 0.005 !0.0005 !for 3d
+  !dengrad = 0.01
+  !max_dengrad_lev = 5
+  !velgrad = 0.01
+  !max_velgrad_lev = 5
+  pressgrad = 0.001 !0.0005 !for 3d
   max_pressgrad_lev = 5
   !speederr = 1.0d-2 ! 4.0d-2 !0.1 for fixed !4.0d-2 for mesh refinement
 
