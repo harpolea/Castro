@@ -9,7 +9,7 @@ import sys
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:
-        sys.exit('No version provided!')
+        print('No version provided!')
 
     gen_version_re = re.compile(r'#\s(\d\d\.\d\d)')
     this_version_re = re.compile(f'#\s{sys.argv[1]}')
