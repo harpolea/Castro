@@ -21,9 +21,9 @@ if __name__ == "__main__":
                 # find next date
                 m_next = re.search(gen_version_re, txt[m.end():])
                 if m_next:
-                    txt = '   ' + txt[m.end():m.end()+m_next.start()].strip()
+                    txt = txt[m.end():m.end()+m_next.start()].strip()
                 else:
-                    txt = '   ' + txt[m.end():].strip()
+                    txt = txt[m.end():].strip()
             else:
                 txt = ""
                     
@@ -32,5 +32,6 @@ if __name__ == "__main__":
             txt = txt.replace('%', '%25')
             txt = txt.replace('\n', '%0A')
             txt = txt.replace('\r', '%0D')
+            txt = txt.replace('%0A   *', '%0A*')
 
             print(f'::set-env name=RELEASE_TXT::{txt}')
