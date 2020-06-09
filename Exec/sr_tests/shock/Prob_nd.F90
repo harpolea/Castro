@@ -1,7 +1,6 @@
 subroutine amrex_probinit (init,name,namlen,problo,probhi) bind(c)
 
   use amrex_constants_module, only: ZERO, HALF, ONE
-  use probdata_module, only: rho0, drho0, xn_zone
   use prob_params_module, only: center
   use castro_error_module, only: castro_error
   use amrex_fort_module, only: rt => amrex_real
@@ -17,9 +16,6 @@ subroutine amrex_probinit (init,name,namlen,problo,probhi) bind(c)
   ! set explosion center
   center(:) = HALF * (problo(:) + probhi(:))
 
-  xn_zone(:) = ZERO
-  xn_zone(1) = ONE
-
 end subroutine amrex_probinit
 
 
@@ -27,7 +23,7 @@ subroutine ca_initdata(level, time, lo, hi, nscal, &
                        state, s_lo, s_hi, &
                        dx, xlo, xhi)
 
-  use probdata_module, only: rho0, drho0, xn_zone
+  use probdata_module, only: rhol, rhor, pl, pr, vl, vr
   use amrex_constants_module, only: M_PI, FOUR3RD, ZERO, HALF, ONE
   use meth_params_module , only: NVAR, URHO, UMX, UMZ, UEDEN, UEINT, UFS
   use prob_params_module, only: center, coord_type, problo
@@ -44,34 +40,40 @@ subroutine ca_initdata(level, time, lo, hi, nscal, &
   real(rt), intent(inout) :: state(s_lo(1):s_hi(1), s_lo(2):s_hi(2), s_lo(3):s_hi(3), NVAR)
 
   real(rt) :: xx, yy, zz
-  real(rt) :: dist, p, eint
+  real(rt) :: v, p, h, W, tau
   integer  :: i, j, k
 
   do k = lo(3), hi(3)
-     zz = problo(3) + dx(3) * (dble(k) + HALF)
      do j = lo(2), hi(2)
-        yy = problo(2) + dx(2) * (dble(j) + HALF)
         do i = lo(1), hi(1)
            xx = problo(1) + dx(1) * (dble(i) + HALF)
 
-           dist = sqrt((center(1)-xx)**2 + (center(2)-yy)**2 + (center(3)-zz)**2)
-
-           if (dist <= HALF) then
-              state(i,j,k,URHO) = rho0 + drho0 * exp(-16.e0_rt*dist**2) * cos(M_PI*dist)**6
-           else
-              state(i,j,k,URHO) = rho0
-           endif
-
            state(i,j,k,UMX:UMZ) = 0.e0_rt
 
-           ! we are isentropic, so p = (dens/rho0)**Gamma_1
-           p = (state(i,j,k,URHO)/rho0)**eos_gamma
-           eint = p / (eos_gamma - ONE)
+           if (xx <= HALF) then
+              state(i,j,k,URHO) = rhol
+              p = pl
+              v = vl
+           else
+              state(i,j,k,URHO) = rhor
+              p = pr
+              v = vr
+           endif
 
-           state(i,j,k,UEDEN) = eint
-           state(i,j,k,UEINT) = eint
+           ! calculate the Lorentz factor 
+           W = 1 / sqrt(1 - v*v)
 
-           state(i,j,k,UFS:UFS-1+nspec) = state(i,j,k,URHO) * xn_zone(:)
+           ! entropy 
+           h = 1.0e0_rt + eos_gamma * p / state(i,j,k,URHO)
+
+           state(i,j,k,URHO) = state(i,j,k,URHO) * W
+
+           state(i,j,k,UMX) = state(i,j,k,URHO) * h * W * v
+
+           state(i,j,k,UEDEN) = state(i,j,k,URHO) * h * W - p - state(i,j,k,URHO) 
+           state(i,j,k,UEINT) = state(i,j,k,UEDEN)
+
+           state(i,j,k,UFS:UFS-1+nspec) = state(i,j,k,URHO)
 
         end do
      end do

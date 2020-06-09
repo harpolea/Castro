@@ -592,6 +592,10 @@ public:
 #include <Castro_mhd.H>
 #endif
 
+#ifdef SR
+#include <Castro_sr.H>
+#endif
+
 
 ///
 /// Estimate time step.

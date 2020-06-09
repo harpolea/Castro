@@ -12,6 +12,8 @@ USE_OMP    = FALSE
 
 USE_PROB_PARAMS = TRUE
 
+USE_SR = TRUE
+
 # define the location of the CASTRO top directory
 CASTRO_HOME  := ../../..
 
