@@ -16,7 +16,7 @@ jobs:
 
       - name: Get the version
         id: get_version
-        run: echo ::set-output name=VERSION::${GITHUB_REF/refs\/tags\//}
+        run: echo ::set-env name=VERSION::${GITHUB_REF/refs\/tags\//}
 
       - name: Set release text
         id: release_txt
