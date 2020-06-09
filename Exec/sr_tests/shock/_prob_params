@@ -1,0 +1,7 @@
+rhol        real        10.0_rt        y
+pl          real        13.33_rt       y
+vl          real        0.0_rt         y
+
+rhor        real        1.0_rt         y
+pr          real        1.0e-8_rt      y
+vr          real        0.0_rt         y
