@@ -25,7 +25,7 @@
         <script src="_static/underscore.js"></script>
         <script src="_static/doctools.js"></script>
         <script src="_static/language_data.js"></script>
-        <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+        <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
         <script type="text/x-mathjax-config">MathJax.Hub.Config({"TeX": {"Macros": {"kth": "{{k_\\mathrm{th}}}", "gcc": "{\\mathrm{g~cm^{-3}}}", "cms": "{\\mathrm{cm~s^{-1}}}", "presunit": "{\\mathrm{dyn~cm^{-2}}}", "accelunit": "{\\mathrm{cm~s^{-2}}}", "ergg": "{\\mathrm{erg~g^{-1}}}", "Ab": "{{\\bf A}}", "eb": "{{\\bf e}}", "Fb": "{{\\bf F}}", "gb": "{{\\bf g}}", "Hb": "{{\\bf H}}", "ib": "{{\\bf i}}", "Ib": "{{\\bf I}}", "Kb": "{{\\bf K}}", "lb": "{{\\bf l}}", "Lb": "{{\\bf L}}", "nb": "{{\\bf n}}", "Pb": "{{\\bf P}}", "Qb": "{{\\bf Q}}", "rb": "{{\\bf r}}", "Rb": "{{\\bf R}}", "Sb": "{{\\bf S}}", "ub": "{{\\bf u}}", "Ub": "{{\\bf U}}", "xb": "{{\\bf x}}", "dt": "{\\Delta t}", "omegadot": "{\\dot\\omega}", "inp": "{{\\rm in}}", "outp": "{{\\rm out}}", "sync": "{{\\rm sync}}", "half": "{\\frac{1}{2}}", "myhalf": "{\\half}", "nph": "{{n+\\myhalf}}", "kpp": "{\\ensuremath{\\kappa_{\\mathrm{P}}}}", "kpr": "{\\ensuremath{\\kappa_{\\mathrm{R}}}}", "kpf": "{\\ensuremath{\\kappa_{\\mathrm{F}}}}", "vb": "{\\boldsymbol{v}}", "vbt": "{\\widetilde{\\vb}}", "rbt": "{\\widetilde{\\rb}}", "ob": "{\\boldsymbol{\\omega}}", "nablab": "{\\boldsymbol{\\nabla}}", "avg": ["{{\\left \\langle #1 \\right \\rangle}}", 1]}}})</script>
     
     <script type="text/javascript" src="_static/js/theme.js"></script>
@@ -127,6 +127,7 @@
 <li class="toctree-l1"><a class="reference internal" href="debugging.html">Debugging</a></li>
 <li class="toctree-l1"><a class="reference internal" href="gpu_porting.html">Offloading a routine to GPU</a></li>
 <li class="toctree-l1"><a class="reference internal" href="Hydrodynamics.html">Hydrodynamics</a></li>
+<li class="toctree-l1"><a class="reference internal" href="mhd.html">MHD</a></li>
 <li class="toctree-l1"><a class="reference internal" href="gravity.html">Gravity</a></li>
 <li class="toctree-l1"><a class="reference internal" href="diffusion.html">Diffusion</a></li>
 <li class="toctree-l1"><a class="reference internal" href="rotation.html">Rotation</a></li>
@@ -351,7 +352,7 @@ Colella &amp; Woodward ppm; 2: extrema-preserving ppm</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">mhd_plm_slope</span></code></p></td>
 <td><p>MHD plm slopes: 0 zero slope 1 vanleer 2 centered, no
-limit</p></td>
+limit 3 2nd order MC limiter</p></td>
 <td><p>1</p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">ppm_temp_fix</span></code></p></td>
@@ -469,163 +470,156 @@ create large velocities?</p></td>
 this is the speed limit.</p></td>
 <td><p>2.99792458e10</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">density_reset_method</span></code></p></td>
-<td><p>Which method to use when resetting a negative/small
-density 1 = Reset to characteristics of adjacent zone
-with largest density 2 = Use average of all adjacent
-zones for all state variables</p></td>
-<td><p>1</p></td>
-</tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">do_sponge</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">do_sponge</span></code></p></td>
 <td><p>permits sponge to be turned on and off</p></td>
 <td><p>0</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">sponge_implicit</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">sponge_implicit</span></code></p></td>
 <td><p>if we are using the sponge, whether to use the implicit
 solve for it</p></td>
 <td><p>1</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">ext_src_implicit</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">ext_src_implicit</span></code></p></td>
 <td><p>if we are using user-defined source terms, are these
 solved implicitly?</p></td>
 <td><p>0</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">source_term_predictor</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">source_term_predictor</span></code></p></td>
 <td><p>extrapolate the source terms (gravity and rotation) to
 <span class="math notranslate nohighlight">\(n+1/2\)</span> timelevel for use in the interface state
 prediction</p></td>
 <td><p>0</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">first_order_hydro</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">first_order_hydro</span></code></p></td>
 <td><p>set the flattening parameter to zero to force the
 reconstructed profiles to be flat, resulting in a
 first-order method</p></td>
 <td><p>0</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">xl_ext_bc_type</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">xl_ext_bc_type</span></code></p></td>
 <td><p>if we are doing an external -x boundary condition, who
 do we interpret it?</p></td>
 <td><p>“fillme”</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">xr_ext_bc_type</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">xr_ext_bc_type</span></code></p></td>
 <td><p>if we are doing an external +x boundary condition, who
 do we interpret it?</p></td>
 <td><p>“fillme”</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">yl_ext_bc_type</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">yl_ext_bc_type</span></code></p></td>
 <td><p>if we are doing an external -y boundary condition, who
 do we interpret it?</p></td>
 <td><p>“fillme”</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">yr_ext_bc_type</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">yr_ext_bc_type</span></code></p></td>
 <td><p>if we are doing an external +y boundary condition, who
 do we interpret it?</p></td>
 <td><p>“fillme”</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">zl_ext_bc_type</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">zl_ext_bc_type</span></code></p></td>
 <td><p>if we are doing an external -z boundary condition, who
 do we interpret it?</p></td>
 <td><p>“fillme”</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">zr_ext_bc_type</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">zr_ext_bc_type</span></code></p></td>
 <td><p>if we are doing an external +z boundary condition, who
 do we interpret it?</p></td>
 <td><p>“fillme”</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">hse_zero_vels</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">hse_zero_vels</span></code></p></td>
 <td><p>if we are doing HSE boundary conditions, do we zero the
 velocity?</p></td>
 <td><p>0</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">hse_interp_temp</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">hse_interp_temp</span></code></p></td>
 <td><p>if we are doing HSE boundary conditions, should we get
 the temperature via interpolation (using model_parser)
 or hold it constant?</p></td>
 <td><p>0</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">hse_reflect_vels</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">hse_reflect_vels</span></code></p></td>
 <td><p>if we are doing HSE boundary conditions, how do we
 treat the velocity? reflect? or outflow?</p></td>
 <td><p>0</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">fill_ambient_bc</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">fill_ambient_bc</span></code></p></td>
 <td><p>fills physical domain boundaries with the ambient state</p></td>
 <td><p>0</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">ambient_fill_dir</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">ambient_fill_dir</span></code></p></td>
 <td><p>which direction do we do ambient BCs?  -1 = all, 0 = x,
 1 = y, 2 = z</p></td>
 <td><p>-1</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">ambient_outflow_vel</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">ambient_outflow_vel</span></code></p></td>
 <td><p>in the ambient region, do we do a basic outflow in the
 normal direction of the velocity (with a min/max to
 ensure it is outgoing)</p></td>
 <td><p>0</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">clamp_ambient_temp</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">clamp_ambient_temp</span></code></p></td>
 <td><p>clamps the ambient material to the ambient temperature</p></td>
 <td><p>0</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">ambient_safety_factor</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">ambient_safety_factor</span></code></p></td>
 <td><p>specifies the upper limit, as a multiple of the ambient
 density, for operations that are applied to ambient
 material, such as clamping T.</p></td>
 <td><p>1.1e0</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">sdc_order</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">sdc_order</span></code></p></td>
 <td><p>integration order for SDC integration valid options are
 2 and 4</p></td>
 <td><p>2</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">sdc_quadrature</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">sdc_quadrature</span></code></p></td>
 <td><p>which quadrature type to use with SDC?  0 = Gauss-
 Lobatto, 1 = Radau</p></td>
 <td><p>0</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">sdc_extra</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">sdc_extra</span></code></p></td>
 <td><p>number of extra SDC iterations to take beyond the order</p></td>
 <td><p>0</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">sdc_solver</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">sdc_solver</span></code></p></td>
 <td><p>which SDC nonlinear solver to use?  1 = Newton, 2 =
 VODE, 3 = VODE for first iter</p></td>
 <td><p>1</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">sdc_solver_tol_dens</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">sdc_solver_tol_dens</span></code></p></td>
 <td><p>relative tolerance for the nonlinear solve on rho with
 SDC</p></td>
 <td><p>1.e-6</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">sdc_solver_tol_spec</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">sdc_solver_tol_spec</span></code></p></td>
 <td><p>relative tolerance for the nonlinear solve on rho X_k
 with SDC</p></td>
 <td><p>1.e-6</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">sdc_solver_tol_ener</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">sdc_solver_tol_ener</span></code></p></td>
 <td><p>relative tolerance for the nonlinear solve on (rho e)
 or (rho E) with SDC</p></td>
 <td><p>1.e-6</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">sdc_solver_atol</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">sdc_solver_atol</span></code></p></td>
 <td><p>absolute tolerance for species with SDC (this will be
 multiplied by the current rho in the zone to define the
 absolute tolerance on (rho X)).</p></td>
 <td><p>1.e-10</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">sdc_solver_relax_factor</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">sdc_solver_relax_factor</span></code></p></td>
 <td><p>factor by which to reduce the SDC solver tol for each
 iteration before the last (e.g., for iteration k out of
 kmax iterations, the tol is
 <span class="math notranslate nohighlight">\(\epsilon/f^{(k_\mathrm{max} - k)}\)</span></p></td>
 <td><p>1.0</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">sdc_solve_for_rhoe</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">sdc_solve_for_rhoe</span></code></p></td>
 <td><p>do we solve for (rho e) or (rho E) in the SDC nonlinear
 solve?</p></td>
 <td><p>1</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">sdc_use_analytic_jac</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">sdc_use_analytic_jac</span></code></p></td>
 <td><p>do we use the analytic or numerical Jacobian?</p></td>
 <td><p>1</p></td>
 </tr>
@@ -741,14 +735,20 @@ change the internal energy of a zone. The timestep is
 equal to <code class="docutils literal notranslate"><span class="pre">dtnuc</span></code>  <span class="math notranslate nohighlight">\(\cdot\,(e / \dot{e})\)</span>.</p></td>
 <td><p>1.e200</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">dtnuc_X</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">dtnuc_T</span></code></p></td>
+<td><p>Limit the timestep based on how much the burning can
+change the temperature of a zone. The timestep is equal
+to <code class="docutils literal notranslate"><span class="pre">dtnuc</span></code>  <span class="math notranslate nohighlight">\(\cdot\,(T / \dot{T})\)</span>.</p></td>
+<td><p>1.e200</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">dtnuc_X</span></code></p></td>
 <td><p>Limit the timestep based on how much the burning can
 change the species mass fractions of a zone. The
 timestep is equal to <code class="docutils literal notranslate"><span class="pre">dtnuc</span></code>  <span class="math notranslate nohighlight">\(\cdot\,(X /
 \dot{X})\)</span>.</p></td>
 <td><p>1.e200</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">dtnuc_X_threshold</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">dtnuc_X_threshold</span></code></p></td>
 <td><p>If we are using the timestep limiter based on changes
 in $X$, set a threshold on the species abundance below
 which the limiter is not applied. This helps prevent
@@ -756,41 +756,41 @@ the timestep from becoming very small due to changes in
 trace species.</p></td>
 <td><p>1.e-3</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">do_react</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">do_react</span></code></p></td>
 <td><p>permits reactions to be turned on and off – mostly for
 efficiency’s sake</p></td>
 <td><p>-1</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">react_T_min</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">react_T_min</span></code></p></td>
 <td><p>minimum temperature for allowing reactions to occur in
 a zone</p></td>
 <td><p>0.0</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">react_T_max</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">react_T_max</span></code></p></td>
 <td><p>maximum temperature for allowing reactions to occur in
 a zone</p></td>
 <td><p>1.e200</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">react_rho_min</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">react_rho_min</span></code></p></td>
 <td><p>minimum density for allowing reactions to occur in a
 zone</p></td>
 <td><p>0.0</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">react_rho_max</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">react_rho_max</span></code></p></td>
 <td><p>maximum density for allowing reactions to occur in a
 zone</p></td>
 <td><p>1.e200</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">disable_shock_burning</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">disable_shock_burning</span></code></p></td>
 <td><p>disable burning inside hydrodynamic shock regions</p></td>
 <td><p>0</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">T_guess</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">T_guess</span></code></p></td>
 <td><p>initial guess for the temperature when inverting the
 EoS (e.g. when calling eos_input_re)</p></td>
 <td><p>1.e8</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">reactions_max_solve_level</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">reactions_max_solve_level</span></code></p></td>
 <td><p>maximum level to do an explicit burn on (above this, we
 interpolate the reactions source)</p></td>
 <td><p>100</p></td>
@@ -1070,44 +1070,51 @@ SCF</p></td>
 <td><p>do we dump the old state into the checkpoint files too?</p></td>
 <td><p>false</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">print_fortran_warnings</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">domain_is_plane_parallel</span></code></p></td>
+<td><p>do we assume the domain is plane parallel when
+computing some of the derived quantities (e.g. radial
+velocity).  Note: this will always assume that the last
+spatial dimension is vertical</p></td>
+<td><p>false</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">print_fortran_warnings</span></code></p></td>
 <td><p>display warnings in Fortran90 routines</p></td>
 <td><p>(0, 1)</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">print_update_diagnostics</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">print_update_diagnostics</span></code></p></td>
 <td><p>display information about updates to the state (how
 much mass, momentum, energy added)</p></td>
 <td><p>(0, 1)</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">track_grid_losses</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">track_grid_losses</span></code></p></td>
 <td><p>calculate losses of material through physical grid
 boundaries</p></td>
 <td><p>0</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">sum_interval</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">sum_interval</span></code></p></td>
 <td><p>how often (number of coarse timesteps) to compute
 integral sums (for runtime diagnostics)</p></td>
 <td><p>-1</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">sum_per</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">sum_per</span></code></p></td>
 <td><p>how often (simulation time) to compute integral sums
 (for runtime diagnostics)</p></td>
 <td><p>-1.0e0</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">show_center_of_mass</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">show_center_of_mass</span></code></p></td>
 <td><p>display center of mass diagnostics</p></td>
 <td><p>0</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">job_name</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">job_name</span></code></p></td>
 <td><p>a string describing the simulation that will be copied
 into the plotfile’s <code class="docutils literal notranslate"><span class="pre">job_info</span></code> file</p></td>
 <td><p>“Castro”</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">output_at_completion</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">output_at_completion</span></code></p></td>
 <td><p>write a final plotfile and checkpoint upon completion</p></td>
 <td><p>1</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">reset_checkpoint_time</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">reset_checkpoint_time</span></code></p></td>
 <td><p>Do we want to reset the time in the checkpoint? This
 ONLY takes effect if amr.regrid_on_restart = 1 and
 amr.checkpoint_on_restart = 1, (which require that
@@ -1116,7 +1123,7 @@ checkpoint) and you set it to value greater than this
 default value.</p></td>
 <td><p>-1.e200</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">reset_checkpoint_step</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">reset_checkpoint_step</span></code></p></td>
 <td><p>Do we want to reset the number of steps in the
 checkpoint? This ONLY takes effect if
 amr.regrid_on_restart = 1 and amr.checkpoint_on_restart

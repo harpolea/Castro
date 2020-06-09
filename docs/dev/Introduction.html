@@ -25,7 +25,7 @@
         <script src="_static/underscore.js"></script>
         <script src="_static/doctools.js"></script>
         <script src="_static/language_data.js"></script>
-        <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+        <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
         <script type="text/x-mathjax-config">MathJax.Hub.Config({"TeX": {"Macros": {"kth": "{{k_\\mathrm{th}}}", "gcc": "{\\mathrm{g~cm^{-3}}}", "cms": "{\\mathrm{cm~s^{-1}}}", "presunit": "{\\mathrm{dyn~cm^{-2}}}", "accelunit": "{\\mathrm{cm~s^{-2}}}", "ergg": "{\\mathrm{erg~g^{-1}}}", "Ab": "{{\\bf A}}", "eb": "{{\\bf e}}", "Fb": "{{\\bf F}}", "gb": "{{\\bf g}}", "Hb": "{{\\bf H}}", "ib": "{{\\bf i}}", "Ib": "{{\\bf I}}", "Kb": "{{\\bf K}}", "lb": "{{\\bf l}}", "Lb": "{{\\bf L}}", "nb": "{{\\bf n}}", "Pb": "{{\\bf P}}", "Qb": "{{\\bf Q}}", "rb": "{{\\bf r}}", "Rb": "{{\\bf R}}", "Sb": "{{\\bf S}}", "ub": "{{\\bf u}}", "Ub": "{{\\bf U}}", "xb": "{{\\bf x}}", "dt": "{\\Delta t}", "omegadot": "{\\dot\\omega}", "inp": "{{\\rm in}}", "outp": "{{\\rm out}}", "sync": "{{\\rm sync}}", "half": "{\\frac{1}{2}}", "myhalf": "{\\half}", "nph": "{{n+\\myhalf}}", "kpp": "{\\ensuremath{\\kappa_{\\mathrm{P}}}}", "kpr": "{\\ensuremath{\\kappa_{\\mathrm{R}}}}", "kpf": "{\\ensuremath{\\kappa_{\\mathrm{F}}}}", "vb": "{\\boldsymbol{v}}", "vbt": "{\\widetilde{\\vb}}", "rbt": "{\\widetilde{\\rb}}", "ob": "{\\boldsymbol{\\omega}}", "nablab": "{\\boldsymbol{\\nabla}}", "avg": ["{{\\left \\langle #1 \\right \\rangle}}", 1]}}})</script>
     
     <script type="text/javascript" src="_static/js/theme.js"></script>
@@ -118,6 +118,7 @@
 <li class="toctree-l1"><a class="reference internal" href="debugging.html">Debugging</a></li>
 <li class="toctree-l1"><a class="reference internal" href="gpu_porting.html">Offloading a routine to GPU</a></li>
 <li class="toctree-l1"><a class="reference internal" href="Hydrodynamics.html">Hydrodynamics</a></li>
+<li class="toctree-l1"><a class="reference internal" href="mhd.html">MHD</a></li>
 <li class="toctree-l1"><a class="reference internal" href="gravity.html">Gravity</a></li>
 <li class="toctree-l1"><a class="reference internal" href="diffusion.html">Diffusion</a></li>
 <li class="toctree-l1"><a class="reference internal" href="rotation.html">Rotation</a></li>
@@ -207,7 +208,7 @@
             
   <div class="section" id="introduction-to-castro">
 <h1>Introduction to Castro<a class="headerlink" href="#introduction-to-castro" title="Permalink to this headline">¶</a></h1>
-<p>Castro is a adaptive mesh, radiation hydrodynamics code that is
+<p>Castro is a adaptive mesh, radiation/MHD hydrodynamics code that is
 designed to model astrophysical reacting flows on massively parallel
 computers.</p>
 <p>Castro’s major capabilities:</p>
@@ -216,10 +217,12 @@ computers.</p>
 <li><p>1-, 2-, and 3-dimensional unsplit, 2nd-order finite-volume
 hydrodynamics; 4th order hydro for uniform grids.
 (see <a class="reference internal" href="Hydrodynamics.html#ch-hydro"><span class="std std-ref">Hydrodynamics</span></a>)</p></li>
-<li><p>generalized retry mechanism for recovering from physical
-violations over a timestep (see <a class="reference internal" href="timestepping.html#ch-retry"><span class="std std-ref">Retry Mechanism</span></a>)</p></li>
+<li><p>3-dimension constrained transport ideal MHD (single level only currently)
+(see <a class="reference internal" href="mhd.html#ch-mhd"><span class="std std-ref">MHD</span></a>)</p></li>
 <li><p>multigroup flux-limited diffusion radiation hydrodynamics
 (see <a class="reference internal" href="radiation.html#ch-radiation"><span class="std std-ref">Radiation</span></a>)</p></li>
+<li><p>generalized retry mechanism for recovering from physical
+violations over a timestep (see <a class="reference internal" href="timestepping.html#ch-retry"><span class="std std-ref">Retry Mechanism</span></a>)</p></li>
 <li><p>adaptive mesh refinement with subcycling; jumps of 2x and 4x
 between levels (see <a class="reference internal" href="AMR.html#ch-amr"><span class="std std-ref">Adaptive Mesh Refinement</span></a>)</p></li>
 <li><p>arbitrary equation of state (provided by the companion StarKiller

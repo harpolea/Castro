@@ -1,4 +1,4 @@
-.. Castro documentation master file, created by
+.. pyro documentation master file, created by
    sphinx-quickstart on Mon Dec 25 18:42:54 2017.
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
@@ -6,8 +6,6 @@
 ********************************************************
 Castro: an adaptive mesh compressible hydrodynamics code
 ********************************************************
-
-Test test test
 
 https://github.com/amrex-astro/Castro
 
@@ -38,6 +36,7 @@ https://github.com/amrex-astro/Castro
    debugging
    gpu_porting
    Hydrodynamics
+   mhd
    gravity
    diffusion
    rotation

@@ -25,7 +25,7 @@
         <script src="_static/underscore.js"></script>
         <script src="_static/doctools.js"></script>
         <script src="_static/language_data.js"></script>
-        <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+        <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
         <script type="text/x-mathjax-config">MathJax.Hub.Config({"TeX": {"Macros": {"kth": "{{k_\\mathrm{th}}}", "gcc": "{\\mathrm{g~cm^{-3}}}", "cms": "{\\mathrm{cm~s^{-1}}}", "presunit": "{\\mathrm{dyn~cm^{-2}}}", "accelunit": "{\\mathrm{cm~s^{-2}}}", "ergg": "{\\mathrm{erg~g^{-1}}}", "Ab": "{{\\bf A}}", "eb": "{{\\bf e}}", "Fb": "{{\\bf F}}", "gb": "{{\\bf g}}", "Hb": "{{\\bf H}}", "ib": "{{\\bf i}}", "Ib": "{{\\bf I}}", "Kb": "{{\\bf K}}", "lb": "{{\\bf l}}", "Lb": "{{\\bf L}}", "nb": "{{\\bf n}}", "Pb": "{{\\bf P}}", "Qb": "{{\\bf Q}}", "rb": "{{\\bf r}}", "Rb": "{{\\bf R}}", "Sb": "{{\\bf S}}", "ub": "{{\\bf u}}", "Ub": "{{\\bf U}}", "xb": "{{\\bf x}}", "dt": "{\\Delta t}", "omegadot": "{\\dot\\omega}", "inp": "{{\\rm in}}", "outp": "{{\\rm out}}", "sync": "{{\\rm sync}}", "half": "{\\frac{1}{2}}", "myhalf": "{\\half}", "nph": "{{n+\\myhalf}}", "kpp": "{\\ensuremath{\\kappa_{\\mathrm{P}}}}", "kpr": "{\\ensuremath{\\kappa_{\\mathrm{R}}}}", "kpf": "{\\ensuremath{\\kappa_{\\mathrm{F}}}}", "vb": "{\\boldsymbol{v}}", "vbt": "{\\widetilde{\\vb}}", "rbt": "{\\widetilde{\\rb}}", "ob": "{\\boldsymbol{\\omega}}", "nablab": "{\\boldsymbol{\\nabla}}", "avg": ["{{\\left \\langle #1 \\right \\rangle}}", 1]}}})</script>
     
     <script type="text/javascript" src="_static/js/theme.js"></script>
@@ -129,6 +129,7 @@
 <li class="toctree-l1"><a class="reference internal" href="debugging.html">Debugging</a></li>
 <li class="toctree-l1"><a class="reference internal" href="gpu_porting.html">Offloading a routine to GPU</a></li>
 <li class="toctree-l1"><a class="reference internal" href="Hydrodynamics.html">Hydrodynamics</a></li>
+<li class="toctree-l1"><a class="reference internal" href="mhd.html">MHD</a></li>
 <li class="toctree-l1"><a class="reference internal" href="gravity.html">Gravity</a></li>
 <li class="toctree-l1"><a class="reference internal" href="diffusion.html">Diffusion</a></li>
 <li class="toctree-l1"><a class="reference internal" href="rotation.html">Rotation</a></li>
@@ -230,7 +231,7 @@ state for <span class="math notranslate nohighlight">\(\Delta t/2\)</span>, then
 burned state, and then does the final <span class="math notranslate nohighlight">\(\Delta t/2\)</span> burning. No
 explicit coupling of the burning and hydro is done.  This code
 path uses the corner-transport upwind (CTU) method (the unsplit,
-characteristic tracing method of <a class="bibtex reference internal" href="zreferences.html#colella-1990" id="id1">[12]</a>).</p></li>
+characteristic tracing method of <a class="bibtex reference internal" href="zreferences.html#colella-1990" id="id1">[13]</a>).</p></li>
 <li><p>SDC: a class of iterative methods that couples the advection and reactions
 such that each process explicitly sees the effect of the other.  We have
 two SDC implementations in Castro.</p>
@@ -255,7 +256,7 @@ high-order in time convergence.  This is described in <span class="bibtex" id="i
 <blockquote>
 <div><ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">time_integration_method</span> <span class="pre">=</span> <span class="pre">0</span></code>: this is the original Castro method,
-described in <a class="bibtex reference internal" href="zreferences.html#castro-i" id="id3">[6]</a>.  This uses Strang splitting and the CTU
+described in <a class="bibtex reference internal" href="zreferences.html#castro-i" id="id3">[7]</a>.  This uses Strang splitting and the CTU
 hydrodynamics scheme.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">time_integration_method</span> <span class="pre">=</span> <span class="pre">1</span></code>: unused (in Castro 19.08 and
 earlier, this was a method-of-lines integration method with Strang
@@ -386,7 +387,7 @@ step. <a class="footnote-reference brackets" href="#id8" id="id4">1</a></p></li>
 </li>
 </ol>
 <div class="section" id="ctu-w-strang-split-reactions-flowchart">
-<h3>CTU w/ Strang-split Reactions Flowchart<a class="headerlink" href="#ctu-w-strang-split-reactions-flowchart" title="Permalink to this headline">¶</a></h3>
+<span id="sec-strangctu"></span><h3>CTU w/ Strang-split Reactions Flowchart<a class="headerlink" href="#ctu-w-strang-split-reactions-flowchart" title="Permalink to this headline">¶</a></h3>
 <p>This described the flow using the CTU + Strang-split reactions,
 including gravity, rotation, and diffusion.  This integration is
 selected via <code class="docutils literal notranslate"><span class="pre">castro.time_integration_method</span> <span class="pre">=</span> <span class="pre">0</span></code>.</p>
@@ -502,7 +503,7 @@ intermediate state, <span class="math notranslate nohighlight">\(\Ub^{n+1,(a)}\)
 <li><p>sponge : the sponge is a damping term added to
 the momentum equation that is designed to drive the velocities to
 zero over some timescale. Our implementation of the sponge
-follows that of Maestro <a class="bibtex reference internal" href="zreferences.html#maestro-iii" id="id5">[7]</a></p></li>
+follows that of Maestro <a class="bibtex reference internal" href="zreferences.html#maestro-iii" id="id5">[8]</a></p></li>
 <li><p>external sources : users can define problem-specific sources
 in the <code class="docutils literal notranslate"><span class="pre">ext_src_?d.f90</span></code> file. Sources for the different
 equations in the conservative state vector, <span class="math notranslate nohighlight">\(\Ub\)</span>, are indexed
