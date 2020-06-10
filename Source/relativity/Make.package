@@ -1,0 +1,5 @@
+# sources used with mhd
+
+CEXE_headers += Castro_sr.H
+
+CEXE_sources += Castro_sr.cpp
