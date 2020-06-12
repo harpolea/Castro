@@ -1,5 +1,8 @@
 # sources used with mhd
 
 CEXE_headers += Castro_sr.H
+CEXE_headers += sr_slope.H
 
 CEXE_sources += Castro_sr.cpp
+CEXE_sources += Castro_ctu_rhd.cpp
+CEXE_sources += sr_riemann.cpp

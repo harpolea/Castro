@@ -3,22 +3,29 @@
 
 using namespace amrex;
 
-AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE amrex::Real f_p(amrex::Real p, const amrex::Real* U_zone);
+// this can't be a member function as it doesn't play nicely with the function pointer
+AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE Real f_p(Real p, const Real* U_zone);
 
 void Castro::LorentzFac(const Box& bx, Array4<Real const> const& vel, Array4<Real> const& W) {
-    amrex::ParallelFor(bx, [=] AMREX_GPU_HOST_DEVICE(int i, int j, int k) noexcept {
+    ParallelFor(bx, [=] AMREX_GPU_HOST_DEVICE(int i, int j, int k) noexcept {
         const Real v2 = vel(i, j, k, 0) * vel(i, j, k, 0) + vel(i, j, k, 1) * vel(i, j, k, 1) +
                         vel(i, j, k, 2) * vel(i, j, k, 2);
         W(i, j, k) = 1.0_rt / std::sqrt(1.0_rt - v2);
     });
 }
 
+AMREX_GPU_HOST_DEVICE void Castro::ConsToPrim(Real* q_zone, Real* U_zone) {
 
-AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE void Castro::ConsToPrim(Real* q_zone, Real* U_zone) 
-{
+    for (auto n = 0; n < NUM_STATE; ++n) {
+        q_zone[n] = 0.0_rt;
+    }
     // find pressure using root finder
-    Real p_lo = amrex::max(amrex::max(std::abs(U_zone[UMX]), amrex::max(std::abs(U_zone[UMY]), std::abs(U_zone[UMZ]))) - U_zone[UEDEN], 0.0_rt);
-    Real p_hi = amrex::max(std::abs(U_zone[UMX]), amrex::max(std::abs(U_zone[UMY]), std::abs(U_zone[UMZ]))); // FIXME: what should this be???
+    Real p_lo = max(max(std::abs(U_zone[UMX]), max(std::abs(U_zone[UMY]), std::abs(U_zone[UMZ]))) -
+                        U_zone[UEDEN],
+                    0.0_rt);
+    Real p_hi =
+        max(std::abs(U_zone[UMX]),
+            max(std::abs(U_zone[UMY]), std::abs(U_zone[UMZ])));  // FIXME: what should this be???
 
     if (f_p(p_lo, U_zone) * f_p(p_hi, U_zone) > 0.0_rt) {
         p_hi *= 10.0_rt;
@@ -30,17 +37,20 @@ AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE void Castro::ConsToPrim(Real* q_zone, R
     q_zone[QU] = U_zone[UMX] / (U_zone[UEDEN] + p);
     q_zone[QV] = U_zone[UMY] / (U_zone[UEDEN] + p);
     q_zone[QW] = U_zone[UMZ] / (U_zone[UEDEN] + p);
-    
-    Real W_star = 1.0_rt / std::sqrt(1 - q_zone[QU]*q_zone[QU] - 
-        q_zone[QV]*q_zone[QV] - q_zone[QW]*q_zone[QW]);
-    
+
+    Real W_star = 1.0_rt / std::sqrt(1 - q_zone[QU] * q_zone[QU] - q_zone[QV] * q_zone[QV] -
+                                     q_zone[QW] * q_zone[QW]);
+
     q_zone[QRHO] = U_zone[URHO] / W_star;
-    q_zone[QREINT] = (U_zone[UEDEN] - U_zone[URHO] * W_star + p * (1.0_rt - W_star*W_star)) / (W_star*W_star);
+    q_zone[QREINT] = (U_zone[UEDEN] - U_zone[URHO] * W_star + p * (1.0_rt - W_star * W_star)) /
+                     (W_star * W_star);
 }
 
+AMREX_GPU_HOST_DEVICE void Castro::PrimToCons(Real* q_zone, Real* U_zone) {
+    for (auto n = 0; n < NUM_STATE; ++n) {
+        U_zone[n] = 0.0_rt;
+    }
 
-AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE void Castro::PrimToCons(Real* q_zone, Real* U_zone) 
-{
     Real v2 = q_zone[QU] * q_zone[QU] + q_zone[QV] * q_zone[QV] + q_zone[QW] * q_zone[QW];
     Real W = 1.0_rt / std::sqrt(1.0_rt - v2);
     Real h = (q_zone[QREINT] / q_zone[QRHO] + q_zone[QPRES]) / q_zone[QRHO];
@@ -55,16 +65,29 @@ AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE void Castro::PrimToCons(Real* q_zone, R
     U_zone[UEINT] = U_zone[UEDEN];
 }
 
-AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE amrex::Real f_p(amrex::Real pbar, const amrex::Real* U_zone)
-{
+AMREX_GPU_HOST_DEVICE void Castro::Flux(Real* F, const Real* q_zone, const Real* U_zone,
+                                        const int dir) {
+    for (auto n = 0; n < NUM_STATE; ++n) {
+        F[n] = 0.0_rt;
+    }
+
+    F[QRHO] = U_zone[URHO] * q_zone[QU + dir];
+    F[QU] = U_zone[UMX] * q_zone[QU + dir];
+    F[QV] = U_zone[UMY] * q_zone[QU + dir];
+    F[QW] = U_zone[UMZ] * q_zone[QU + dir];
+    F[QU + dir] += q_zone[QPRES];
+    F[QREINT] = U_zone[UMX + dir] - U_zone[URHO] * q_zone[QU + dir];
+}
+
+AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE Real f_p(Real pbar, const Real* U_zone) {
     Real u_star = U_zone[UMX] / (U_zone[UEDEN] + pbar);
     Real v_star = U_zone[UMY] / (U_zone[UEDEN] + pbar);
     Real w_star = U_zone[UMZ] / (U_zone[UEDEN] + pbar);
 
-    Real W_star = 1.0_rt / std::sqrt(1 - u_star*u_star - v_star*v_star - w_star*w_star);
+    Real W_star = 1.0_rt / std::sqrt(1 - u_star * u_star - v_star * v_star - w_star * w_star);
 
-    Real eps_star = (U_zone[UEDEN] - U_zone[URHO] * W_star + 
-        pbar * (1.0_rt - W_star*W_star)) / (U_zone[URHO] * W_star);
+    Real eps_star = (U_zone[UEDEN] - U_zone[URHO] * W_star + pbar * (1.0_rt - W_star * W_star)) /
+                    (U_zone[URHO] * W_star);
 
     Real rho_bar = U_zone[URHO] / W_star;
 
@@ -81,11 +104,9 @@ AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE amrex::Real f_p(amrex::Real pbar, const
     return eos_state.p - pbar;
 }
 
-
 AMREX_GPU_HOST_DEVICE
-Real Castro::BrentRootFinder(const amrex::Real lo, const amrex::Real hi,
-                             RootFindFunc func, const amrex::Real* args) noexcept 
-{
+Real Castro::BrentRootFinder(const Real lo, const Real hi, RootFindFunc func,
+                             const Real* args) noexcept {
     const Real tol = 1.e-12_rt;
     const int MAXITER = 100;
     const Real EPS = 3.0e-15_rt;
@@ -101,8 +122,8 @@ Real Castro::BrentRootFinder(const amrex::Real lo, const amrex::Real hi,
     Real fc = fb;
 
     if (fb * fa > 0.0_rt) {
-        //        amrex::AllPrint() << "fa " << fa << " fb " << fb << "\n";
-        amrex::Error(
+        //        AllPrint() << "fa " << fa << " fb " << fb << "\n";
+        Error(
             "BrentRootFinder. Root must be bracketed, but instead the supplied end points have the "
             "same sign.");
         return 0.0_rt;
@@ -123,7 +144,7 @@ Real Castro::BrentRootFinder(const amrex::Real lo, const amrex::Real hi,
             e = d;
         }
 
-        if (amrex::Math::abs(fc) < amrex::Math::abs(fb)) {
+        if (Math::abs(fc) < Math::abs(fb)) {
             a = b;
             b = c;
             c = a;
@@ -133,14 +154,14 @@ Real Castro::BrentRootFinder(const amrex::Real lo, const amrex::Real hi,
         }
 
         //  Convergence check
-        Real tol1 = 2.0_rt * EPS * amrex::Math::abs(b) + 0.5_rt * tol;
+        Real tol1 = 2.0_rt * EPS * Math::abs(b) + 0.5_rt * tol;
         Real xm = 0.5_rt * (c - b);
 
-        if (amrex::Math::abs(xm) <= tol1 || fb == 0.0_rt) {
+        if (Math::abs(xm) <= tol1 || fb == 0.0_rt) {
             break;
         }
 
-        if (amrex::Math::abs(e) >= tol1 && amrex::Math::abs(fa) > amrex::Math::abs(fb)) {
+        if (Math::abs(e) >= tol1 && Math::abs(fa) > Math::abs(fb)) {
             //  Attempt inverse quadratic interpolation
             s = fb / fa;
             if (a == c) {
@@ -156,10 +177,9 @@ Real Castro::BrentRootFinder(const amrex::Real lo, const amrex::Real hi,
             //  Check whether in bounds
             if (p > 0.0_rt) q = -q;
 
-            p = amrex::Math::abs(p);
+            p = Math::abs(p);
 
-            if (2.0 * p < amrex::min(3.0 * xm * q - amrex::Math::abs(tol1 * q),
-                                     1.0 * amrex::Math::abs(e * q))) {
+            if (2.0 * p < min(3.0 * xm * q - Math::abs(tol1 * q), 1.0 * Math::abs(e * q))) {
                 //  Accept interpolation
                 e = d;
                 d = p / q;
@@ -179,7 +199,7 @@ Real Castro::BrentRootFinder(const amrex::Real lo, const amrex::Real hi,
         fa = fb;
 
         //  Evaluate new trial root
-        if (amrex::Math::abs(d) > tol1) {
+        if (Math::abs(d) > tol1) {
             b += d;
         } else {
             if (xm < 0.0_rt) {
@@ -193,7 +213,7 @@ Real Castro::BrentRootFinder(const amrex::Real lo, const amrex::Real hi,
     }
 
     if (i >= MAXITER) {
-        amrex::Error("BrentRootFinder: exceeding maximum iterations.");
+        Error("BrentRootFinder: exceeding maximum iterations.");
     }
 
     return b;

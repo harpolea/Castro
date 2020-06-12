@@ -28,8 +28,10 @@ CEXE_sources += sum_integrated_quantities.cpp
 FEXE_headers += Castro_F.H
 FEXE_headers += Castro_error_F.H
 
-CEXE_headers += Derive.H
-CEXE_sources += Derive.cpp
+CEXE_headers += Derive.CEXE_headers
+ifneq ($(USE_CUDA), TRUE)
+  CEXE_sources += Derive.cpp
+endif
 
 CEXE_headers += Castro_generic_fill.H
 CEXE_sources += Castro_generic_fill.cpp

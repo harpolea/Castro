@@ -406,6 +406,10 @@ bool
 Castro::apply_sources()
 {
 
+#ifdef SR
+    return false;
+#endif
+
     for (int n = 0; n < num_src; ++n) {
         if (source_flag(n))
             return true;

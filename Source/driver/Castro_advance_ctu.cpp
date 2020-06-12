@@ -164,6 +164,7 @@ Castro::do_advance_ctu(Real time,
     if (do_hydro)
     {
 #ifndef MHD
+#ifndef SR
       // Construct the primitive variables.
       cons_to_prim(time);
 
@@ -179,6 +180,11 @@ Castro::do_advance_ctu(Real time,
 
       construct_ctu_hydro_source(time, dt);
       apply_source_to_state(S_new, hydro_source, dt, 0);
+#else
+
+      construct_ctu_rhd_source(time, dt);
+      apply_source_to_state(S_new, hydro_source, dt, 0);
+#endif
 #else
       just_the_mhd(time, dt);
       apply_source_to_state(S_new, hydro_source, dt, 0);
