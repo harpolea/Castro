@@ -1473,7 +1473,11 @@ Castro::estTimeStep (Real dt_old)
 #ifdef MHD
           estdt_hydro = estdt_mhd();
 #else
+#ifdef SR
+          estdt_hydro = estdt_rhd();
+#else
           estdt_hydro = estdt_cfl(time);
+#endif
 #endif
 
 #ifdef RADIATION

@@ -20,18 +20,20 @@ AMREX_GPU_HOST_DEVICE void Castro::ConsToPrim(Real* q_zone, Real* U_zone) {
         q_zone[n] = 0.0_rt;
     }
     // find pressure using root finder
-    Real p_lo = max(max(std::abs(U_zone[UMX]), max(std::abs(U_zone[UMY]), std::abs(U_zone[UMZ]))) -
-                        U_zone[UEDEN],
-                    0.0_rt);
-    Real p_hi =
-        max(std::abs(U_zone[UMX]),
-            max(std::abs(U_zone[UMY]), std::abs(U_zone[UMZ])));  // FIXME: what should this be???
+    Real a = U_zone[UMX]*U_zone[UMX] + U_zone[UMY]*U_zone[UMY] + U_zone[UMZ]*U_zone[UMZ] -
+                        U_zone[UEDEN] - U_zone[URHO];
+    Real p_lo = amrex::max(std::sqrt(amrex::max(a, 0.0_rt)),
+                    small_pres);
+    Real p_hi = amrex::max((eos_gamma - 1.0_rt) * U_zone[UEDEN] * 1.0000001_rt, small_pres);
 
     if (f_p(p_lo, U_zone) * f_p(p_hi, U_zone) > 0.0_rt) {
         p_hi *= 10.0_rt;
         p_lo *= 0.1_rt;
     }
+
+    Print() << "p_lo = " << p_lo << ", p_hi = " << p_hi << ", UEDEN = " << gamma << std::endl;
     Real p = BrentRootFinder(p_lo, p_hi, f_p, U_zone);
+    Print() << "pbar = " << p << std::endl;
 
     q_zone[QPRES] = p;
     q_zone[QU] = U_zone[UMX] / (U_zone[UEDEN] + p);
@@ -44,6 +46,8 @@ AMREX_GPU_HOST_DEVICE void Castro::ConsToPrim(Real* q_zone, Real* U_zone) {
     q_zone[QRHO] = U_zone[URHO] / W_star;
     q_zone[QREINT] = (U_zone[UEDEN] - U_zone[URHO] * W_star + p * (1.0_rt - W_star * W_star)) /
                      (W_star * W_star);
+
+    q_zone[QTEMP] = U_zone[UTEMP];
 }
 
 AMREX_GPU_HOST_DEVICE void Castro::PrimToCons(Real* q_zone, Real* U_zone) {
@@ -63,6 +67,7 @@ AMREX_GPU_HOST_DEVICE void Castro::PrimToCons(Real* q_zone, Real* U_zone) {
 
     U_zone[UEDEN] = U_zone[URHO] * h * W - q_zone[QPRES] - U_zone[URHO];
     U_zone[UEINT] = U_zone[UEDEN];
+    U_zone[UTEMP] = q_zone[QTEMP];
 }
 
 AMREX_GPU_HOST_DEVICE void Castro::Flux(Real* F, const Real* q_zone, const Real* U_zone,
@@ -71,12 +76,13 @@ AMREX_GPU_HOST_DEVICE void Castro::Flux(Real* F, const Real* q_zone, const Real*
         F[n] = 0.0_rt;
     }
 
-    F[QRHO] = U_zone[URHO] * q_zone[QU + dir];
-    F[QU] = U_zone[UMX] * q_zone[QU + dir];
-    F[QV] = U_zone[UMY] * q_zone[QU + dir];
-    F[QW] = U_zone[UMZ] * q_zone[QU + dir];
-    F[QU + dir] += q_zone[QPRES];
-    F[QREINT] = U_zone[UMX + dir] - U_zone[URHO] * q_zone[QU + dir];
+    F[URHO] = U_zone[URHO] * q_zone[QU + dir];
+    F[UMX] = U_zone[UMX] * q_zone[QU + dir];
+    F[UMY] = U_zone[UMY] * q_zone[QU + dir];
+    F[UMZ] = U_zone[UMZ] * q_zone[QU + dir];
+    F[UMX + dir] += q_zone[QPRES];
+    F[UEDEN] = U_zone[UMX + dir] - U_zone[URHO] * q_zone[QU + dir];
+    F[UEINT] = F[UEDEN];
 }
 
 AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE Real f_p(Real pbar, const Real* U_zone) {

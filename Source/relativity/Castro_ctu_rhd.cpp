@@ -57,7 +57,6 @@ void Castro::construct_ctu_rhd_source(Real time, Real dt) {
         FArrayBox q;
         FArrayBox flatn;
         FArrayBox dq;
-        FArrayBox shk;
         FArrayBox src_q;
         FArrayBox qxm, qxp;
         // #if AMREX_SPACEDIM >= 2
@@ -207,18 +206,6 @@ void Castro::construct_ctu_rhd_source(Real time, Real dt) {
             const Box& gzbx = amrex::grow(zbx, 1);
 #endif
 
-            shk.resize(obx, 1);
-            Elixir elix_shk = shk.elixir();
-            fab_size += shk.nBytes();
-
-            Array4<Real> const shk_arr = shk.array();
-
-            // Multidimensional shock detection
-            // Used for the hybrid Riemann solver
-            amrex::ParallelFor(obx, [=] AMREX_GPU_HOST_DEVICE(int i, int j, int k) noexcept {
-                shk_arr(i, j, k) = 0.0;
-            });
-
             const Box& qbx = amrex::grow(bx, NUM_GROW);
 
             src_q.resize(qbx, NQSRC);
@@ -234,7 +221,7 @@ void Castro::construct_ctu_rhd_source(Real time, Real dt) {
 
             qxm.resize(gxbx, NQ);
             Elixir elix_qxm = qxm.elixir();
-            fab_size += shk.nBytes();
+            fab_size += qxm.nBytes();
 
             qxp.resize(obx, NQ);
             Elixir elix_qxp = qxp.elixir();
@@ -360,12 +347,10 @@ void Castro::construct_ctu_rhd_source(Real time, Real dt) {
             fab_size += pradial.nBytes();
 #endif
 
-            // TODO: WRITE RIEMANN SOLVER AND INSERT HERE.
-
 #if AMREX_SPACEDIM == 1
             // cmpflx_plus_godunov(xbx, qxm_arr, qxp_arr, flux0_arr, q_int_arr, qex_arr, qaux_arr,
             //                     shk_arr, 0);
-            hlle(xbx, qxm_arr, qxp_arr, flux0_arr, 0, dt);
+            hlle(xbx, qxm_arr, qxp_arr, flux0_arr, q_int_arr, qex_arr, 0, dt);
 
 #endif  // 1-d
 
@@ -797,25 +782,25 @@ void Castro::construct_ctu_rhd_source(Real time, Real dt) {
             Array4<Real> const update_arr = hydro_source.array(mfi);
 
             Array4<Real> const flx_arr = (flux[0]).array();
-            Array4<Real> const qx_arr = (qe[0]).array();
+            // Array4<Real> const qx_arr = (qe[0]).array();
 
-#if AMREX_SPACEDIM >= 2
-            Array4<Real> const fly_arr = (flux[1]).array();
-            Array4<Real> const qy_arr = (qe[1]).array();
-#endif
+// #if AMREX_SPACEDIM >= 2
+//             Array4<Real> const fly_arr = (flux[1]).array();
+//             Array4<Real> const qy_arr = (qe[1]).array();
+// #endif
 
-#if AMREX_SPACEDIM == 3
-            Array4<Real> const flz_arr = (flux[2]).array();
-            Array4<Real> const qz_arr = (qe[2]).array();
-#endif
+// #if AMREX_SPACEDIM == 3
+//             Array4<Real> const flz_arr = (flux[2]).array();
+//             Array4<Real> const qz_arr = (qe[2]).array();
+// #endif
 
-            consup_rhd(bx, update_arr, flx_arr, qx_arr, areax_arr,
-#if AMREX_SPACEDIM >= 2
-                       fly_arr, qy_arr, areay_arr,
-#endif
-#if AMREX_SPACEDIM == 3
-                       flz_arr, qz_arr, areaz_arr,
-#endif
+            consup_rhd(bx, update_arr, flx_arr, areax_arr,
+// #if AMREX_SPACEDIM >= 2
+//                        fly_arr, areay_arr,
+// #endif
+// #if AMREX_SPACEDIM == 3
+//                        flz_arr, areaz_arr,
+// #endif
                        vol_arr);
 
             for (int idir = 0; idir < AMREX_SPACEDIM; ++idir) {
@@ -1218,14 +1203,13 @@ void Castro::plm(const Box& bx, const Box& vbx, Array4<Real const> const& q_arr,
     }
 }
 
-void Castro::consup_rhd(const Box& bx, Array4<Real> const& update, Array4<Real> const& flux0,
-                        Array4<Real const> const& qx, Array4<Real const> const& area0,
+void Castro::consup_rhd(const Box& bx, Array4<Real> const& update, Array4<Real> const& flux0,Array4<Real const> const& area0,
 #if AMREX_SPACEDIM >= 2
-                        Array4<Real> const& flux1, Array4<Real const> const& qy,
+                        Array4<Real> const& flux1, 
                         Array4<Real const> const& area1,
 #endif
 #if AMREX_SPACEDIM == 3
-                        Array4<Real> const& flux2, Array4<Real const> const& qz,
+                        Array4<Real> const& flux2, 
                         Array4<Real const> const& area2,
 #endif
                         Array4<Real const> const& vol) {

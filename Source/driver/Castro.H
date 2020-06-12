@@ -610,6 +610,14 @@ public:
 ///
     amrex::Real estdt_cfl(const amrex::Real time);
 
+#ifdef SR
+
+    ///
+    /// Compute the CFL timestep
+    ///
+    amrex::Real estdt_rhd();
+#endif
+
 
 #ifdef MHD
 ///

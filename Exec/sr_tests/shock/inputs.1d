@@ -1,6 +1,6 @@
 # ------------------  INPUTS TO MAIN PROGRAM  -------------------
 max_step = 500
-stop_time = 0.4
+stop_time = 10
 
 # PROBLEM SIZE & GEOMETRY
 geometry.is_periodic =  0 
@@ -21,6 +21,8 @@ castro.hi_bc       =  2
 castro.do_hydro = 1
 castro.do_react = 0
 castro.do_grav = 0
+castro.do_sponge = 0
+castro.add_ext_src = 0
 
 # TIME STEP CONTROL
 

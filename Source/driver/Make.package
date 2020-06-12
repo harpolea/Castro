@@ -29,7 +29,7 @@ FEXE_headers += Castro_F.H
 FEXE_headers += Castro_error_F.H
 
 CEXE_headers += Derive.CEXE_headers
-ifneq ($(USE_CUDA), TRUE)
+ifneq ($(USE_SR), TRUE)
   CEXE_sources += Derive.cpp
 endif
 

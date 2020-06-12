@@ -625,11 +625,13 @@ Castro::scale_flux(const Box& bx,
   {
 
     flux(i,j,k,n) = dt * flux(i,j,k,n) * area_arr(i,j,k);
+#ifndef SR
 #if AMREX_SPACEDIM == 1
     // Correct the momentum flux with the grad p part.
     if (coord_type == 0 && n == UMX) {
       flux(i,j,k,n) += dt * area_arr(i,j,k) * qint(i,j,k,GDPRES);
     }
+#endif
 #endif
   });
 }

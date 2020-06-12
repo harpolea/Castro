@@ -42,18 +42,20 @@ void plm(const amrex::Box& bx, const amrex::Box& vbx, amrex::Array4<amrex::Real 
          const amrex::Real dt);
 
 void consup_rhd(const amrex::Box& bx, amrex::Array4<amrex::Real> const& update,
-                amrex::Array4<amrex::Real> const& flux0, amrex::Array4<amrex::Real const> const& qx,
+                amrex::Array4<amrex::Real> const& flux0, 
                 amrex::Array4<amrex::Real const> const& area0,
 #if AMREX_SPACEDIM >= 2
-                amrex::Array4<amrex::Real> const& flux1, amrex::Array4<amrex::Real const> const& qy,
+                amrex::Array4<amrex::Real> const& flux1, 
                 amrex::Array4<amrex::Real const> const& area1,
 #endif
 #if AMREX_SPACEDIM == 3
-                amrex::Array4<amrex::Real> const& flux2, amrex::Array4<amrex::Real const> const& qz,
+                amrex::Array4<amrex::Real> const& flux2, 
                 amrex::Array4<amrex::Real const> const& area2,
 #endif
                 amrex::Array4<amrex::Real const> const& vol);
 
 void hlle(const amrex::Box& bx, amrex::Array4<amrex::Real const> const& qL,
           amrex::Array4<amrex::Real const> const& qR, amrex::Array4<amrex::Real> const& F,
+          amrex::Array4<amrex::Real> const& qint,
+          amrex::Array4<amrex::Real> const& qgdnv,
           const int dir, const amrex::Real dt);

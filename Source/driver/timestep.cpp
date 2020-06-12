@@ -138,6 +138,114 @@ Castro::estdt_cfl(const Real time)
 
 }
 
+#ifdef SR
+Real
+Castro::estdt_rhd()
+{
+    // Courant-condition limited timestep
+
+    GpuArray<Real, 3> center;
+    ca_get_center(center.begin());
+
+    const auto dx = geom.CellSizeArray();
+
+    ReduceOps<ReduceOpMin> reduce_op;
+    ReduceData<Real> reduce_data(reduce_op);
+    using ReduceTuple = typename decltype(reduce_data)::Type;
+
+    const MultiFab& stateMF = get_new_data(State_Type);
+
+    const int ltime_integration_method = time_integration_method;
+
+#ifdef _OPENMP
+#pragma omp parallel
+#endif
+    for (MFIter mfi(stateMF, TilingIfNotGPU()); mfi.isValid(); ++mfi) {
+        const Box& box = mfi.tilebox();
+
+        auto u = stateMF.array(mfi);
+
+        reduce_op.eval(box, reduce_data,
+        [=] AMREX_GPU_HOST_DEVICE (int i, int j, int k) noexcept -> ReduceTuple
+        {
+            Real q_zone[NQ];
+            Real U_zone[NUM_STATE];
+
+            for (auto n = 0; n < NUM_STATE; ++n) {
+                U_zone[n] = u(i, j, k, n);
+            }
+
+            ConsToPrim(q_zone, U_zone);
+
+            Real rhoInv = 1.0_rt / q_zone[QRHO];
+
+            eos_t eos_state;
+            eos_state.rho = q_zone[QRHO];
+            eos_state.T = u(i,j,k,UTEMP);
+            eos_state.p = q_zone[QPRES];
+            for (int n = 0; n < NumSpec; n++) {
+                eos_state.xn[n] = q_zone[QFS+n];
+            }
+            for (int n = 0; n < NumAux; n++) {
+                eos_state.aux[n] = q_zone[QFX+n];
+            }
+
+            eos(eos_input_rp, eos_state);
+
+            // Compute velocity and then calculate CFL timestep.
+
+            Real ux = q_zone[QU];
+            Real uy = q_zone[QV];
+            Real uz = q_zone[QW];
+
+            Real c = eos_state.cs;
+
+            Print() << "p = " << eos_state.p << std::endl;
+
+            Real dt1 = dx[0]/(c + std::abs(ux));
+
+            Real dt2;
+// #if AMREX_SPACEDIM >= 2
+//       dt2 = dx[1]/(c + std::abs(uy));
+// #else
+//       dt2 = dt1;
+// #endif
+
+            Real dt3;
+// #if AMREX_SPACEDIM == 3
+//       dt3 = dx[2]/(c + std::abs(uz));
+// #else
+            dt3 = dt1;
+// #endif
+
+            // The CTU method has a less restrictive timestep than MOL-based
+            // schemes (including the true SDC).  Since the simplified SDC
+            // solver is based on CTU, we can use its timestep.
+            if (ltime_integration_method == 0 || ltime_integration_method == 3) {
+                return {amrex::min(dt1, dt2, dt3)};
+
+            } else {
+                // method of lines-style constraint is tougher
+                Real dt_tmp = 1.0_rt/dt1;
+// #if AMREX_SPACEIM >= 2
+//         dt_tmp += 1.0_rt/dt2;
+// #endif
+// #if AMREX_SPACEDIM == 3
+//         dt_tmp += 1.0_rt/dt3;
+// #endif
+
+                return 1.0_rt/dt_tmp;
+            }
+        });
+    }
+
+    ReduceTuple hv = reduce_data.value();
+    Real estdt_rhd = amrex::get<0>(hv);
+
+    return estdt_rhd;
+}
+#endif
+
 #ifdef MHD
 Real
 Castro::estdt_mhd()
