@@ -6,7 +6,8 @@
 using namespace amrex;
 
 void Castro::hlle(const Box& bx, Array4<Real const> const& qL, Array4<Real const> const& qR,
-                  Array4<Real> const& F, Array4<Real> const&  qint, Array4<Real> const&  qgdnv, const int dir, const Real dt) {
+                  Array4<Real> const& F, Array4<Real> const& qint, Array4<Real> const& qgdnv,
+                  const int dir, const Real dt) {
 
     const auto dx = geom.CellSizeArray();
 
@@ -55,7 +56,7 @@ void Castro::hlle(const Box& bx, Array4<Real const> const& qL, Array4<Real const
         ConsToPrim(qint_cell, Uint);
 
         for (int n = 0; n < NQ; ++n) {
-            qint(i,j,k,n) = qint_cell[n];
+            qint(i, j, k, n) = qint_cell[n];
         }
     });
 

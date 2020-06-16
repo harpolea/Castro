@@ -64,7 +64,7 @@ subroutine ca_initdata(level, time, lo, hi, nscal, &
            W = 1 / sqrt(1 - v*v)
 
            ! entropy 
-           h = 1.0e0_rt + eos_gamma * p / state(i,j,k,URHO)
+           h = 1.0e0_rt + eos_gamma * p / ((eos_gamma - 1.0_rt) * state(i,j,k,URHO))
 
            state(i,j,k,URHO) = state(i,j,k,URHO) * W
 

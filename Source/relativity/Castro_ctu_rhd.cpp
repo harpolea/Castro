@@ -784,23 +784,23 @@ void Castro::construct_ctu_rhd_source(Real time, Real dt) {
             Array4<Real> const flx_arr = (flux[0]).array();
             // Array4<Real> const qx_arr = (qe[0]).array();
 
-// #if AMREX_SPACEDIM >= 2
-//             Array4<Real> const fly_arr = (flux[1]).array();
-//             Array4<Real> const qy_arr = (qe[1]).array();
-// #endif
+            // #if AMREX_SPACEDIM >= 2
+            //             Array4<Real> const fly_arr = (flux[1]).array();
+            //             Array4<Real> const qy_arr = (qe[1]).array();
+            // #endif
 
-// #if AMREX_SPACEDIM == 3
-//             Array4<Real> const flz_arr = (flux[2]).array();
-//             Array4<Real> const qz_arr = (qe[2]).array();
-// #endif
+            // #if AMREX_SPACEDIM == 3
+            //             Array4<Real> const flz_arr = (flux[2]).array();
+            //             Array4<Real> const qz_arr = (qe[2]).array();
+            // #endif
 
             consup_rhd(bx, update_arr, flx_arr, areax_arr,
-// #if AMREX_SPACEDIM >= 2
-//                        fly_arr, areay_arr,
-// #endif
-// #if AMREX_SPACEDIM == 3
-//                        flz_arr, areaz_arr,
-// #endif
+                       // #if AMREX_SPACEDIM >= 2
+                       //                        fly_arr, areay_arr,
+                       // #endif
+                       // #if AMREX_SPACEDIM == 3
+                       //                        flz_arr, areaz_arr,
+                       // #endif
                        vol_arr);
 
             for (int idir = 0; idir < AMREX_SPACEDIM; ++idir) {
@@ -1203,14 +1203,13 @@ void Castro::plm(const Box& bx, const Box& vbx, Array4<Real const> const& q_arr,
     }
 }
 
-void Castro::consup_rhd(const Box& bx, Array4<Real> const& update, Array4<Real> const& flux0,Array4<Real const> const& area0,
+void Castro::consup_rhd(const Box& bx, Array4<Real> const& update, Array4<Real> const& flux0,
+                        Array4<Real const> const& area0,
 #if AMREX_SPACEDIM >= 2
-                        Array4<Real> const& flux1, 
-                        Array4<Real const> const& area1,
+                        Array4<Real> const& flux1, Array4<Real const> const& area1,
 #endif
 #if AMREX_SPACEDIM == 3
-                        Array4<Real> const& flux2, 
-                        Array4<Real const> const& area2,
+                        Array4<Real> const& flux2, Array4<Real const> const& area2,
 #endif
                         Array4<Real const> const& vol) {
 
