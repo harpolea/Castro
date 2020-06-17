@@ -5,8 +5,8 @@
 
 using namespace amrex;
 
-void Castro::hlle(const Box& bx, Array4<Real const> const& qL, Array4<Real const> const& qR,
-                  Array4<Real> const& F, Array4<Real> const& qint, Array4<Real> const& qgdnv,
+void Castro::hlle(const Box& bx, Array4<Real const> const& UL, Array4<Real const> const& UR,
+                  Array4<Real> const& F, Array4<Real> const& Uint, Array4<Real> const& qgdnv,
                   const int dir, const Real dt) {
 
     const auto dx = geom.CellSizeArray();
@@ -15,20 +15,17 @@ void Castro::hlle(const Box& bx, Array4<Real const> const& qL, Array4<Real const
         Real qL_cell[NQ];
         Real qR_cell[NQ];
 
-        Real UL[NUM_STATE];
-        Real UR[NUM_STATE];
+        Real UL_cell[NUM_STATE];
+        Real UR_cell[NUM_STATE];
 
-        Real Uint[NUM_STATE];
-        Real qint_cell[NQ];
-
-        for (auto n = 0; n < NQ; ++n) {
-            qL_cell[n] = qL(i, j, k, n);
-            qR_cell[n] = qR(i, j, k, n);
+        for (auto n = 0; n < NUM_STATE; ++n) {
+            UL_cell[n] = UL(i, j, k, n);
+            UR_cell[n] = UR(i, j, k, n);
         }
 
-        // get the conserved states
-        PrimToCons(qL_cell, UL);
-        PrimToCons(qR_cell, UR);
+        // get the primitive states
+        ConsToPrim(qL_cell, UL_cell);
+        ConsToPrim(qR_cell, UR_cell);
 
         // define the signal speeds
         // assume square grids
@@ -39,8 +36,8 @@ void Castro::hlle(const Box& bx, Array4<Real const> const& qL, Array4<Real const
         Real FR[NUM_STATE];
 
         // get the fluxes
-        Flux(FL, qL_cell, UL, dir);
-        Flux(FR, qR_cell, UR, dir);
+        Flux(FL, qL_cell, UL_cell, dir);
+        Flux(FR, qR_cell, UR_cell, dir);
 
         // calculate numerical flux vector
         Real aL_m = amrex::min(0.0_rt, aL);
@@ -48,17 +45,12 @@ void Castro::hlle(const Box& bx, Array4<Real const> const& qL, Array4<Real const
 
         for (int n = 0; n < NUM_STATE; ++n) {
             F(i, j, k, n) =
-                (aR_p * FL[n] - aL_m * FR[n] + aR_p * aL_m * (UR[n] - UL[n])) / (aR_p - aL_m);
+                (aR_p * FL[n] - aL_m * FR[n] + aR_p * aL_m * (UR_cell[n] - UL_cell[n])) /
+                (aR_p - aL_m);
 
-            Uint[n] = (aR * UR[n] - aL * UL[n] - FR[n] + FL[n]) / (aR - aL);
-        }
-
-        ConsToPrim(qint_cell, Uint);
-
-        for (int n = 0; n < NQ; ++n) {
-            qint(i, j, k, n) = qint_cell[n];
+            Uint(i, j, k, n) = (aR * UR_cell[n] - aL * UL_cell[n] - FR[n] + FL[n]) / (aR - aL);
         }
     });
 
-    store_godunov_state(bx, qint, qgdnv);
+    // store_godunov_state(bx, qint, qgdnv);
 }

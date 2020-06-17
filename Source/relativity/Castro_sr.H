@@ -26,20 +26,21 @@ amrex::Real BrentRootFinder(const amrex::Real lo, const amrex::Real i, RootFindF
 void construct_ctu_rhd_source(amrex::Real time, amrex::Real dt);
 
 void plm(const amrex::Box& bx, const amrex::Box& vbx, amrex::Array4<amrex::Real const> const& q_arr,
+         amrex::Array4<amrex::Real const> const& U_arr,
          amrex::Array4<amrex::Real const> const& flatn,
          amrex::Array4<amrex::Real const> const& qaux_arr,
-         amrex::Array4<amrex::Real const> const& srcQ, amrex::Array4<amrex::Real> const& dq,
-         amrex::Array4<amrex::Real> const& qxm, amrex::Array4<amrex::Real> const& qxp,
+         amrex::Array4<amrex::Real const> const& srcQ, amrex::Array4<amrex::Real> const& dU,
+         amrex::Array4<amrex::Real> const& Uxm, amrex::Array4<amrex::Real> const& Uxp,
 #if AMREX_SPACEDIM >= 2
-         amrex::Array4<amrex::Real> const& qym, amrex::Array4<amrex::Real> const& qyp,
+         amrex::Array4<amrex::Real> const& Uym, amrex::Array4<amrex::Real> const& Uyp,
 #endif
 #if AMREX_SPACEDIM == 3
-         amrex::Array4<amrex::Real> const& qzm, amrex::Array4<amrex::Real> const& qzp,
+         amrex::Array4<amrex::Real> const& Uzm, amrex::Array4<amrex::Real> const& Uzp,
 #endif
 #if AMREX_SPACEDIM < 3
          amrex::Array4<amrex::Real const> const& dloga,
 #endif
-         const amrex::Real dt);
+         const amrex::Real dt, const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM>& dx);
 
 void consup_rhd(const amrex::Box& bx, amrex::Array4<amrex::Real> const& update,
                 amrex::Array4<amrex::Real> const& flux0,
@@ -54,7 +55,7 @@ void consup_rhd(const amrex::Box& bx, amrex::Array4<amrex::Real> const& update,
 #endif
                 amrex::Array4<amrex::Real const> const& vol);
 
-void hlle(const amrex::Box& bx, amrex::Array4<amrex::Real const> const& qL,
-          amrex::Array4<amrex::Real const> const& qR, amrex::Array4<amrex::Real> const& F,
-          amrex::Array4<amrex::Real> const& qint, amrex::Array4<amrex::Real> const& qgdnv,
+void hlle(const amrex::Box& bx, amrex::Array4<amrex::Real const> const& UL,
+          amrex::Array4<amrex::Real const> const& UR, amrex::Array4<amrex::Real> const& F,
+          amrex::Array4<amrex::Real> const& Uint, amrex::Array4<amrex::Real> const& Ugdnv,
           const int dir, const amrex::Real dt);

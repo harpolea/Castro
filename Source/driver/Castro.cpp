@@ -3371,6 +3371,61 @@ Castro::extern_init ()
 
 }
 
+#ifdef SR
+
+void
+Castro::reset_internal_energy(const Box& bx,
+                              Array4<Real> const u)
+{
+    Real lsmall_temp = small_temp;
+    Real ldual_energy_eta2 = dual_energy_eta2;
+
+    amrex::ParallelFor(bx,
+    [=] AMREX_GPU_HOST_DEVICE (int i, int j, int k) noexcept
+    {
+        Real U_zone[NUM_STATE];
+        Real q_zone[NQ];
+
+        for (int n = 0; n < NUM_STATE; ++n) {
+            U_zone[n] = u(i,j,k,n);
+        }
+
+        ConsToPrim(q_zone, U_zone);
+
+        Real Up = q_zone[QU];
+        Real Vp = q_zone[QV];
+        Real Wp = q_zone[QW];
+        Real ke = 0.5_rt * (Up * Up + Vp * Vp + Wp * Wp);
+
+        eos_t eos_state;
+
+        eos_state.rho = q_zone[QRHO];
+        eos_state.T   = lsmall_temp;
+        for (int n = 0; n < NumSpec; ++n) {
+            eos_state.xn[n] = q_zone[QFS+n];
+        }
+        for (int n = 0; n < NumAux; ++n) {
+            eos_state.aux[n] = q_zone[QFX+n];
+        }
+
+        eos(eos_input_rt, eos_state);
+
+        Real small_e = eos_state.e;
+
+        // Ensure the internal energy is at least as large as this minimum
+        // from the EOS; the same holds true for the total energy.
+
+        q_zone[QREINT] = amrex::max(q_zone[QREINT], q_zone[QRHO] * small_e);
+
+        PrimToCons(q_zone, U_zone);
+
+        // u(i,j,k,UEDEN) = U_zone[UEDEN];
+        // u(i,j,k,UEINT) = U_zone[UEINT];
+    });
+}
+
+#else
+
 void
 Castro::reset_internal_energy(const Box& bx,
 #ifdef MHD
@@ -3432,6 +3487,7 @@ Castro::reset_internal_energy(const Box& bx,
         }
     });
 }
+#endif
 
 void
 Castro::reset_internal_energy(

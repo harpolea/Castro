@@ -198,17 +198,17 @@ Castro::estdt_rhd()
             Real uy = q_zone[QV];
             Real uz = q_zone[QW];
 
-            Real c = eos_state.cs;
-
-            Print() << "p = " << eos_state.p << std::endl;
+            Real c = amrex::min(1.0_rt, eos_state.cs);
 
             Real dt1 = dx[0]/(c + std::abs(ux));
+
+            // Print() << "p = " << eos_state.p << ", c = " <<  c << ", dt = " <<  dt1 << std::endl;
 
             Real dt2;
 // #if AMREX_SPACEDIM >= 2
 //       dt2 = dx[1]/(c + std::abs(uy));
 // #else
-//       dt2 = dt1;
+      dt2 = dt1;
 // #endif
 
             Real dt3;

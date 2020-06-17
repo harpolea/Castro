@@ -23,7 +23,7 @@ void Castro::construct_ctu_rhd_source(Real time, Real dt) {
 
     int coord = geom.Coord();
 
-    const Real* dx = geom.CellSize();
+    const auto dx = geom.CellSizeArray();
 
     GpuArray<Real, 3> center;
     ca_get_center(center.begin());
@@ -58,15 +58,15 @@ void Castro::construct_ctu_rhd_source(Real time, Real dt) {
         FArrayBox flatn;
         FArrayBox dq;
         FArrayBox src_q;
-        FArrayBox qxm, qxp;
+        FArrayBox Uxm, Uxp;
         // #if AMREX_SPACEDIM >= 2
-        //         FArrayBox qym, qyp;
+        //         FArrayBox Uym, Uyp;
         // #endif
         // #if AMREX_SPACEDIM == 3
-        //         FArrayBox qzm, qzp;
+        //         FArrayBox Uzm, Uzp;
         // #endif
         FArrayBox div;
-        FArrayBox q_int;
+        FArrayBox U_int;
         // #if AMREX_SPACEDIM >= 2
         //         FArrayBox ftmp1, ftmp2;
         //         FArrayBox qgdnvtmp1, qgdnvtmp2;
@@ -219,42 +219,42 @@ void Castro::construct_ctu_rhd_source(Real time, Real dt) {
 
             // work on the interface states
 
-            qxm.resize(gxbx, NQ);
-            Elixir elix_qxm = qxm.elixir();
-            fab_size += qxm.nBytes();
+            Uxm.resize(gxbx, NQ);
+            Elixir elix_Uxm = Uxm.elixir();
+            fab_size += Uxm.nBytes();
 
-            qxp.resize(obx, NQ);
-            Elixir elix_qxp = qxp.elixir();
-            fab_size += qxp.nBytes();
+            Uxp.resize(obx, NQ);
+            Elixir elix_Uxp = Uxp.elixir();
+            fab_size += Uxp.nBytes();
 
-            Array4<Real> const qxm_arr = qxm.array();
-            Array4<Real> const qxp_arr = qxp.array();
+            Array4<Real> const Uxm_arr = Uxm.array();
+            Array4<Real> const Uxp_arr = Uxp.array();
 
             // #if AMREX_SPACEDIM >= 2
-            //             qym.resize(obx, NQ);
-            //             Elixir elix_qym = qym.elixir();
-            //             fab_size += qym.nBytes();
+            //             Uym.resize(obx, NQ);
+            //             Elixir elix_Uym = Uym.elixir();
+            //             fab_size += Uym.nBytes();
 
-            //             qyp.resize(obx, NQ);
-            //             Elixir elix_qyp = qyp.elixir();
-            //             fab_size += qyp.nBytes();
+            //             Uyp.resize(obx, NQ);
+            //             Elixir elix_Uyp = Uyp.elixir();
+            //             fab_size += Uyp.nBytes();
 
-            //             Array4<Real> const qym_arr = qym.array();
-            //             Array4<Real> const qyp_arr = qyp.array();
+            //             Array4<Real> const Uym_arr = Uym.array();
+            //             Array4<Real> const Uyp_arr = Uyp.array();
 
             // #endif
 
             // #if AMREX_SPACEDIM == 3
-            //             qzm.resize(obx, NQ);
-            //             Elixir elix_qzm = qzm.elixir();
-            //             fab_size += qzm.nBytes();
+            //             Uzm.resize(obx, NQ);
+            //             Elixir elix_Uzm = Uzm.elixir();
+            //             fab_size += Uzm.nBytes();
 
-            //             qzp.resize(obx, NQ);
-            //             Elixir elix_qzp = qzp.elixir();
-            //             fab_size += qzp.nBytes();
+            //             Uzp.resize(obx, NQ);
+            //             Elixir elix_Uzp = Uzp.elixir();
+            //             fab_size += Uzp.nBytes();
 
-            //             Array4<Real> const qzm_arr = qzm.array();
-            //             Array4<Real> const qzp_arr = qzp.array();
+            //             Array4<Real> const Uzm_arr = Uzm.array();
+            //             Array4<Real> const Uzp_arr = Uzp.array();
 
             // #endif
 
@@ -265,26 +265,26 @@ void Castro::construct_ctu_rhd_source(Real time, Real dt) {
             fab_size += dq.nBytes();
             auto dq_arr = dq.array();
 
-            plm(obx, bx, q_arr, flatn_arr, qaux_arr, src_q_arr, dq_arr, qxm_arr, qxp_arr,
+            plm(obx, bx, q_arr, U_arr, flatn_arr, qaux_arr, src_q_arr, dq_arr, Uxm_arr, Uxp_arr,
 #if AMREX_SPACEDIM >= 2
-                qym_arr, qyp_arr,
+                Uym_arr, Uyp_arr,
 #endif
 #if AMREX_SPACEDIM == 3
-                qzm_arr, qzp_arr,
+                Uzm_arr, Uzp_arr,
 #endif
 #if (AMREX_SPACEDIM < 3)
                 dLogArea_arr,
 #endif
-                dt);
+                dt, dx);
 
             //             } else {
 
-            //                 ctu_ppm_states(obx, bx, q_arr, flatn_arr, qaux_arr, src_q_arr, qxm_arr, qxp_arr,
+            //                 ctu_ppm_states(obx, bx, q_arr, flatn_arr, qaux_arr, src_q_arr, Uxm_arr, Uxp_arr,
             // #if AMREX_SPACEDIM >= 2
-            //                                qym_arr, qyp_arr,
+            //                                Uym_arr, Uyp_arr,
             // #endif
             // #if AMREX_SPACEDIM == 3
-            //                                qzm_arr, qzp_arr,
+            //                                Uzm_arr, Uzp_arr,
             // #endif
             // #if AMREX_SPACEDIM < 3
             //                                dLogArea_arr,
@@ -300,10 +300,10 @@ void Castro::construct_ctu_rhd_source(Real time, Real dt) {
             // // compute divu -- we'll use this later when doing the artifical viscosity
             // divu(obx, q_arr, div_arr);
 
-            q_int.resize(obx, NQ);
-            Elixir elix_q_int = q_int.elixir();
-            fab_size += q_int.nBytes();
-            Array4<Real> const q_int_arr = q_int.array();
+            U_int.resize(obx, NQ);
+            Elixir elix_U_int = U_int.elixir();
+            fab_size += U_int.nBytes();
+            Array4<Real> const U_int_arr = U_int.array();
 
             flux[0].resize(gxbx, NUM_STATE);
             Elixir elix_flux_x = flux[0].elixir();
@@ -348,9 +348,9 @@ void Castro::construct_ctu_rhd_source(Real time, Real dt) {
 #endif
 
 #if AMREX_SPACEDIM == 1
-            // cmpflx_plus_godunov(xbx, qxm_arr, qxp_arr, flux0_arr, q_int_arr, qex_arr, qaux_arr,
+            // cmpflx_plus_godunov(xbx, Uxm_arr, Uxp_arr, flux0_arr, U_int_arr, qex_arr, qaux_arr,
             //                     shk_arr, 0);
-            hlle(xbx, qxm_arr, qxp_arr, flux0_arr, q_int_arr, qex_arr, 0, dt);
+            hlle(xbx, Uxm_arr, Uxp_arr, flux0_arr, U_int_arr, qex_arr, 0, dt);
 
 #endif  // 1-d
 
@@ -401,7 +401,7 @@ void Castro::construct_ctu_rhd_source(Real time, Real dt) {
             //             // ftmp1 = fx
             //             // rftmp1 = rfx
             //             // qgdnvtmp1 = qgdnxv
-            //             cmpflx_plus_godunov(cxbx, qxm_arr, qxp_arr, ftmp1_arr, q_int_arr, qgdnvtmp1_arr,
+            //             cmpflx_plus_godunov(cxbx, Uxm_arr, Uxp_arr, ftmp1_arr, U_int_arr, qgdnvtmp1_arr,
             //                                 qaux_arr, shk_arr, 0);
 
             //             // compute F^y
@@ -410,7 +410,7 @@ void Castro::construct_ctu_rhd_source(Real time, Real dt) {
 
             //             // ftmp2 = fy
             //             // rftmp2 = rfy
-            //             cmpflx_plus_godunov(cybx, qym_arr, qyp_arr, ftmp2_arr, q_int_arr, qey_arr, qaux_arr,
+            //             cmpflx_plus_godunov(cybx, Uym_arr, Uyp_arr, ftmp2_arr, U_int_arr, qey_arr, qaux_arr,
             //                                 shk_arr, 1);
 
             //             // add the transverse flux difference in y to the x states
@@ -418,7 +418,7 @@ void Castro::construct_ctu_rhd_source(Real time, Real dt) {
 
             //             // ftmp2 = fy
             //             // rftmp2 = rfy
-            //             trans_single(xbx, 1, 0, qxm_arr, ql_arr, qxp_arr, qr_arr, qaux_arr, ftmp2_arr, qey_arr,
+            //             trans_single(xbx, 1, 0, Uxm_arr, ql_arr, Uxp_arr, qr_arr, qaux_arr, ftmp2_arr, qey_arr,
             //                          areay_arr, vol_arr, hdt, hdtdy);
 
             //             reset_edge_state_thermo(xbx, ql.array());
@@ -427,7 +427,7 @@ void Castro::construct_ctu_rhd_source(Real time, Real dt) {
 
             //             // solve the final Riemann problem axross the x-interfaces
 
-            //             cmpflx_plus_godunov(xbx, ql_arr, qr_arr, flux0_arr, q_int_arr, qex_arr, qaux_arr,
+            //             cmpflx_plus_godunov(xbx, ql_arr, qr_arr, flux0_arr, U_int_arr, qex_arr, qaux_arr,
             //                                 shk_arr, 0);
 
             //             // add the transverse flux difference in x to the y states
@@ -437,7 +437,7 @@ void Castro::construct_ctu_rhd_source(Real time, Real dt) {
             //             // rftmp1 = rfx
             //             // qgdnvtmp1 = qgdnvx
 
-            //             trans_single(ybx, 0, 1, qym_arr, ql_arr, qyp_arr, qr_arr, qaux_arr, ftmp1_arr,
+            //             trans_single(ybx, 0, 1, Uym_arr, ql_arr, Uyp_arr, qr_arr, qaux_arr, ftmp1_arr,
             //                          qgdnvtmp1_arr, areax_arr, vol_arr, hdt, hdtdx);
 
             //             reset_edge_state_thermo(ybx, ql.array());
@@ -446,7 +446,7 @@ void Castro::construct_ctu_rhd_source(Real time, Real dt) {
 
             //             // solve the final Riemann problem axross the y-interfaces
 
-            //             cmpflx_plus_godunov(ybx, ql_arr, qr_arr, flux1_arr, q_int_arr, qey_arr, qaux_arr,
+            //             cmpflx_plus_godunov(ybx, ql_arr, qr_arr, flux1_arr, U_int_arr, qey_arr, qaux_arr,
             //                                 shk_arr, 1);
             // #endif  // 2-d
 
@@ -469,7 +469,7 @@ void Castro::construct_ctu_rhd_source(Real time, Real dt) {
             //             // ftmp1 = fx
             //             // rftmp1 = rfx
             //             // qgdnvtmp1 = qgdnxv
-            //             cmpflx_plus_godunov(cxbx, qxm_arr, qxp_arr, ftmp1_arr, q_int_arr, qgdnvtmp1_arr,
+            //             cmpflx_plus_godunov(cxbx, Uxm_arr, Uxp_arr, ftmp1_arr, U_int_arr, qgdnvtmp1_arr,
             //                                 qaux_arr, shk_arr, 0);
 
             //             // [lo(1), lo(2), lo(3)-1], [hi(1), hi(2)+1, hi(3)+1]
@@ -488,7 +488,7 @@ void Castro::construct_ctu_rhd_source(Real time, Real dt) {
             //             // ftmp1 = fx
             //             // rftmp1 = rfx
             //             // qgdnvtmp1 = qgdnvx
-            //             trans_single(tyxbx, 0, 1, qym_arr, qmyx_arr, qyp_arr, qpyx_arr, qaux_arr, ftmp1_arr,
+            //             trans_single(tyxbx, 0, 1, Uym_arr, qmyx_arr, Uyp_arr, qpyx_arr, qaux_arr, ftmp1_arr,
             //                          qgdnvtmp1_arr, hdt, cdtdx);
 
             //             reset_edge_state_thermo(tyxbx, qmyx.array());
@@ -508,7 +508,7 @@ void Castro::construct_ctu_rhd_source(Real time, Real dt) {
             //             auto qpzx_arr = qpzx.array();
             //             fab_size += qpzx.nBytes();
 
-            //             trans_single(tzxbx, 0, 2, qzm_arr, qmzx_arr, qzp_arr, qpzx_arr, qaux_arr, ftmp1_arr,
+            //             trans_single(tzxbx, 0, 2, Uzm_arr, qmzx_arr, Uzp_arr, qpzx_arr, qaux_arr, ftmp1_arr,
             //                          qgdnvtmp1_arr, hdt, cdtdx);
 
             //             reset_edge_state_thermo(tzxbx, qmzx.array());
@@ -522,7 +522,7 @@ void Castro::construct_ctu_rhd_source(Real time, Real dt) {
             //             // ftmp1 = fy
             //             // rftmp1 = rfy
             //             // qgdnvtmp1 = qgdnvy
-            //             cmpflx_plus_godunov(cybx, qym_arr, qyp_arr, ftmp1_arr, q_int_arr, qgdnvtmp1_arr,
+            //             cmpflx_plus_godunov(cybx, Uym_arr, Uyp_arr, ftmp1_arr, U_int_arr, qgdnvtmp1_arr,
             //                                 qaux_arr, shk_arr, 1);
 
             //             // [lo(1), lo(2), lo(3)-1], [hi(1)+1, hi(2), lo(3)+1]
@@ -541,7 +541,7 @@ void Castro::construct_ctu_rhd_source(Real time, Real dt) {
             //             // ftmp1 = fy
             //             // rftmp1 = rfy
             //             // qgdnvtmp1 = qgdnvy
-            //             trans_single(txybx, 1, 0, qxm_arr, qmxy_arr, qxp_arr, qpxy_arr, qaux_arr, ftmp1_arr,
+            //             trans_single(txybx, 1, 0, Uxm_arr, qmxy_arr, Uxp_arr, qpxy_arr, qaux_arr, ftmp1_arr,
             //                          qgdnvtmp1_arr, hdt, cdtdy);
 
             //             reset_edge_state_thermo(txybx, qmxy.array());
@@ -564,7 +564,7 @@ void Castro::construct_ctu_rhd_source(Real time, Real dt) {
             //             // ftmp1 = fy
             //             // rftmp1 = rfy
             //             // qgdnvtmp1 = qgdnvy
-            //             trans_single(tzybx, 1, 2, qzm_arr, qmzy_arr, qzp_arr, qpzy_arr, qaux_arr, ftmp1_arr,
+            //             trans_single(tzybx, 1, 2, Uzm_arr, qmzy_arr, Uzp_arr, qpzy_arr, qaux_arr, ftmp1_arr,
             //                          qgdnvtmp1_arr, hdt, cdtdy);
 
             //             reset_edge_state_thermo(tzybx, qmzy.array());
@@ -578,7 +578,7 @@ void Castro::construct_ctu_rhd_source(Real time, Real dt) {
             //             // ftmp1 = fz
             //             // rftmp1 = rfz
             //             // qgdnvtmp1 = qgdnvz
-            //             cmpflx_plus_godunov(czbx, qzm_arr, qzp_arr, ftmp1_arr, q_int_arr, qgdnvtmp1_arr,
+            //             cmpflx_plus_godunov(czbx, Uzm_arr, Uzp_arr, ftmp1_arr, U_int_arr, qgdnvtmp1_arr,
             //                                 qaux_arr, shk_arr, 2);
 
             //             // [lo(1)-1, lo(2)-1, lo(3)], [hi(1)+1, hi(2)+1, lo(3)]
@@ -597,7 +597,7 @@ void Castro::construct_ctu_rhd_source(Real time, Real dt) {
             //             // ftmp1 = fz
             //             // rftmp1 = rfz
             //             // qgdnvtmp1 = qgdnvz
-            //             trans_single(txzbx, 2, 0, qxm_arr, qmxz_arr, qxp_arr, qpxz_arr, qaux_arr, ftmp1_arr,
+            //             trans_single(txzbx, 2, 0, Uxm_arr, qmxz_arr, Uxp_arr, qpxz_arr, qaux_arr, ftmp1_arr,
             //                          qgdnvtmp1_arr, hdt, cdtdz);
 
             //             reset_edge_state_thermo(txzbx, qmxz.array());
@@ -620,7 +620,7 @@ void Castro::construct_ctu_rhd_source(Real time, Real dt) {
             //             // ftmp1 = fz
             //             // rftmp1 = rfz
             //             // qgdnvtmp1 = qgdnvz
-            //             trans_single(tyzbx, 2, 1, qym_arr, qmyz_arr, qyp_arr, qpyz_arr, qaux_arr, ftmp1_arr,
+            //             trans_single(tyzbx, 2, 1, Uym_arr, qmyz_arr, Uyp_arr, qpyz_arr, qaux_arr, ftmp1_arr,
             //                          qgdnvtmp1_arr, hdt, cdtdz);
 
             //             reset_edge_state_thermo(tyzbx, qmyz.array());
@@ -640,7 +640,7 @@ void Castro::construct_ctu_rhd_source(Real time, Real dt) {
             //             // ftmp1 = fyz
             //             // rftmp1 = rfyz
             //             // qgdnvtmp1 = qgdnvyz
-            //             cmpflx_plus_godunov(cyzbx, qmyz_arr, qpyz_arr, ftmp1_arr, q_int_arr, qgdnvtmp1_arr,
+            //             cmpflx_plus_godunov(cyzbx, qmyz_arr, qpyz_arr, ftmp1_arr, U_int_arr, qgdnvtmp1_arr,
             //                                 qaux_arr, shk_arr, 1);
 
             //             // compute F^{z|y}
@@ -650,20 +650,20 @@ void Castro::construct_ctu_rhd_source(Real time, Real dt) {
             //             // ftmp2 = fzy
             //             // rftmp2 = rfzy
             //             // qgdnvtmp2 = qgdnvzy
-            //             cmpflx_plus_godunov(czybx, qmzy_arr, qpzy_arr, ftmp2_arr, q_int_arr, qgdnvtmp2_arr,
+            //             cmpflx_plus_godunov(czybx, qmzy_arr, qpzy_arr, ftmp2_arr, U_int_arr, qgdnvtmp2_arr,
             //                                 qaux_arr, shk_arr, 2);
 
             //             // compute the corrected x interface states and fluxes
             //             // [lo(1), lo(2), lo(3)], [hi(1)+1, hi(2), hi(3)]
 
-            //             trans_final(xbx, 0, 1, 2, qxm_arr, ql_arr, qxp_arr, qr_arr, qaux_arr, ftmp1_arr,
+            //             trans_final(xbx, 0, 1, 2, Uxm_arr, ql_arr, Uxp_arr, qr_arr, qaux_arr, ftmp1_arr,
             //                         ftmp2_arr, qgdnvtmp1_arr, qgdnvtmp2_arr, hdt, hdtdx, hdtdy, hdtdz);
 
             //             reset_edge_state_thermo(xbx, ql.array());
 
             //             reset_edge_state_thermo(xbx, qr.array());
 
-            //             cmpflx_plus_godunov(xbx, ql_arr, qr_arr, flux0_arr, q_int_arr, qex_arr, qaux_arr,
+            //             cmpflx_plus_godunov(xbx, ql_arr, qr_arr, flux0_arr, U_int_arr, qex_arr, qaux_arr,
             //                                 shk_arr, 0);
 
             //             //
@@ -677,7 +677,7 @@ void Castro::construct_ctu_rhd_source(Real time, Real dt) {
             //             // ftmp1 = fzx
             //             // rftmp1 = rfzx
             //             // qgdnvtmp1 = qgdnvzx
-            //             cmpflx_plus_godunov(czxbx, qmzx_arr, qpzx_arr, ftmp1_arr, q_int_arr, qgdnvtmp1_arr,
+            //             cmpflx_plus_godunov(czxbx, qmzx_arr, qpzx_arr, ftmp1_arr, U_int_arr, qgdnvtmp1_arr,
             //                                 qaux_arr, shk_arr, 2);
 
             //             // compute F^{x|z}
@@ -687,13 +687,13 @@ void Castro::construct_ctu_rhd_source(Real time, Real dt) {
             //             // ftmp2 = fxz
             //             // rftmp2 = rfxz
             //             // qgdnvtmp2 = qgdnvxz
-            //             cmpflx_plus_godunov(cxzbx, qmxz_arr, qpxz_arr, ftmp2_arr, q_int_arr, qgdnvtmp2_arr,
+            //             cmpflx_plus_godunov(cxzbx, qmxz_arr, qpxz_arr, ftmp2_arr, U_int_arr, qgdnvtmp2_arr,
             //                                 qaux_arr, shk_arr, 0);
 
             //             // Compute the corrected y interface states and fluxes
             //             // [lo(1), lo(2), lo(3)], [hi(1), hi(2)+1, hi(3)]
 
-            //             trans_final(ybx, 1, 0, 2, qym_arr, ql_arr, qyp_arr, qr_arr, qaux_arr, ftmp2_arr,
+            //             trans_final(ybx, 1, 0, 2, Uym_arr, ql_arr, Uyp_arr, qr_arr, qaux_arr, ftmp2_arr,
             //                         ftmp1_arr, qgdnvtmp2_arr, qgdnvtmp1_arr, hdt, hdtdx, hdtdy, hdtdz);
 
             //             reset_edge_state_thermo(ybx, ql.array());
@@ -702,7 +702,7 @@ void Castro::construct_ctu_rhd_source(Real time, Real dt) {
 
             //             // Compute the final F^y
             //             // [lo(1), lo(2), lo(3)], [hi(1), hi(2)+1, hi(3)]
-            //             cmpflx_plus_godunov(ybx, ql_arr, qr_arr, flux1_arr, q_int_arr, qey_arr, qaux_arr,
+            //             cmpflx_plus_godunov(ybx, ql_arr, qr_arr, flux1_arr, U_int_arr, qey_arr, qaux_arr,
             //                                 shk_arr, 1);
 
             //             //
@@ -716,7 +716,7 @@ void Castro::construct_ctu_rhd_source(Real time, Real dt) {
             //             // ftmp1 = fxy
             //             // rftmp1 = rfxy
             //             // qgdnvtmp1 = qgdnvxy
-            //             cmpflx_plus_godunov(cxybx, qmxy_arr, qpxy_arr, ftmp1_arr, q_int_arr, qgdnvtmp1_arr,
+            //             cmpflx_plus_godunov(cxybx, qmxy_arr, qpxy_arr, ftmp1_arr, U_int_arr, qgdnvtmp1_arr,
             //                                 qaux_arr, shk_arr, 0);
 
             //             // compute F^{y|x}
@@ -726,13 +726,13 @@ void Castro::construct_ctu_rhd_source(Real time, Real dt) {
             //             // ftmp2 = fyx
             //             // rftmp2 = rfyx
             //             // qgdnvtmp2 = qgdnvyx
-            //             cmpflx_plus_godunov(cyxbx, qmyx_arr, qpyx_arr, ftmp2_arr, q_int_arr, qgdnvtmp2_arr,
+            //             cmpflx_plus_godunov(cyxbx, qmyx_arr, qpyx_arr, ftmp2_arr, U_int_arr, qgdnvtmp2_arr,
             //                                 qaux_arr, shk_arr, 1);
 
             //             // compute the corrected z interface states and fluxes
             //             // [lo(1), lo(2), lo(3)], [hi(1), hi(2), hi(3)+1]
 
-            //             trans_final(zbx, 2, 0, 1, qzm_arr, ql_arr, qzp_arr, qr_arr, qaux_arr, ftmp1_arr,
+            //             trans_final(zbx, 2, 0, 1, Uzm_arr, ql_arr, Uzp_arr, qr_arr, qaux_arr, ftmp1_arr,
             //                         ftmp2_arr, qgdnvtmp1_arr, qgdnvtmp2_arr, hdt, hdtdx, hdtdy, hdtdz);
 
             //             reset_edge_state_thermo(zbx, ql.array());
@@ -742,7 +742,7 @@ void Castro::construct_ctu_rhd_source(Real time, Real dt) {
             //             // compute the final z fluxes F^z
             //             // [lo(1), lo(2), lo(3)], [hi(1), hi(2), hi(3)+1]
 
-            //             cmpflx_plus_godunov(zbx, ql_arr, qr_arr, flux2_arr, q_int_arr, qez_arr, qaux_arr,
+            //             cmpflx_plus_godunov(zbx, ql_arr, qr_arr, flux2_arr, U_int_arr, qez_arr, qaux_arr,
             //                                 shk_arr, 2);
 
             // #endif  // 3-d
@@ -810,11 +810,11 @@ void Castro::construct_ctu_rhd_source(Real time, Real dt) {
                 Array4<Real> const flux_arr = (flux[idir]).array();
                 Array4<Real const> const area_arr = (area[idir]).array(mfi);
 
-                scale_flux(nbx,
-#if AMREX_SPACEDIM == 1
-                           qex_arr,
-#endif
-                           flux_arr, area_arr, dt);
+                //                 scale_flux(nbx,
+                // #if AMREX_SPACEDIM == 1
+                //                            qex_arr,
+                // #endif
+                //                            flux_arr, area_arr, dt);
 
                 if (idir == 0) {
 #if AMREX_SPACEDIM <= 2
@@ -829,10 +829,10 @@ void Castro::construct_ctu_rhd_source(Real time, Real dt) {
 #elif AMREX_SPACEDIM == 2
                     if (!mom_flux_has_p(0, 0, coord)) {
 #endif
-                        amrex::ParallelFor(nbx,
-                                           [=] AMREX_GPU_HOST_DEVICE(int i, int j, int k) noexcept {
-                                               pradial_fab(i, j, k) = qex_arr(i, j, k, GDPRES) * dt;
-                                           });
+                        // amrex::ParallelFor(nbx,
+                        //                    [=] AMREX_GPU_HOST_DEVICE(int i, int j, int k) noexcept {
+                        //                        pradial_fab(i, j, k) = qex_arr(i, j, k, GDPRES) * dt;
+                        //                    });
                     }
 
 #endif
@@ -1009,19 +1009,19 @@ void Castro::construct_ctu_rhd_source(Real time, Real dt) {
 }
 
 void Castro::plm(const Box& bx, const Box& vbx, Array4<Real const> const& q_arr,
-                 Array4<Real const> const& flatn_arr, Array4<Real const> const& qaux_arr,
-                 Array4<Real const> const& srcQ, Array4<Real> const& dq, Array4<Real> const& qxl,
-                 Array4<Real> const& qxr,
+                 Array4<Real const> const& U_arr, Array4<Real const> const& flatn_arr,
+                 Array4<Real const> const& qaux_arr, Array4<Real const> const& srcQ,
+                 Array4<Real> const& dU, Array4<Real> const& Uxl, Array4<Real> const& Uxr,
 #if AMREX_SPACEDIM >= 2
-                 Array4<Real> const& qyl, Array4<Real> const& qyr,
+                 Array4<Real> const& Uyl, Array4<Real> const& Uyr,
 #endif
 #if AMREX_SPACEDIM == 3
-                 Array4<Real> const& qzl, Array4<Real> const& qzr,
+                 Array4<Real> const& Uzl, Array4<Real> const& Uzr,
 #endif
 #if AMREX_SPACEDIM < 3
                  Array4<Real const> const& dloga,
 #endif
-                 const Real dt) {
+                 const Real dt, const GpuArray<Real, AMREX_SPACEDIM>& dx) {
 
     // Compute the normal interface states by reconstructing
     // the primitive variables using piecewise linear slopes and doing
@@ -1036,44 +1036,196 @@ void Castro::plm(const Box& bx, const Box& vbx, Array4<Real const> const& q_arr,
     amrex::ParallelFor(bx, [=] AMREX_GPU_HOST_DEVICE(int i, int j, int k) noexcept {
         for (int idir = 0; idir < AMREX_SPACEDIM; idir++) {
 
-            for (int n = 0; n < NQ; n++) {
+            // calculate sound speed
+            eos_t eos_state;
+            eos_state.rho = q_arr(i, j, k, QRHO);
+            eos_state.p = q_arr(i, j, k, QPRES);
+            eos_state.xn[0] = 1.0_rt;
+            for (int n = 1; n < NumSpec; ++n) {
+                eos_state.xn[n] = 0.0_rt;
+            }
+
+            eos(eos_input_rp, eos_state);
+
+            const Real cs = eos_state.cs;
+            const Real kappa = eos_state.dedr;
+            const Real kappa_tilde = kappa / q_arr(i, j, k, QRHO);
+            const Real Kappa = kappa_tilde / (kappa_tilde - cs * cs);
+            const Real h = eos_state.h;
+
+            const Real udir = q_arr(i, j, k, QU + idir);
+            const Real v2 = q_arr(i, j, k, QU) * q_arr(i, j, k, QU) +
+                            q_arr(i, j, k, QV) * q_arr(i, j, k, QV) +
+                            q_arr(i, j, k, QW) * q_arr(i, j, k, QW);
+            const Real W = 1.0_rt / (1.0_rt - v2);
+            const Real u = q_arr(i, j, k, QU);
+            const Real v = q_arr(i, j, k, QV);
+            const Real w = q_arr(i, j, k, QW);
+
+            Real eval[5];
+
+            eval[4] = (udir * (1.0_rt - cs * cs) +
+                       cs * std::sqrt((1.0_rt - v2) *
+                                      (1.0_rt - udir * udir - (v2 - udir * udir) * cs * cs))) /
+                      (1 - v2 * cs * cs);
+
+            eval[0] = (udir * (1.0_rt - cs * cs) -
+                       cs * std::sqrt((1.0_rt - v2) *
+                                      (1.0_rt - udir * udir - (v2 - udir * udir) * cs * cs))) /
+                      (1 - v2 * cs * cs);
+
+            for (int n = 1; n < 4; ++n) {
+                eval[n] = udir;
+            }
+
+            Real Ap = (1.0_rt - udir * udir) / (1.0_rt - udir * eval[4]);
+            Real Am = (1.0_rt - udir * udir) / (1.0_rt - udir * eval[0]);
+
+            Real r_1[5] = {Kappa / (h * W), u, v, w, 1.0_rt};
+            Real r_2[5] = {W * v, 2.0_rt * h * W * W * u * v, h * (1.0_rt + 2.0_rt * W * W * v * v),
+                           2.0_rt * h * W * W * v * w, 2.0_rt * h * W * W * v};
+            Real r_3[5] = {W * w, 2.0_rt * h * W * W * u * w, 2.0_rt * h * W * W * v * w,
+                           h * (1.0_rt + 2.0_rt * W * W * w * w), 2.0_rt * h * W * W * w};
+            Real r_p[5] = {1.0_rt, h * W * Ap * eval[4], h * W * v, h * W * w, h * W * Ap};
+            Real r_m[5] = {1.0_rt, h * W * Am * eval[0], h * W * v, h * W * w, h * W * Am};
+
+            Real l_1[5] = {h, W * u, W * v, W * w, -W};
+            Real l_2[5] = {0.0_rt, u * v, 1.0_rt - u * u, 0.0_rt, -v};
+            Real l_3[5] = {0.0_rt, u * w, 0.0_rt, 1.0_rt - u * u, -w};
+            Real l_m[5] = {
+                h * W * Ap * (udir - eval[4]),
+                1.0_rt + W * W * (v2 - udir * udir) * (2.0_rt * Kappa - 1.0_rt) * (1.0_rt - Ap) -
+                    Kappa * Ap,
+                W * W * v * (2.0_rt * Kappa - 1.0_rt) * Ap * (udir - eval[4]),
+                W * W * w * (2.0_rt * Kappa - 1.0_rt) * Ap * (udir - eval[4]),
+                -udir -
+                    W * W * (v2 - udir * udir) * (2.0_rt * Kappa - 1.0_rt) * (udir - Ap * eval[4]) +
+                    Kappa * Ap * eval[4]};
+            Real l_p[5] = {
+                h * W * Am * (udir - eval[0]),
+                1.0_rt + W * W * (v2 - udir * udir) * (2.0_rt * Kappa - 1.0_rt) * (1.0_rt - Am) -
+                    Kappa * Am,
+                W * W * v * (2.0_rt * Kappa - 1.0_rt) * Am * (udir - eval[0]),
+                W * W * w * (2.0_rt * Kappa - 1.0_rt) * Am * (udir - eval[0]),
+                -udir -
+                    W * W * (v2 - udir * udir) * (2.0_rt * Kappa - 1.0_rt) * (udir - Am * eval[0]) +
+                    Kappa * Am * eval[0]};
+
+            Real Delta = h * h * h * W * (Kappa - 1.0_rt) * (1.0_rt - udir * udir) *
+                         (Ap * eval[4] - Am * eval[0]);
+
+            for (int n = 0; n < 5; ++n) {
+                l_1[n] *= W / (Kappa - 1.0_rt);
+                l_2[n] /= h * (1.0_rt - udir * udir);
+                l_3[n] /= h * (1.0_rt - udir * udir);
+                l_p[n] *= h * h / Delta;
+                l_m[n] *= -h * h / Delta;
+            }
+
+            // define the reference states
+            Real factor;
+
+            for (int n = 0; n < NUM_STATE; n++) {
+
                 if (n == QTEMP) {
                     continue;
                 }
 
                 Real deltal, deltar;
                 if (idir == 0) {
-                    deltal = q_arr(i, j, k, n) - q_arr(i - 1, j, k, n);
-                    deltar = q_arr(i + 1, j, k, n) - q_arr(i, j, k, n);
+                    deltal = U_arr(i, j, k, n) - U_arr(i - 1, j, k, n);
+                    deltar = U_arr(i + 1, j, k, n) - U_arr(i, j, k, n);
 #if AMREX_SPACEDIM >= 2
                 } else if (idir == 1) {
-                    deltal = q_arr(i, j, k, n) - q_arr(i, j - 1, k, n);
-                    deltar = q_arr(i, j + 1, k, n) - q_arr(i, j, k, n);
+                    deltal = U_arr(i, j, k, n) - U_arr(i, j - 1, k, n);
+                    deltar = U_arr(i, j + 1, k, n) - U_arr(i, j, k, n);
 #endif
 #if AMREX_SPACEDIM == 3
                 } else {
-                    deltal = q_arr(i, j, k, n) - q_arr(i, j, k - 1, n);
-                    deltar = q_arr(i, j, k + 1, n) - q_arr(i, j, k, n);
+                    deltal = U_arr(i, j, k, n) - U_arr(i, j, k - 1, n);
+                    deltar = U_arr(i, j, k + 1, n) - U_arr(i, j, k, n);
 #endif
                 }
 
-                slope(dq(i, j, k, n), deltar, deltal,
-                      flatn_arr(i, j, k, n));  //idir, q_arr, n, flatn_arr, dq);
-                // Print() << "slope(" << i << "," << j << "," << k << ") = " << dq(i,j,k,n) << std::endl;
+                slope(dU(i, j, k, n), deltar, deltal, flatn_arr(i, j, k, n));
+            }
 
-                // compute the interface states
+            for (int n = 0; n < NUM_STATE; n++) {
                 if (idir == 0) {
-                    qxl(i + 1, j, k, n) = q_arr(i, j, k, n) + dq(i, j, k, n);
-                    qxr(i, j, k, n) = q_arr(i, j, k, n) - dq(i, j, k, n);
+
+                    factor = 0.5_rt * (1.0_rt - dt / dx[0] * amrex::max(eval[4], 0.0_rt));
+
+                    Uxl(i + 1, j, k, n) = U_arr(i, j, k, n) + factor * dU(i, j, k, n);
+
+                    factor = 0.5_rt * (1.0_rt + dt / dx[0] * amrex::min(eval[0], 0.0_rt));
+
+                    Uxr(i, j, k, n) = U_arr(i, j, k, n) - factor * dU(i, j, k, n);
+
 #if AMREX_SPACEDIM >= 2
                 } else if (idir == 1) {
-                    qyl(i, j + 1, k, n) = q_arr(i, j, k, n) + dq(i, j, k, n);
-                    qyr(i, j, k, n) = q_arr(i, j, k, n) - dq(i, j, k, n);
+
+                    factor = 0.5_rt * (1.0_rt - dt / dx[1] * amrex::max(eval[4], 0.0_rt));
+
+                    Uyl(i, j + 1, k, n) = U_arr(i, j, k, n) + factor * dU(i, j, k, n);
+
+                    factor = 0.5_rt * (1.0_rt + dt / dx[1] * amrex::min(eval[0], 0.0_rt));
+
+                    Uyr(i, j, k, n) = U_arr(i, j, k, n) - factor * dU(i, j, k, n);
 #endif
 #if AMREX_SPACEDIM == 3
                 } else {
-                    qzl(i, j, k + 1, n) = q_arr(i, j, k, n) + dq(i, j, k, n);
-                    qzr(i, j, k, n) = q_arr(i, j, k, n) - dq(i, j, k, n);
+
+                    factor = 0.5_rt * (1.0_rt - dt / dx[2] * amrex::max(eval[4], 0.0_rt));
+
+                    Uzl(i, j, k + 1, n) = U_arr(i, j, k, n) + factor * dU(i, j, k, n);
+
+                    factor = 0.5_rt * (1.0_rt + dt / dx[2] * amrex::min(eval[0], 0.0_rt));
+
+                    Uzr(i, j, k, n) = U_arr(i, j, k, n) - factor * dU(i, j, k, n);
+#endif
+                }
+            }
+
+            // compute the Vhat functions
+            Real betal[5];
+            Real betar[5];
+
+            for (int n = 0; n < 5; ++n) {
+                Real summ = l_m[n] * dU(i, j, k, 0) + l_1[n] * dU(i, j, k, 1) +
+                            l_2[n] * dU(i, j, k, 2) + l_3[n] * dU(i, j, k, 3) +
+                            l_p[n] * dU(i, j, k, 4);
+
+                betal[n] = 0.25_rt * dt / dx[idir] * (eval[4] - eval[n]) *
+                           (std::copysign(1.0_rt, eval[n]) + 1.0_rt) * summ;
+
+                betar[n] = 0.25_rt * dt / dx[idir] * (eval[0] - eval[n]) *
+                           (1.0_rt - std::copysign(1.0_rt, eval[n])) * summ;
+            }
+
+            for (int n = 0; n < 5; n++) {
+
+                if (n == QTEMP) {
+                    continue;
+                }
+
+                Real sum_l = betal[0] * r_m[n] + betal[1] * r_1[n] + betal[2] * r_2[n] +
+                             betal[3] * r_3[n] + betal[4] * r_p[n];
+                Real sum_r = betar[0] * r_m[n] + betar[1] * r_1[n] + betar[2] * r_2[n] +
+                             betar[3] * r_3[n] + betar[4] * r_p[n];
+
+                // compute the interface states
+                if (idir == 0) {
+                    Uxl(i + 1, j, k, n) += sum_l;
+                    Uxr(i, j, k, n) += sum_r;
+#if AMREX_SPACEDIM >= 2
+                } else if (idir == 1) {
+                    Uyl(i, j + 1, k, n) += sum_l;
+                    Uyr(i, j, k, n) += sum_r;
+#endif
+#if AMREX_SPACEDIM == 3
+                } else {
+                    Uzl(i, j, k + 1, n) += sum_l;
+                    Uzr(i, j, k, n) += sum_r;
 #endif
                 }
 
@@ -1103,11 +1255,11 @@ void Castro::plm(const Box& bx, const Box& vbx, Array4<Real const> const& q_arr,
                 amrex::ParallelFor(bx, [=] AMREX_GPU_HOST_DEVICE(int i, int j, int k) noexcept {
                     // reset the left state at domlo(0) if needed -- it is outside the domain
                     if (i == domlo[0]) {
-                        for (int n = 0; n < NQ; n++) {
-                            if (n == QU) {
-                                qxl(i, j, k, QU) = -qxr(i, j, k, QU);
+                        for (int n = 0; n < NUM_STATE; n++) {
+                            if (n == UMX) {
+                                Uxl(i, j, k, UMX) = -Uxr(i, j, k, UMX);
                             } else {
-                                qxl(i, j, k, n) = qxr(i, j, k, n);
+                                Uxl(i, j, k, n) = Uxr(i, j, k, n);
                             }
                         }
                     }
@@ -1119,11 +1271,11 @@ void Castro::plm(const Box& bx, const Box& vbx, Array4<Real const> const& q_arr,
                 amrex::ParallelFor(bx, [=] AMREX_GPU_HOST_DEVICE(int i, int j, int k) noexcept {
                     // reset the right state at domhi(0)+1 if needed -- it is outside the domain
                     if (i == domhi[0] + 1) {
-                        for (int n = 0; n < NQ; n++) {
-                            if (n == QU) {
-                                qxr(i, j, k, QU) = -qxl(i, j, k, QU);
+                        for (int n = 0; n < NUM_STATE; n++) {
+                            if (n == UMX) {
+                                Uxr(i, j, k, UMX) = -Uxl(i, j, k, UMX);
                             } else {
-                                qxr(i, j, k, n) = qxl(i, j, k, n);
+                                Uxr(i, j, k, n) = Uxl(i, j, k, n);
                             }
                         }
                     }
@@ -1137,11 +1289,11 @@ void Castro::plm(const Box& bx, const Box& vbx, Array4<Real const> const& q_arr,
                 amrex::ParallelFor(bx, [=] AMREX_GPU_HOST_DEVICE(int i, int j, int k) noexcept {
                     // reset the left state at domlo(0) if needed -- it is outside the domain
                     if (j == domlo[1]) {
-                        for (int n = 0; n < NQ; n++) {
-                            if (n == QV) {
-                                qyl(i, j, k, QV) = -qyr(i, j, k, QV);
+                        for (int n = 0; n < NUM_STATE; n++) {
+                            if (n == UMY) {
+                                Uyl(i, j, k, UMY) = -Uyr(i, j, k, UMY);
                             } else {
-                                qyl(i, j, k, n) = qyr(i, j, k, n);
+                                Uyl(i, j, k, n) = Uyr(i, j, k, n);
                             }
                         }
                     }
@@ -1153,11 +1305,11 @@ void Castro::plm(const Box& bx, const Box& vbx, Array4<Real const> const& q_arr,
                 amrex::ParallelFor(bx, [=] AMREX_GPU_HOST_DEVICE(int i, int j, int k) noexcept {
                     // reset the right state at domhi(0)+1 if needed -- it is outside the domain
                     if (j == domhi[1] + 1) {
-                        for (int n = 0; n < NQ; n++) {
-                            if (n == QV) {
-                                qyr(i, j, k, QV) = -qyl(i, j, k, QV);
+                        for (int n = 0; n < NUM_STATE; n++) {
+                            if (n == UMY) {
+                                Uyr(i, j, k, UMY) = -Uyl(i, j, k, UMY);
                             } else {
-                                qyr(i, j, k, n) = qyl(i, j, k, n);
+                                Uyr(i, j, k, n) = Uyl(i, j, k, n);
                             }
                         }
                     }
@@ -1172,11 +1324,11 @@ void Castro::plm(const Box& bx, const Box& vbx, Array4<Real const> const& q_arr,
                 amrex::ParallelFor(bx, [=] AMREX_GPU_HOST_DEVICE(int i, int j, int k) noexcept {
                     // reset the left state at domlo(0) if needed -- it is outside the domain
                     if (k == domlo[2]) {
-                        for (int n = 0; n < NQ; n++) {
-                            if (n == QW) {
-                                qzl(i, j, k, QW) = -qzr(i, j, k, QW);
+                        for (int n = 0; n < NUM_STATE; n++) {
+                            if (n == UMZ) {
+                                Uzl(i, j, k, UMZ) = -Uzr(i, j, k, UMZ);
                             } else {
-                                qzl(i, j, k, n) = qzr(i, j, k, n);
+                                Uzl(i, j, k, n) = Uzr(i, j, k, n);
                             }
                         }
                     }
@@ -1188,11 +1340,11 @@ void Castro::plm(const Box& bx, const Box& vbx, Array4<Real const> const& q_arr,
                 amrex::ParallelFor(bx, [=] AMREX_GPU_HOST_DEVICE(int i, int j, int k) noexcept {
                     // reset the right state at domhi(0)+1 if needed -- it is outside the domain
                     if (k == domhi[2] + 1) {
-                        for (int n = 0; n < NQ; n++) {
-                            if (n == QW) {
-                                qzr(i, j, k, QW) = -qzl(i, j, k, QW);
+                        for (int n = 0; n < NUM_STATE; n++) {
+                            if (n == UMZ) {
+                                Uzr(i, j, k, UMZ) = -Uzl(i, j, k, UMZ);
                             } else {
-                                qzr(i, j, k, n) = qzl(i, j, k, n);
+                                Uzr(i, j, k, n) = Uzl(i, j, k, n);
                             }
                         }
                     }
