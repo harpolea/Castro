@@ -92,7 +92,7 @@ Castro::do_advance_ctu(Real time,
 
         // The result of the reactions is added directly to Sborder.
         burn_success = react_state(Sborder, R_old, prev_time, 0.5 * dt);
-        clean_state(Sborder, prev_time, Sborder.nGrow());
+        // clean_state(Sborder, prev_time, Sborder.nGrow());
 
     }
 #endif
@@ -182,8 +182,38 @@ Castro::do_advance_ctu(Real time,
       apply_source_to_state(S_new, hydro_source, dt, 0);
 #else
 
+     for (MFIter mfi(S_new, hydro_tile_size); mfi.isValid(); ++mfi) {
+
+            // the valid region box
+            const Box& bx = mfi.tilebox();
+            Array4<Real const> const S_arr = S_new.array(mfi);
+
+            if (bx.loVect3d()[0] <= 65 && bx.hiVect3d()[0] >= 65) {
+                AllPrint() << "state before update, 65 (URHO, UMX, UEDEN): (" << S_arr(65,0,0, URHO) << ", " << S_arr(65,0,0, UMX) << ", " << S_arr(65,0,0,UEDEN) << ")" << std::endl;
+                for (int i = 0; i < NUM_STATE; ++i) {
+                    AllPrint() << S_arr(65,0,0,i) << ", ";
+                }
+                AllPrint() << std::endl;
+            }
+      }
+
       construct_ctu_rhd_source(time, dt);
       apply_source_to_state(S_new, hydro_source, dt, 0);
+
+      for (MFIter mfi(S_new, hydro_tile_size); mfi.isValid(); ++mfi) {
+
+            // the valid region box
+            const Box& bx = mfi.tilebox();
+            Array4<Real const> const S_arr = S_new.array(mfi);
+
+            if (bx.loVect3d()[0] <= 64 && bx.hiVect3d()[0] >= 64) {
+                AllPrint() << "state after update, 65 (URHO, UMX, UEDEN): (" << S_arr(64,0,0, URHO) << ", " << S_arr(64,0,0, UMX) << ", " << S_arr(64,0,0,UEDEN) << ")" << std::endl;
+                for (int i = 0; i < NUM_STATE; ++i) {
+                    AllPrint() << S_arr(64,0,0,i) << ", ";
+                }
+                AllPrint() << std::endl;
+            }
+      }
 #endif
 #else
       just_the_mhd(time, dt);
@@ -209,11 +239,11 @@ Castro::do_advance_ctu(Real time,
 
 
     // Sync up state after old sources and hydro source.
-    clean_state(
-#ifdef MHD
-                Bx_new, By_new, Bz_new,
-#endif
-                S_new, cur_time, 0);
+//     clean_state(
+// #ifdef MHD
+//                 Bx_new, By_new, Bz_new,
+// #endif
+//                 S_new, cur_time, 0);
 
 #ifndef AMREX_USE_CUDA
     // Check for NaN's.
@@ -269,11 +299,11 @@ Castro::do_advance_ctu(Real time,
     // since the hydro source only works on the valid zones.
 
     if (S_new.nGrow() > 0) {
-      clean_state(
-#ifdef MHD
-                  Bx_new, By_new, Bz_new,
-#endif                
-                  S_new, cur_time, 0);
+//       clean_state(
+// #ifdef MHD
+//                   Bx_new, By_new, Bz_new,
+// #endif                
+//                   S_new, cur_time, 0);
 
       expand_state(S_new, cur_time, S_new.nGrow());
     }
@@ -302,7 +332,7 @@ Castro::do_advance_ctu(Real time,
 
             MultiFab& S_new = get_new_data(State_Type);
 
-            clean_state(S_new, time + dt, S_new.nGrow());
+            // clean_state(S_new, time + dt, S_new.nGrow());
 
             // Compute the reactive source term for use in the next iteration.
 
@@ -324,7 +354,7 @@ Castro::do_advance_ctu(Real time,
     if (time_integration_method != SimplifiedSpectralDeferredCorrections) {
 
         burn_success = react_state(S_new, R_new, cur_time - 0.5 * dt, 0.5 * dt);
-        clean_state(S_new, cur_time, S_new.nGrow());
+        // clean_state(S_new, cur_time, S_new.nGrow());
 
         // Skip the rest of the advance if the burn was unsuccessful.
 

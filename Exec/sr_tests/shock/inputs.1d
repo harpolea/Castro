@@ -1,5 +1,5 @@
 # ------------------  INPUTS TO MAIN PROGRAM  -------------------
-max_step = 30
+max_step = 200
 stop_time = 10
 
 # PROBLEM SIZE & GEOMETRY
@@ -26,7 +26,7 @@ castro.add_ext_src = 0
 
 # TIME STEP CONTROL
 
-castro.cfl            = 0.5     # cfl number for hyperbolic system
+castro.cfl            = 0.05     # cfl number for hyperbolic system
 castro.init_shrink    = 0.01    # scale back initial timestep
 castro.change_max     = 1.1     # maximum increase in dt over successive steps
 #castro.fixed_dt = 5.0e-5
@@ -41,7 +41,7 @@ amr.v                 = 1       # verbosity in Amr.cpp
 amr.max_level       = 0       # maximum level number allowed
 amr.ref_ratio       = 2 2 2 2 # refinement ratio
 amr.regrid_int      = 2       # how often to regrid
-amr.blocking_factor = 8       # block factor in grid generation
+amr.blocking_factor = 128       # block factor in grid generation
 amr.max_grid_size   = 256
 
 # CHECKPOINT FILES
@@ -56,3 +56,6 @@ amr.derive_plot_vars=ALL
 
 # PROBIN FILENAME
 amr.probin_file = probin
+
+
+castro.small_pres = 1.e-20

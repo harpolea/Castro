@@ -10,7 +10,7 @@ AMREX_GPU_HOST_DEVICE void Flux(amrex::Real* F, const amrex::Real* q_zone,
                                 const amrex::Real* U_zone, const int dir);
 
 // alias declaration for function to be passed to BrentRootFinder
-using RootFindFunc = amrex::Real (*)(amrex::Real, const amrex::Real*);
+using RootFindFunc = amrex::Real (*)(amrex::Real, const amrex::Real*, bool);
 
 AMREX_GPU_HOST_DEVICE
 amrex::Real BrentRootFinder(const amrex::Real lo, const amrex::Real i, RootFindFunc func,

@@ -4,7 +4,7 @@
 using namespace amrex;
 
 // this can't be a member function as it doesn't play nicely with the function pointer
-AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE Real f_p(Real p, const Real* U_zone);
+AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE Real f_p(Real p, const Real* U_zone, bool print_me=false);
 
 void Castro::LorentzFac(const Box& bx, Array4<Real const> const& vel, Array4<Real> const& W) {
     ParallelFor(bx, [=] AMREX_GPU_HOST_DEVICE(int i, int j, int k) noexcept {
@@ -22,21 +22,31 @@ AMREX_GPU_HOST_DEVICE void Castro::ConsToPrim(Real* q_zone, Real* U_zone) {
     // find pressure using root finder
     Real a = U_zone[UMX] * U_zone[UMX] + U_zone[UMY] * U_zone[UMY] + U_zone[UMZ] * U_zone[UMZ] -
              U_zone[UEDEN] - U_zone[URHO];
-    Real p_lo = amrex::max(std::sqrt(amrex::max(a, 0.0_rt)), small_pres);
-    Real p_hi = amrex::max((eos_gamma - 1.0_rt) * U_zone[UEDEN] * 1.001_rt, small_pres);
+    Real p_hi = amrex::max((eos_gamma - 1.0_rt) * U_zone[UEDEN] * 1.1_rt, small_pres);
+    Real p_lo = amrex::max(std::sqrt(amrex::max(a, 0.0_rt)),amrex::min(1.e-4_rt * p_hi, small_pres));
 
     if (f_p(p_lo, U_zone) * f_p(p_hi, U_zone) > 0.0_rt) {
-        p_hi *= 10.0_rt;
+        p_hi *= 100000.0_rt;
+    }
+
+    if (f_p(p_lo, U_zone) * f_p(p_hi, U_zone) > 0.0_rt) {
         p_lo *= 0.1_rt;
     }
     if (f_p(p_lo, U_zone) * f_p(p_hi, U_zone) > 0.0_rt) {
-        Print() << "f_lo = " << f_p(p_lo, U_zone) << ", f_hi = " << f_p(p_hi, U_zone) << std::endl;
+        AllPrint() << "f_lo = " << f_p(p_lo, U_zone, true) << ", f_hi = " << f_p(p_hi, U_zone, true)
+                << ", p_lo = " << p_lo << ", p_hi = " << p_hi << std::endl;
+        AllPrint() << "U = ";
+        for (int n = 0; n < NUM_STATE; ++n) {
+            AllPrint() << U_zone[n] << ", ";
+        }
+        AllPrint() << std::endl;
     }
 
     if (p_lo != p_lo || p_hi != p_hi) {
         AllPrint() << "lo = " << p_lo << ", hi = " << p_hi << ", a = " << a << std::endl;
         AllPrint() << "U_zone = (" << U_zone[URHO] << ", " << U_zone[UMX] << ", " << U_zone[UMY]
                    << ", " << U_zone[UEDEN] << ", " << U_zone[UFS] << ")" << std::endl;
+        Abort("Nannageddon!");
     }
 
     Real p = BrentRootFinder(p_lo, p_hi, f_p, U_zone);
@@ -60,7 +70,20 @@ AMREX_GPU_HOST_DEVICE void Castro::ConsToPrim(Real* q_zone, Real* U_zone) {
         (U_zone[UEDEN] + U_zone[URHO] * (1.0_rt - W_star) + p * (1.0_rt - W_star * W_star)) /
         (W_star * W_star);
 
-    q_zone[QTEMP] = U_zone[UTEMP];
+    for (auto n = 0; n < NumSpec; ++n) {
+        q_zone[QFS + n] = U_zone[UFS + n] / q_zone[QRHO];
+    }
+
+    eos_t eos_state;
+    eos_state.rho = q_zone[QRHO];
+    eos_state.e = q_zone[QREINT] / q_zone[QRHO];
+    for (auto n = 0; n < NumSpec; ++n) {
+        eos_state.xn[n] = q_zone[QFS + n];
+    }
+
+    eos(eos_input_re, eos_state);
+
+    q_zone[QTEMP] = eos_state.T;
 }
 
 AMREX_GPU_HOST_DEVICE void Castro::PrimToCons(Real* q_zone, Real* U_zone) {
@@ -81,6 +104,10 @@ AMREX_GPU_HOST_DEVICE void Castro::PrimToCons(Real* q_zone, Real* U_zone) {
     U_zone[UEDEN] = U_zone[URHO] * h * W - q_zone[QPRES] - U_zone[URHO];
     U_zone[UEINT] = U_zone[UEDEN];
     U_zone[UTEMP] = q_zone[QTEMP];
+
+    for (auto n = 0; n < NumSpec; ++n) {
+        U_zone[UFS + n] = q_zone[QFS + n] * q_zone[QRHO];
+    }
 }
 
 AMREX_GPU_HOST_DEVICE void Castro::Flux(Real* F, const Real* q_zone, const Real* U_zone,
@@ -94,14 +121,26 @@ AMREX_GPU_HOST_DEVICE void Castro::Flux(Real* F, const Real* q_zone, const Real*
     F[UMY] = U_zone[UMY] * q_zone[QU + dir];
     F[UMZ] = U_zone[UMZ] * q_zone[QU + dir];
     F[UMX + dir] += q_zone[QPRES];
-    F[UEDEN] = U_zone[UMX + dir] - U_zone[URHO] * q_zone[QU + dir];
+    F[UEDEN] = (U_zone[UEDEN] + q_zone[QPRES]) * q_zone[QU + dir];
     F[UEINT] = F[UEDEN];
+    F[UTEMP] = 0.0_rt;
+
+    for (int n = 0; n < NumSpec; ++n) {
+        F[UFS+n] = U_zone[UFS+n] * q_zone[QU + dir];
+    }
 }
 
-AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE Real f_p(Real pbar, const Real* U_zone) {
-    Real u_star = U_zone[UMX] / (U_zone[UEDEN] + pbar + U_zone[URHO]);
-    Real v_star = U_zone[UMY] / (U_zone[UEDEN] + pbar + U_zone[URHO]);
-    Real w_star = U_zone[UMZ] / (U_zone[UEDEN] + pbar + U_zone[URHO]);
+AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE Real f_p(Real pbar, const Real* U_zone, bool print_me) {
+    Real u_star, v_star, w_star;
+    // if (Math::abs(U_zone[UEDEN] + pbar) < 1.e-20_rt) {
+    //     u_star = U_zone[UMX];
+    //     v_star = U_zone[UMY];
+    //     w_star = U_zone[UMZ];
+    // } else {
+        u_star = U_zone[UMX] / (U_zone[UEDEN] + pbar + U_zone[URHO]);
+        v_star = U_zone[UMY] / (U_zone[UEDEN] + pbar + U_zone[URHO]);
+        w_star = U_zone[UMZ] / (U_zone[UEDEN] + pbar + U_zone[URHO]);
+    // }
 
     Real W_star = 1.0_rt / std::sqrt(1 - u_star * u_star - v_star * v_star - w_star * w_star);
 
@@ -113,23 +152,33 @@ AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE Real f_p(Real pbar, const Real* U_zone)
 
     Real p = (eos_gamma - 1.0_rt) * rho_star * eps_star;
 
+    if (print_me) {
+        AllPrint() << "W_star = " << W_star << std::endl;
+    }
+
+    // return (eos_gamma - 1.0_rt) * (U_zone[UEDEN] + U_zone[URHO]*(1.0_rt-W_star) + pbar*(1.0_rt-W_star*W_star)) / (W_star*W_star) - pbar;
+
     eos_t eos_state;
     eos_state.rho = rho_star;
     eos_state.e = eps_star;
-    eos_state.xn[0] = 1.0_rt;
-    for (auto n = 1; n < NumSpec; ++n) {
-        eos_state.xn[n] = 0.0_rt;
+    for (auto n = 0; n < NumSpec; ++n) {
+        eos_state.xn[n] = U_zone[UFS+n] / rho_star;
     }
 
     eos(eos_input_re, eos_state);
 
-    return eos_state.p - pbar;
+    if (isinf(eos_state.T)) {
+        return std::numeric_limits<Real>::infinity();
+    } else {
+        return eos_state.p - pbar;
+        // return p - pbar;
+    }
 }
 
 AMREX_GPU_HOST_DEVICE
 Real Castro::BrentRootFinder(const Real lo, const Real hi, RootFindFunc func,
                              const Real* args) noexcept {
-    const Real tol = 1.e-12_rt;
+    const Real tol = 1.e-9_rt;
     const int MAXITER = 100;
     const Real EPS = 3.0e-15_rt;
 
@@ -138,11 +187,11 @@ Real Castro::BrentRootFinder(const Real lo, const Real hi, RootFindFunc func,
     Real a = lo;
     Real b = hi;
 
-    Real fa = func(a, args);
-    Real fb = func(b, args);
+    Real fa = func(a, args, false);
+    Real fb = func(b, args, false);
 
     if (fb * fa > 0.0_rt) {
-        //        AllPrint() << "fa " << fa << " fb " << fb << "\n";
+        //    AllPrint() << "fa " << fa << " fb " << fb << "\n";
         Error(
             "BrentRootFinder. Root must be bracketed, but instead the supplied end points have the "
             "same sign.");
@@ -173,11 +222,11 @@ Real Castro::BrentRootFinder(const Real lo, const Real hi, RootFindFunc func,
         //  Convergence check
         Real tol1 = 2.0_rt * EPS * Math::abs(b) + 0.5_rt * tol;
 
-        if (Math::abs(0.5_rt * (b - a)) <= tol1 || fb == 0.0_rt) {
+        if (Math::abs(0.5_rt * (b - a)) <= tol1 || fb == 0.0_rt || fa == 0.0_rt) {
             break;
         }
 
-        if (fa != fb && fb != fc) {
+        if (fa != fc && fb != fc) {
             // inverse quadratic interpolation
             s = a * fb * fc / (fa - fb) / (fa - fc) + b * fa * fc / (fb - fa) / (fb - fc) +
                 c * fa * fb / (fc - fa) / (fc - fb);
@@ -187,11 +236,11 @@ Real Castro::BrentRootFinder(const Real lo, const Real hi, RootFindFunc func,
         }
 
         bool condition1 =
-            !((s > (3 * a + b) / 4.0_rt && s < b) || (s > b && s < (3 * a + b) / 4.0_rt));
+            !((s > (3.0_rt * a + b) / 4.0_rt && s < b) || (s > b && s < (3.0_rt * a + b) / 4.0_rt));
         bool condition2 = mflag && (Math::abs(s - b) >= Math::abs(b - c) / 2.0_rt);
         bool condition3 = !mflag && (Math::abs(s - b) >= Math::abs(c - d) / 2.0_rt);
-        bool condition4 = mflag && (Math::abs(b - c) < EPS);
-        bool condition5 = !mflag && (Math::abs(c - d) < EPS);
+        bool condition4 = mflag && (Math::abs(b - c) < tol);
+        bool condition5 = !mflag && (Math::abs(c - d) < tol);
 
         if (condition1 || condition2 || condition3 || condition4 || condition5) {
             // bisection
@@ -201,7 +250,7 @@ Real Castro::BrentRootFinder(const Real lo, const Real hi, RootFindFunc func,
             mflag = false;
         }
 
-        Real fs = func(s, args);
+        Real fs = func(s, args, false);
 
         d = c;
         c = b;

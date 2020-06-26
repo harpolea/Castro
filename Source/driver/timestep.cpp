@@ -144,8 +144,8 @@ Castro::estdt_rhd()
 {
     // Courant-condition limited timestep
 
-    GpuArray<Real, 3> center;
-    ca_get_center(center.begin());
+    // GpuArray<Real, 3> center;
+    // ca_get_center(center.begin());
 
     const auto dx = geom.CellSizeArray();
 
@@ -200,7 +200,7 @@ Castro::estdt_rhd()
 
             Real c = amrex::min(1.0_rt, eos_state.cs);
 
-            Real dt1 = dx[0]/(c + std::abs(ux));
+            Real dt1 = dx[0]/(c + Math::abs(ux));
 
             // Print() << "p = " << eos_state.p << ", c = " <<  c << ", dt = " <<  dt1 << std::endl;
 

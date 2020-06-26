@@ -352,6 +352,8 @@ void Castro::construct_ctu_rhd_source(Real time, Real dt) {
             //                     shk_arr, 0);
             hlle(xbx, Uxm_arr, Uxp_arr, flux0_arr, U_int_arr, qex_arr, 0, dt);
 
+            AllPrint() << "flux0_arr = " << flux0_arr(65,0,0,UEDEN) << std::endl;
+
 #endif  // 1-d
 
             // #if AMREX_SPACEDIM >= 2
@@ -749,39 +751,39 @@ void Castro::construct_ctu_rhd_source(Real time, Real dt) {
 
             // clean the fluxes
 
-            for (int idir = 0; idir < AMREX_SPACEDIM; ++idir) {
+            // for (int idir = 0; idir < AMREX_SPACEDIM; ++idir) {
 
-                const Box& nbx = amrex::surroundingNodes(bx, idir);
+            //     const Box& nbx = amrex::surroundingNodes(bx, idir);
 
-                Array4<Real> const flux_arr = (flux[idir]).array();
-                Array4<Real const> const uin_arr = Sborder.array(mfi);
+            //     Array4<Real> const flux_arr = (flux[idir]).array();
+            //     Array4<Real const> const uin_arr = Sborder.array(mfi);
 
-                // Zero out shock and temp fluxes -- these are physically meaningless here
-                amrex::ParallelFor(nbx, [=] AMREX_GPU_HOST_DEVICE(int i, int j, int k) noexcept {
-                    flux_arr(i, j, k, UTEMP) = 0.e0;
-                });
+            //     // Zero out shock and temp fluxes -- these are physically meaningless here
+            //     amrex::ParallelFor(nbx, [=] AMREX_GPU_HOST_DEVICE(int i, int j, int k) noexcept {
+            //         flux_arr(i, j, k, UTEMP) = 0.e0_rt;
+            //     });
 
-                // apply_av(nbx, idir, div_arr, uin_arr, flux_arr);
+            //     // apply_av(nbx, idir, div_arr, uin_arr, flux_arr);
 
-                // if (limit_fluxes_on_small_dens == 1) {
-                //     limit_hydro_fluxes_on_small_dens(nbx, idir, Sborder.array(mfi), q.array(mfi),
-                //                                      volume.array(mfi), flux[idir].array(),
-                //                                      area[idir].array(mfi), dt);
-                // }
+            //     // if (limit_fluxes_on_small_dens == 1) {
+            //     //     limit_hydro_fluxes_on_small_dens(nbx, idir, Sborder.array(mfi), q.array(mfi),
+            //     //                                      volume.array(mfi), flux[idir].array(),
+            //     //                                      area[idir].array(mfi), dt);
+            //     // }
 
-                // if (limit_fluxes_on_large_vel == 1) {
-                //     limit_hydro_fluxes_on_large_vel(nbx, idir, Sborder.array(mfi), q.array(mfi),
-                //                                     volume.array(mfi), flux[idir].array(),
-                //                                     area[idir].array(mfi), dt);
-                // }
+            //     // if (limit_fluxes_on_large_vel == 1) {
+            //     //     limit_hydro_fluxes_on_large_vel(nbx, idir, Sborder.array(mfi), q.array(mfi),
+            //     //                                     volume.array(mfi), flux[idir].array(),
+            //     //                                     area[idir].array(mfi), dt);
+            //     // }
 
-                normalize_species_fluxes(nbx, flux_arr);
-            }
+            //     // normalize_species_fluxes(nbx, flux_arr);
+            // }
 
             // conservative update
             Array4<Real> const update_arr = hydro_source.array(mfi);
 
-            Array4<Real> const flx_arr = (flux[0]).array();
+            // Array4<Real> const flx_arr = (flux[0]).array();
             // Array4<Real> const qx_arr = (qe[0]).array();
 
             // #if AMREX_SPACEDIM >= 2
@@ -794,7 +796,7 @@ void Castro::construct_ctu_rhd_source(Real time, Real dt) {
             //             Array4<Real> const qz_arr = (qe[2]).array();
             // #endif
 
-            consup_rhd(bx, update_arr, flx_arr, areax_arr,
+            consup_rhd(bx, update_arr, flux0_arr, areax_arr,
                        // #if AMREX_SPACEDIM >= 2
                        //                        fly_arr, areay_arr,
                        // #endif
@@ -1040,17 +1042,13 @@ void Castro::plm(const Box& bx, const Box& vbx, Array4<Real const> const& q_arr,
             eos_t eos_state;
             eos_state.rho = q_arr(i, j, k, QRHO);
             eos_state.p = q_arr(i, j, k, QPRES);
-            eos_state.xn[0] = 1.0_rt;
-            for (int n = 1; n < NumSpec; ++n) {
-                eos_state.xn[n] = 0.0_rt;
+            for (int n = 0; n < NumSpec; ++n) {
+                eos_state.xn[n] = q_arr(i,j,k,QFS+n);
             }
 
             eos(eos_input_rp, eos_state);
 
             const Real cs = eos_state.cs;
-            const Real kappa = eos_state.dedr;
-            const Real kappa_tilde = kappa / q_arr(i, j, k, QRHO);
-            const Real Kappa = kappa_tilde / (kappa_tilde - cs * cs);
             const Real h = eos_state.h;
 
             const Real udir = q_arr(i, j, k, QU + idir);
@@ -1059,67 +1057,79 @@ void Castro::plm(const Box& bx, const Box& vbx, Array4<Real const> const& q_arr,
                             q_arr(i, j, k, QW) * q_arr(i, j, k, QW);
             const Real W = 1.0_rt / (1.0_rt - v2);
             const Real u = q_arr(i, j, k, QU);
-            const Real v = q_arr(i, j, k, QV);
-            const Real w = q_arr(i, j, k, QW);
+            const Real v = 0.0_rt;  //q_arr(i, j, k, QV);
+            const Real w = 0.0_rt;  //q_arr(i, j, k, QW);
 
             Real eval[5];
 
-            eval[4] = (udir * (1.0_rt - cs * cs) +
-                       cs * std::sqrt((1.0_rt - v2) *
-                                      (1.0_rt - udir * udir - (v2 - udir * udir) * cs * cs))) /
-                      (1 - v2 * cs * cs);
-
             eval[0] = (udir * (1.0_rt - cs * cs) -
                        cs * std::sqrt((1.0_rt - v2) *
-                                      (1.0_rt - udir * udir - (v2 - udir * udir) * cs * cs))) /
+                                      (1.0_rt - v2 * cs * cs - udir * udir * (1.0_rt - cs * cs)))) /
+                      (1 - v2 * cs * cs);
+
+            eval[4] = (udir * (1.0_rt - cs * cs) +
+                       cs * std::sqrt((1.0_rt - v2) *
+                                      (1.0_rt - v2 * cs * cs - udir * udir * (1.0_rt - cs * cs)))) /
                       (1 - v2 * cs * cs);
 
             for (int n = 1; n < 4; ++n) {
                 eval[n] = udir;
             }
 
-            Real Ap = (1.0_rt - udir * udir) / (1.0_rt - udir * eval[4]);
             Real Am = (1.0_rt - udir * udir) / (1.0_rt - udir * eval[0]);
+            Real Ap = (1.0_rt - udir * udir) / (1.0_rt - udir * eval[4]);
 
-            Real r_1[5] = {Kappa / (h * W), u, v, w, 1.0_rt};
-            Real r_2[5] = {W * v, 2.0_rt * h * W * W * u * v, h * (1.0_rt + 2.0_rt * W * W * v * v),
-                           2.0_rt * h * W * W * v * w, 2.0_rt * h * W * W * v};
-            Real r_3[5] = {W * w, 2.0_rt * h * W * W * u * w, 2.0_rt * h * W * W * v * w,
-                           h * (1.0_rt + 2.0_rt * W * W * w * w), 2.0_rt * h * W * W * w};
-            Real r_p[5] = {1.0_rt, h * W * Ap * eval[4], h * W * v, h * W * w, h * W * Ap};
-            Real r_m[5] = {1.0_rt, h * W * Am * eval[0], h * W * v, h * W * w, h * W * Am};
+            Real rvec[5][5] = {
+                {1.0_rt, h * W * Am * eval[0], h * W * v, h * W * w, h * W * Am - 1.0_rt},
+                {1.0_rt / W, u, v, w, 1.0_rt - 1.0_rt / W},
+                {W * v, 2.0_rt * h * W * W * u * v, h * (1.0_rt + 2.0_rt * W * W * v * v),
+                 2.0_rt * h * W * W * v * w, 2.0_rt * h * W * W * v - W * v},
+                {W * w, 2.0_rt * h * W * W * u * w, 2.0_rt * h * W * W * v * w,
+                 h * (1.0_rt + 2.0_rt * W * W * w * w), 2.0_rt * h * W * W * w - W * w},
+                {1.0_rt, h * W * Ap * eval[4], h * W * v, h * W * w, h * W * Ap - 1.0_rt}};
 
-            Real l_1[5] = {h, W * u, W * v, W * w, -W};
-            Real l_2[5] = {0.0_rt, u * v, 1.0_rt - u * u, 0.0_rt, -v};
-            Real l_3[5] = {0.0_rt, u * w, 0.0_rt, 1.0_rt - u * u, -w};
-            Real l_m[5] = {
-                h * W * Ap * (udir - eval[4]),
-                1.0_rt + W * W * (v2 - udir * udir) * (2.0_rt * Kappa - 1.0_rt) * (1.0_rt - Ap) -
-                    Kappa * Ap,
-                W * W * v * (2.0_rt * Kappa - 1.0_rt) * Ap * (udir - eval[4]),
-                W * W * w * (2.0_rt * Kappa - 1.0_rt) * Ap * (udir - eval[4]),
-                -udir -
-                    W * W * (v2 - udir * udir) * (2.0_rt * Kappa - 1.0_rt) * (udir - Ap * eval[4]) +
-                    Kappa * Ap * eval[4]};
-            Real l_p[5] = {
-                h * W * Am * (udir - eval[0]),
-                1.0_rt + W * W * (v2 - udir * udir) * (2.0_rt * Kappa - 1.0_rt) * (1.0_rt - Am) -
-                    Kappa * Am,
-                W * W * v * (2.0_rt * Kappa - 1.0_rt) * Am * (udir - eval[0]),
-                W * W * w * (2.0_rt * Kappa - 1.0_rt) * Am * (udir - eval[0]),
-                -udir -
-                    W * W * (v2 - udir * udir) * (2.0_rt * Kappa - 1.0_rt) * (udir - Am * eval[0]) +
-                    Kappa * Am * eval[0]};
+            // Print() << "rvec[0] = ";
+            // for (int n = 0; n < 5; n++) {
+            //     Print() << rvec[0][n] << ' ';
+            // }
+            // Print() << std::endl;
 
-            Real Delta = h * h * h * W * (Kappa - 1.0_rt) * (1.0_rt - udir * udir) *
+            Real lvec[5][5] = {
+                {h * W * Ap * (udir - eval[4]) - udir -
+                     W * W * (v2 - udir * udir) * (2.0_rt * h - 1.0_rt) * (udir - Ap * eval[4]) +
+                     h * Ap * eval[4],
+                 1.0_rt + W * W * (v2 - udir * udir) * (2.0_rt * h - 1.0_rt) * (1.0_rt - Ap) -
+                     h * Ap,
+                 W * W * v * (2.0_rt * h - 1.0_rt) * Ap * (udir - eval[4]),
+                 W * W * w * (2.0_rt * h - 1.0_rt) * Ap * (udir - eval[4]),
+                 -udir -
+                     W * W * (v2 - udir * udir) * (2.0_rt * h - 1.0_rt) * (udir - Ap * eval[4]) +
+                     h * Ap * eval[4]},
+                {h - W, W * u, W * v, W * w, -W},
+                {-v, u * v, 1.0_rt - u * u, 0.0_rt, -v},
+                {-w, u * w, 0.0_rt, 1.0_rt - u * u, -w},
+                {h * W * Am * (udir - eval[0]) - udir -
+                     W * W * (v2 - udir * udir) * (2.0_rt * h - 1.0_rt) * (udir - Am * eval[0]) +
+                     h * Am * eval[0],
+                 1.0_rt + W * W * (v2 - udir * udir) * (2.0_rt * h - 1.0_rt) * (1.0_rt - Am) -
+                     h * Am,
+                 W * W * v * (2.0_rt * h - 1.0_rt) * Am * (udir - eval[0]),
+                 W * W * w * (2.0_rt * h - 1.0_rt) * Am * (udir - eval[0]),
+                 -udir -
+                     W * W * (v2 - udir * udir) * (2.0_rt * h - 1.0_rt) * (udir - Am * eval[0]) +
+                     h * Am * eval[0]}};
+
+            Real Delta = h * h * h * W * (h - 1.0_rt) * (1.0_rt - udir * udir) *
                          (Ap * eval[4] - Am * eval[0]);
 
             for (int n = 0; n < 5; ++n) {
-                l_1[n] *= W / (Kappa - 1.0_rt);
-                l_2[n] /= h * (1.0_rt - udir * udir);
-                l_3[n] /= h * (1.0_rt - udir * udir);
-                l_p[n] *= h * h / Delta;
-                l_m[n] *= -h * h / Delta;
+                lvec[0][n] *= h * h / Delta;
+                lvec[1][n] *= W / (h - 1.0_rt);
+                lvec[2][n] *= 0.0_rt;
+                lvec[3][n] *= 0.0_rt;
+                // lvec[2][n] /= h * (1.0_rt - udir * udir);
+                // lvec[3][n] /= h * (1.0_rt - udir * udir);
+                lvec[4][n] *= -h * h / Delta;
             }
 
             // define the reference states
@@ -1152,11 +1162,14 @@ void Castro::plm(const Box& bx, const Box& vbx, Array4<Real const> const& q_arr,
 
             for (int n = 0; n < NUM_STATE; n++) {
                 if (idir == 0) {
-
+                    // this is one the right face of the current zone,
+                    // so the fastest moving eigenvalue is e_val[4] = u + c
                     factor = 0.5_rt * (1.0_rt - dt / dx[0] * amrex::max(eval[4], 0.0_rt));
 
                     Uxl(i + 1, j, k, n) = U_arr(i, j, k, n) + factor * dU(i, j, k, n);
 
+                    // left face of the current zone, so the fastest moving
+                    // eigenvalue is e_val[0] = u - c
                     factor = 0.5_rt * (1.0_rt + dt / dx[0] * amrex::min(eval[0], 0.0_rt));
 
                     Uxr(i, j, k, n) = U_arr(i, j, k, n) - factor * dU(i, j, k, n);
@@ -1191,9 +1204,10 @@ void Castro::plm(const Box& bx, const Box& vbx, Array4<Real const> const& q_arr,
             Real betar[5];
 
             for (int n = 0; n < 5; ++n) {
-                Real summ = l_m[n] * dU(i, j, k, 0) + l_1[n] * dU(i, j, k, 1) +
-                            l_2[n] * dU(i, j, k, 2) + l_3[n] * dU(i, j, k, 3) +
-                            l_p[n] * dU(i, j, k, 4);
+                Real summ = 0.0_rt;
+                for (int m = 0; m < 5; ++m) {
+                    summ += lvec[n][m] * dU(i, j, k, m);
+                }
 
                 betal[n] = 0.25_rt * dt / dx[idir] * (eval[4] - eval[n]) *
                            (std::copysign(1.0_rt, eval[n]) + 1.0_rt) * summ;
@@ -1208,10 +1222,12 @@ void Castro::plm(const Box& bx, const Box& vbx, Array4<Real const> const& q_arr,
                     continue;
                 }
 
-                Real sum_l = betal[0] * r_m[n] + betal[1] * r_1[n] + betal[2] * r_2[n] +
-                             betal[3] * r_3[n] + betal[4] * r_p[n];
-                Real sum_r = betar[0] * r_m[n] + betar[1] * r_1[n] + betar[2] * r_2[n] +
-                             betar[3] * r_3[n] + betar[4] * r_p[n];
+                Real sum_l = 0.0_rt;
+                Real sum_r = 0.0_rt;
+                for (int m = 0; m < 5; ++m) {
+                    sum_l += betal[m] * rvec[m][n];
+                    sum_r += betar[m] * rvec[m][n];
+                }
 
                 // compute the interface states
                 if (idir == 0) {
@@ -1371,17 +1387,38 @@ void Castro::consup_rhd(const Box& bx, Array4<Real> const& update, Array4<Real> 
 
     amrex::ParallelFor(
         bx, NUM_STATE, [=] AMREX_GPU_HOST_DEVICE(int i, int j, int k, int n) noexcept {
-            Real volinv = 1.0 / vol(i, j, k);
 
-            update(i, j, k, n) +=
-                (flux0(i, j, k, n) * area0(i, j, k) - flux0(i + 1, j, k, n) * area0(i + 1, j, k)
+            if (n != UTEMP) {
+                Real volinv = 1.0 / vol(i, j, k);
+
+            // if (n == NUM_STATE-1 && (i == 64 || i == 65)) {
+            //         AllPrint() << "Flux[" << i << "] = ";
+            //         for (int m = 0; m < NUM_STATE; ++m) {
+            //             AllPrint() << update(i,j,k,m) + (flux0(i,j,k,m)*area0(i,j,k) - flux0(i+1,j,k,m)*area0(i+1,j,k))*volinv << ", ";
+            //         }
+            //         AllPrint() << std::endl;
+            //     }
+
+                update(i, j, k, n) +=
+                    (flux0(i, j, k, n) * area0(i, j, k) - flux0(i + 1, j, k, n) * area0(i + 1, j, k)
 #if AMREX_SPACEDIM >= 2
-                 + flux1(i, j, k, n) * area1(i, j, k) - flux1(i, j + 1, k, n) * area1(i, j + 1, k)
+                     + flux1(i, j, k, n) * area1(i, j, k) -
+                     flux1(i, j + 1, k, n) * area1(i, j + 1, k)
 #endif
 #if AMREX_SPACEDIM == 3
-                 + flux2(i, j, k, n) * area2(i, j, k) - flux2(i, j, k + 1, n) * area2(i, j, k + 1)
+                     + flux2(i, j, k, n) * area2(i, j, k) -
+                     flux2(i, j, k + 1, n) * area2(i, j, k + 1)
 #endif
-                     ) *
-                volinv;
+                         ) *
+                    volinv;
+
+                if (n == NUM_STATE-1 && (i == 64 || i == 65)) {
+                    AllPrint() << "update[" << i << "] = ";
+                    for (auto m = 0; m < NUM_STATE; ++m) {
+                        AllPrint() << update(i, j,k, m) << ", ";
+                    }
+                    AllPrint() << std::endl;
+                }                
+            }
         });
 }
