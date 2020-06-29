@@ -1180,28 +1180,41 @@ Castro::initData ()
              amrex::ParallelFor(box,
              [=] AMREX_GPU_HOST_DEVICE (int i, int j, int k) noexcept
              {
+                 Real U_zone[NUM_STATE];
+                 Real q_zone[NQ];
 
-               Real rhoInv = 1.0_rt / S_arr(i,j,k,URHO);
-               Real u = S_arr(i,j,k,UMX) * rhoInv;
-               Real v = S_arr(i,j,k,UMY) * rhoInv;
-               Real w = S_arr(i,j,k,UMZ) * rhoInv;
+                 for (int n = 0; n < NUM_STATE; ++n) {
+                     U_zone[n] = S_arr(i,j,k,n);
+                 }
+
+                 ConsToPrim(q_zone, U_zone);
+
+               Real rhoInv = 1.0_rt / q_zone[QRHO];
+               Real u = q_zone[QU] ;
+               Real v = q_zone[QV];
+               Real w = q_zone[QW];
 
                eos_t eos_state;
-               eos_state.rho = S_arr(i,j,k,URHO);
+               eos_state.rho = q_zone[QRHO];
                eos_state.T = S_arr(i,j,k,UTEMP);
-               eos_state.e = S_arr(i,j,k,UEINT) * rhoInv - 0.5_rt * (u*u + v*v + w*w);
+               eos_state.e = q_zone[QREINT] * rhoInv - 0.5_rt * (u*u + v*v + w*w);
                for (int n = 0; n < NumSpec; n++) {
-                 eos_state.xn[n] = S_arr(i,j,k,UFS+n) * rhoInv;
+                 eos_state.xn[n] = q_zone[QFS+n];
                }
                for (int n = 0; n < NumAux; n++) {
-                 eos_state.aux[n] = S_arr(i,j,k,UFX+n) * rhoInv;
+                 eos_state.aux[n] = q_zone[QFX+n];
                }
 
                eos(eos_input_re, eos_state);
 
-               S_arr(i,j,k,UTEMP) = eos_state.T;
+               q_zone[QTEMP] = eos_state.T;
 
-               S_arr(i,j,k,UEINT) = eos_state.rho * eos_state.e;
+               q_zone[QEINT] = eos_state.rho * eos_state.e;
+
+               PrimToCons(q_zone, U_zone);
+               for (int n = 0; n < NUM_STATE; ++n) {
+                     S_arr(i,j,k,n) = U_zone[n];
+                 }
              });
            }
 
@@ -3419,8 +3432,12 @@ Castro::reset_internal_energy(const Box& bx,
 
         PrimToCons(q_zone, U_zone);
 
-        // u(i,j,k,UEDEN) = U_zone[UEDEN];
-        // u(i,j,k,UEINT) = U_zone[UEINT];
+        // for (int n = 0; n < NUM_STATE; ++n) {
+        //     u(i,j,k,n) = U_zone[n];
+        // }
+
+        u(i,j,k,UEDEN) = U_zone[UEDEN];
+        u(i,j,k,UEINT) = U_zone[UEINT];
     });
 }
 

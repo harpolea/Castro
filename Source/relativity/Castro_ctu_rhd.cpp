@@ -352,7 +352,7 @@ void Castro::construct_ctu_rhd_source(Real time, Real dt) {
             //                     shk_arr, 0);
             hlle(xbx, Uxm_arr, Uxp_arr, flux0_arr, U_int_arr, qex_arr, 0, dt);
 
-            AllPrint() << "flux0_arr = " << flux0_arr(65,0,0,UEDEN) << std::endl;
+            AllPrint() << "flux0_arr = " << flux0_arr(65, 0, 0, UEDEN) << std::endl;
 
 #endif  // 1-d
 
@@ -1043,7 +1043,7 @@ void Castro::plm(const Box& bx, const Box& vbx, Array4<Real const> const& q_arr,
             eos_state.rho = q_arr(i, j, k, QRHO);
             eos_state.p = q_arr(i, j, k, QPRES);
             for (int n = 0; n < NumSpec; ++n) {
-                eos_state.xn[n] = q_arr(i,j,k,QFS+n);
+                eos_state.xn[n] = q_arr(i, j, k, QFS + n);
             }
 
             eos(eos_input_rp, eos_state);
@@ -1052,13 +1052,11 @@ void Castro::plm(const Box& bx, const Box& vbx, Array4<Real const> const& q_arr,
             const Real h = eos_state.h;
 
             const Real udir = q_arr(i, j, k, QU + idir);
-            const Real v2 = q_arr(i, j, k, QU) * q_arr(i, j, k, QU) +
-                            q_arr(i, j, k, QV) * q_arr(i, j, k, QV) +
-                            q_arr(i, j, k, QW) * q_arr(i, j, k, QW);
-            const Real W = 1.0_rt / (1.0_rt - v2);
             const Real u = q_arr(i, j, k, QU);
             const Real v = 0.0_rt;  //q_arr(i, j, k, QV);
             const Real w = 0.0_rt;  //q_arr(i, j, k, QW);
+            const Real v2 = u * u + v * v + w * w;
+            const Real W = 1.0_rt / std::sqrt(1.0_rt - v2);
 
             Real eval[5];
 
@@ -1385,11 +1383,9 @@ void Castro::consup_rhd(const Box& bx, Array4<Real> const& update, Array4<Real> 
     // essentially the flux divergence.  This can be added with dt to
     // get the update
 
-    amrex::ParallelFor(
-        bx, NUM_STATE, [=] AMREX_GPU_HOST_DEVICE(int i, int j, int k, int n) noexcept {
-
-            if (n != UTEMP) {
-                Real volinv = 1.0 / vol(i, j, k);
+    amrex::ParallelFor(bx, NUM_STATE, [=] AMREX_GPU_HOST_DEVICE(int i, int j, int k, int n) noexcept {
+        if (n != UTEMP) {
+            Real volinv = 1.0 / vol(i, j, k);
 
             // if (n == NUM_STATE-1 && (i == 64 || i == 65)) {
             //         AllPrint() << "Flux[" << i << "] = ";
@@ -1399,26 +1395,24 @@ void Castro::consup_rhd(const Box& bx, Array4<Real> const& update, Array4<Real> 
             //         AllPrint() << std::endl;
             //     }
 
-                update(i, j, k, n) +=
-                    (flux0(i, j, k, n) * area0(i, j, k) - flux0(i + 1, j, k, n) * area0(i + 1, j, k)
+            update(i, j, k, n) +=
+                (flux0(i, j, k, n) * area0(i, j, k) - flux0(i + 1, j, k, n) * area0(i + 1, j, k)
 #if AMREX_SPACEDIM >= 2
-                     + flux1(i, j, k, n) * area1(i, j, k) -
-                     flux1(i, j + 1, k, n) * area1(i, j + 1, k)
+                 + flux1(i, j, k, n) * area1(i, j, k) - flux1(i, j + 1, k, n) * area1(i, j + 1, k)
 #endif
 #if AMREX_SPACEDIM == 3
-                     + flux2(i, j, k, n) * area2(i, j, k) -
-                     flux2(i, j, k + 1, n) * area2(i, j, k + 1)
+                 + flux2(i, j, k, n) * area2(i, j, k) - flux2(i, j, k + 1, n) * area2(i, j, k + 1)
 #endif
-                         ) *
-                    volinv;
+                     ) *
+                volinv;
 
-                if (n == NUM_STATE-1 && (i == 64 || i == 65)) {
-                    AllPrint() << "update[" << i << "] = ";
-                    for (auto m = 0; m < NUM_STATE; ++m) {
-                        AllPrint() << update(i, j,k, m) << ", ";
-                    }
-                    AllPrint() << std::endl;
-                }                
+            if (n == NUM_STATE - 1 && (i == 64 || i == 65)) {
+                AllPrint() << "update[" << i << "] = ";
+                for (auto m = 0; m < NUM_STATE; ++m) {
+                    AllPrint() << update(i, j, k, m) << ", ";
+                }
+                AllPrint() << std::endl;
             }
-        });
+        }
+    });
 }

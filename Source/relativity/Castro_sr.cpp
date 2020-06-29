@@ -4,7 +4,8 @@
 using namespace amrex;
 
 // this can't be a member function as it doesn't play nicely with the function pointer
-AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE Real f_p(Real p, const Real* U_zone, bool print_me=false);
+AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE Real f_p(Real p, const Real* U_zone,
+                                                  bool print_me = false);
 
 void Castro::LorentzFac(const Box& bx, Array4<Real const> const& vel, Array4<Real> const& W) {
     ParallelFor(bx, [=] AMREX_GPU_HOST_DEVICE(int i, int j, int k) noexcept {
@@ -23,7 +24,8 @@ AMREX_GPU_HOST_DEVICE void Castro::ConsToPrim(Real* q_zone, Real* U_zone) {
     Real a = U_zone[UMX] * U_zone[UMX] + U_zone[UMY] * U_zone[UMY] + U_zone[UMZ] * U_zone[UMZ] -
              U_zone[UEDEN] - U_zone[URHO];
     Real p_hi = amrex::max((eos_gamma - 1.0_rt) * U_zone[UEDEN] * 1.1_rt, small_pres);
-    Real p_lo = amrex::max(std::sqrt(amrex::max(a, 0.0_rt)),amrex::min(1.e-4_rt * p_hi, small_pres));
+    Real p_lo =
+        amrex::max(std::sqrt(amrex::max(a, 0.0_rt)), amrex::min(1.e-4_rt * p_hi, small_pres));
 
     if (f_p(p_lo, U_zone) * f_p(p_hi, U_zone) > 0.0_rt) {
         p_hi *= 100000.0_rt;
@@ -34,7 +36,7 @@ AMREX_GPU_HOST_DEVICE void Castro::ConsToPrim(Real* q_zone, Real* U_zone) {
     }
     if (f_p(p_lo, U_zone) * f_p(p_hi, U_zone) > 0.0_rt) {
         AllPrint() << "f_lo = " << f_p(p_lo, U_zone, true) << ", f_hi = " << f_p(p_hi, U_zone, true)
-                << ", p_lo = " << p_lo << ", p_hi = " << p_hi << std::endl;
+                   << ", p_lo = " << p_lo << ", p_hi = " << p_hi << std::endl;
         AllPrint() << "U = ";
         for (int n = 0; n < NUM_STATE; ++n) {
             AllPrint() << U_zone[n] << ", ";
@@ -76,12 +78,12 @@ AMREX_GPU_HOST_DEVICE void Castro::ConsToPrim(Real* q_zone, Real* U_zone) {
 
     eos_t eos_state;
     eos_state.rho = q_zone[QRHO];
-    eos_state.e = q_zone[QREINT] / q_zone[QRHO];
+    eos_state.p = q_zone[QPRES];
     for (auto n = 0; n < NumSpec; ++n) {
         eos_state.xn[n] = q_zone[QFS + n];
     }
 
-    eos(eos_input_re, eos_state);
+    eos(eos_input_rp, eos_state);
 
     q_zone[QTEMP] = eos_state.T;
 }
@@ -126,7 +128,7 @@ AMREX_GPU_HOST_DEVICE void Castro::Flux(Real* F, const Real* q_zone, const Real*
     F[UTEMP] = 0.0_rt;
 
     for (int n = 0; n < NumSpec; ++n) {
-        F[UFS+n] = U_zone[UFS+n] * q_zone[QU + dir];
+        F[UFS + n] = U_zone[UFS + n] * q_zone[QU + dir];
     }
 }
 
@@ -137,9 +139,9 @@ AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE Real f_p(Real pbar, const Real* U_zone,
     //     v_star = U_zone[UMY];
     //     w_star = U_zone[UMZ];
     // } else {
-        u_star = U_zone[UMX] / (U_zone[UEDEN] + pbar + U_zone[URHO]);
-        v_star = U_zone[UMY] / (U_zone[UEDEN] + pbar + U_zone[URHO]);
-        w_star = U_zone[UMZ] / (U_zone[UEDEN] + pbar + U_zone[URHO]);
+    u_star = U_zone[UMX] / (U_zone[UEDEN] + pbar + U_zone[URHO]);
+    v_star = U_zone[UMY] / (U_zone[UEDEN] + pbar + U_zone[URHO]);
+    w_star = U_zone[UMZ] / (U_zone[UEDEN] + pbar + U_zone[URHO]);
     // }
 
     Real W_star = 1.0_rt / std::sqrt(1 - u_star * u_star - v_star * v_star - w_star * w_star);
@@ -162,7 +164,7 @@ AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE Real f_p(Real pbar, const Real* U_zone,
     eos_state.rho = rho_star;
     eos_state.e = eps_star;
     for (auto n = 0; n < NumSpec; ++n) {
-        eos_state.xn[n] = U_zone[UFS+n] / rho_star;
+        eos_state.xn[n] = U_zone[UFS + n] / rho_star;
     }
 
     eos(eos_input_re, eos_state);

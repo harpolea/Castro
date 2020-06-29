@@ -146,7 +146,7 @@ void Castro::hlle(const Box& bx, Array4<Real const> const& UL, Array4<Real const
                        << "F = ";
             for (int n = 0; n < NUM_STATE; ++n) {
                 AllPrint() << F(i, j, k, n) << ", ";
-            } 
+            }
             AllPrint() << std::endl;
         }
 
