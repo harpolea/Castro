@@ -185,14 +185,14 @@ void Castro::construct_ctu_rhd_source(Real time, Real dt) {
                 amrex::ParallelFor(obx, [=] AMREX_GPU_HOST_DEVICE(int i, int j, int k) noexcept {
                     flatn_arr(i, j, k) = 0.0;
                 });
-                // } else if (use_flattening == 1) {
+            } else if (use_flattening == 1) {
 
-                //     uflatten(obx, q_arr, flatn_arr, QPRES);
+                uflatten(obx, q_arr, flatn_arr, QPRES);
 
-                // } else {
-                //     amrex::ParallelFor(obx, [=] AMREX_GPU_HOST_DEVICE(int i, int j, int k) noexcept {
-                //         flatn_arr(i, j, k) = 1.0;
-                //     });
+            } else {
+                amrex::ParallelFor(obx, [=] AMREX_GPU_HOST_DEVICE(int i, int j, int k) noexcept {
+                    flatn_arr(i, j, k) = 1.0;
+                });
             }
 
             const Box& xbx = amrex::surroundingNodes(bx, 0);
@@ -352,7 +352,7 @@ void Castro::construct_ctu_rhd_source(Real time, Real dt) {
             //                     shk_arr, 0);
             hlle(xbx, Uxm_arr, Uxp_arr, flux0_arr, U_int_arr, qex_arr, 0, dt);
 
-            AllPrint() << "flux0_arr = " << flux0_arr(65, 0, 0, UEDEN) << std::endl;
+            AllPrint() << "flux0_arr(64,UMX) = " << flux0_arr(64, 0, 0, UMX) << std::endl;
 
 #endif  // 1-d
 
@@ -751,34 +751,34 @@ void Castro::construct_ctu_rhd_source(Real time, Real dt) {
 
             // clean the fluxes
 
-            // for (int idir = 0; idir < AMREX_SPACEDIM; ++idir) {
+            for (int idir = 0; idir < AMREX_SPACEDIM; ++idir) {
 
-            //     const Box& nbx = amrex::surroundingNodes(bx, idir);
+                const Box& nbx = amrex::surroundingNodes(bx, idir);
 
-            //     Array4<Real> const flux_arr = (flux[idir]).array();
-            //     Array4<Real const> const uin_arr = Sborder.array(mfi);
+                Array4<Real> const flux_arr = (flux[idir]).array();
+                Array4<Real const> const uin_arr = Sborder.array(mfi);
 
-            //     // Zero out shock and temp fluxes -- these are physically meaningless here
-            //     amrex::ParallelFor(nbx, [=] AMREX_GPU_HOST_DEVICE(int i, int j, int k) noexcept {
-            //         flux_arr(i, j, k, UTEMP) = 0.e0_rt;
-            //     });
+                // Zero out shock and temp fluxes -- these are physically meaningless here
+                amrex::ParallelFor(nbx, [=] AMREX_GPU_HOST_DEVICE(int i, int j, int k) noexcept {
+                    flux_arr(i, j, k, UTEMP) = 0.e0_rt;
+                });
 
-            //     // apply_av(nbx, idir, div_arr, uin_arr, flux_arr);
+                // apply_av(nbx, idir, div_arr, uin_arr, flux_arr);
 
-            //     // if (limit_fluxes_on_small_dens == 1) {
-            //     //     limit_hydro_fluxes_on_small_dens(nbx, idir, Sborder.array(mfi), q.array(mfi),
-            //     //                                      volume.array(mfi), flux[idir].array(),
-            //     //                                      area[idir].array(mfi), dt);
-            //     // }
+                // if (limit_fluxes_on_small_dens == 1) {
+                //     limit_hydro_fluxes_on_small_dens(nbx, idir, Sborder.array(mfi), q.array(mfi),
+                //                                      volume.array(mfi), flux[idir].array(),
+                //                                      area[idir].array(mfi), dt);
+                // }
 
-            //     // if (limit_fluxes_on_large_vel == 1) {
-            //     //     limit_hydro_fluxes_on_large_vel(nbx, idir, Sborder.array(mfi), q.array(mfi),
-            //     //                                     volume.array(mfi), flux[idir].array(),
-            //     //                                     area[idir].array(mfi), dt);
-            //     // }
+                // if (limit_fluxes_on_large_vel == 1) {
+                //     limit_hydro_fluxes_on_large_vel(nbx, idir, Sborder.array(mfi), q.array(mfi),
+                //                                     volume.array(mfi), flux[idir].array(),
+                //                                     area[idir].array(mfi), dt);
+                // }
 
-            //     // normalize_species_fluxes(nbx, flux_arr);
-            // }
+                // normalize_species_fluxes(nbx, flux_arr);
+            }
 
             // conservative update
             Array4<Real> const update_arr = hydro_source.array(mfi);
@@ -812,11 +812,11 @@ void Castro::construct_ctu_rhd_source(Real time, Real dt) {
                 Array4<Real> const flux_arr = (flux[idir]).array();
                 Array4<Real const> const area_arr = (area[idir]).array(mfi);
 
-                //                 scale_flux(nbx,
-                // #if AMREX_SPACEDIM == 1
-                //                            qex_arr,
-                // #endif
-                //                            flux_arr, area_arr, dt);
+                scale_flux(nbx,
+#if AMREX_SPACEDIM == 1
+                           qex_arr,
+#endif
+                           flux_arr, area_arr, dt);
 
                 if (idir == 0) {
 #if AMREX_SPACEDIM <= 2
@@ -1057,6 +1057,8 @@ void Castro::plm(const Box& bx, const Box& vbx, Array4<Real const> const& q_arr,
             const Real w = 0.0_rt;  //q_arr(i, j, k, QW);
             const Real v2 = u * u + v * v + w * w;
             const Real W = 1.0_rt / std::sqrt(1.0_rt - v2);
+            const Real kappa_tilde = eos_state.dpdr / eos_state.rho;
+            const Real Kappa = kappa_tilde / (kappa_tilde - cs * cs);
 
             Real eval[5];
 
@@ -1074,17 +1076,39 @@ void Castro::plm(const Box& bx, const Box& vbx, Array4<Real const> const& q_arr,
                 eval[n] = udir;
             }
 
+            // if (i == 65) {
+            //     AllPrint() << "eval[65] = ";
+            //     for (int n = 0; n < 5; ++n)
+            //         AllPrint() << eval[n] << ", ";
+            //     AllPrint() << std::endl;
+            // }
+
             Real Am = (1.0_rt - udir * udir) / (1.0_rt - udir * eval[0]);
             Real Ap = (1.0_rt - udir * udir) / (1.0_rt - udir * eval[4]);
 
+            // pyro version
+            // Real rvec[5][5] = {
+            //     {1.0_rt, h * W * Am * eval[0], h * W * v, h * W * w, h * W * Am - 1.0_rt},
+            //     {1.0_rt / W, u, v, w, 1.0_rt - 1.0_rt / W},
+            //     {W * v, 2.0_rt * h * W * W * u * v, h * (1.0_rt + 2.0_rt * W * W * v * v),
+            //      2.0_rt * h * W * W * v * w, 2.0_rt * h * W * W * v - W * v},
+            //     {W * w, 2.0_rt * h * W * W * u * w, 2.0_rt * h * W * W * v * w,
+            //      h * (1.0_rt + 2.0_rt * W * W * w * w), 2.0_rt * h * W * W * w - W * w},
+            //     {1.0_rt, h * W * Ap * eval[4], h * W * v, h * W * w, h * W * Ap - 1.0_rt}};
+
             Real rvec[5][5] = {
-                {1.0_rt, h * W * Am * eval[0], h * W * v, h * W * w, h * W * Am - 1.0_rt},
-                {1.0_rt / W, u, v, w, 1.0_rt - 1.0_rt / W},
+                {1.0_rt, h * W * Am * eval[0], h * W * v, h * W * w, h * W * Am},
+                {1.0_rt / (h * W), u, v, w, 1.0_rt},
                 {W * v, 2.0_rt * h * W * W * u * v, h * (1.0_rt + 2.0_rt * W * W * v * v),
-                 2.0_rt * h * W * W * v * w, 2.0_rt * h * W * W * v - W * v},
+                 2.0_rt * h * W * W * v * w, 2.0_rt * h * W * W * v},
                 {W * w, 2.0_rt * h * W * W * u * w, 2.0_rt * h * W * W * v * w,
-                 h * (1.0_rt + 2.0_rt * W * W * w * w), 2.0_rt * h * W * W * w - W * w},
-                {1.0_rt, h * W * Ap * eval[4], h * W * v, h * W * w, h * W * Ap - 1.0_rt}};
+                 h * (1.0_rt + 2.0_rt * W * W * w * w), 2.0_rt * h * W * W * w},
+                {1.0_rt, h * W * Ap * eval[4], h * W * v, h * W * w, h * W * Ap}};
+
+            // adjust for the fact we've defined tau to include - D
+            for (int n = 0; n < 5; ++n) {
+                rvec[n][4] -= rvec[n][0];
+            }
 
             // Print() << "rvec[0] = ";
             // for (int n = 0; n < 5; n++) {
@@ -1092,50 +1116,78 @@ void Castro::plm(const Box& bx, const Box& vbx, Array4<Real const> const& q_arr,
             // }
             // Print() << std::endl;
 
-            Real lvec[5][5] = {
-                {h * W * Ap * (udir - eval[4]) - udir -
-                     W * W * (v2 - udir * udir) * (2.0_rt * h - 1.0_rt) * (udir - Ap * eval[4]) +
-                     h * Ap * eval[4],
-                 1.0_rt + W * W * (v2 - udir * udir) * (2.0_rt * h - 1.0_rt) * (1.0_rt - Ap) -
-                     h * Ap,
-                 W * W * v * (2.0_rt * h - 1.0_rt) * Ap * (udir - eval[4]),
-                 W * W * w * (2.0_rt * h - 1.0_rt) * Ap * (udir - eval[4]),
-                 -udir -
-                     W * W * (v2 - udir * udir) * (2.0_rt * h - 1.0_rt) * (udir - Ap * eval[4]) +
-                     h * Ap * eval[4]},
-                {h - W, W * u, W * v, W * w, -W},
-                {-v, u * v, 1.0_rt - u * u, 0.0_rt, -v},
-                {-w, u * w, 0.0_rt, 1.0_rt - u * u, -w},
-                {h * W * Am * (udir - eval[0]) - udir -
-                     W * W * (v2 - udir * udir) * (2.0_rt * h - 1.0_rt) * (udir - Am * eval[0]) +
-                     h * Am * eval[0],
-                 1.0_rt + W * W * (v2 - udir * udir) * (2.0_rt * h - 1.0_rt) * (1.0_rt - Am) -
-                     h * Am,
-                 W * W * v * (2.0_rt * h - 1.0_rt) * Am * (udir - eval[0]),
-                 W * W * w * (2.0_rt * h - 1.0_rt) * Am * (udir - eval[0]),
-                 -udir -
-                     W * W * (v2 - udir * udir) * (2.0_rt * h - 1.0_rt) * (udir - Am * eval[0]) +
-                     h * Am * eval[0]}};
+            // pyro version
+            // Real lvec[5][5] = {
+            //     {h * W * Ap * (udir - eval[4]) - udir -
+            //          W * W * (v2 - udir * udir) * (2.0_rt * h - 1.0_rt) * (udir - Ap * eval[4]) +
+            //          h * Ap * eval[4],
+            //      1.0_rt + W * W * (v2 - udir * udir) * (2.0_rt * h - 1.0_rt) * (1.0_rt - Ap) -
+            //          h * Ap,
+            //      W * W * v * (2.0_rt * h - 1.0_rt) * Ap * (udir - eval[4]),
+            //      W * W * w * (2.0_rt * h - 1.0_rt) * Ap * (udir - eval[4]),
+            //      -udir -
+            //          W * W * (v2 - udir * udir) * (2.0_rt * h - 1.0_rt) * (udir - Ap * eval[4]) +
+            //          h * Ap * eval[4]},
+            //     {h - W, W * u, W * v, W * w, -W},
+            //     {-v, u * v, 1.0_rt - u * u, 0.0_rt, -v},
+            //     {-w, u * w, 0.0_rt, 1.0_rt - u * u, -w},
+            //     {h * W * Am * (udir - eval[0]) - udir -
+            //          W * W * (v2 - udir * udir) * (2.0_rt * h - 1.0_rt) * (udir - Am * eval[0]) +
+            //          h * Am * eval[0],
+            //      1.0_rt + W * W * (v2 - udir * udir) * (2.0_rt * h - 1.0_rt) * (1.0_rt - Am) -
+            //          h * Am,
+            //      W * W * v * (2.0_rt * h - 1.0_rt) * Am * (udir - eval[0]),
+            //      W * W * w * (2.0_rt * h - 1.0_rt) * Am * (udir - eval[0]),
+            //      -udir -
+            //          W * W * (v2 - udir * udir) * (2.0_rt * h - 1.0_rt) * (udir - Am * eval[0]) +
+            //          h * Am * eval[0]}};
 
-            Real Delta = h * h * h * W * (h - 1.0_rt) * (1.0_rt - udir * udir) *
+            Real lvec[5][5] = {
+                {h * W * Ap * (udir - eval[4]),
+                 1.0_rt + W * W * (v2 - udir * udir) * (2.0_rt * Kappa - 1.0_rt) * (1.0_rt - Ap) -
+                     Kappa * Ap,
+                 W * W * v * (2.0_rt * Kappa - 1.0_rt) * Ap * (udir - eval[4]),
+                 W * W * w * (2.0_rt * Kappa - 1.0_rt) * Ap * (udir - eval[4]),
+                 -udir -
+                     W * W * (v2 - udir * udir) * (2.0_rt * Kappa - 1.0_rt) *
+                         (udir - Ap * eval[4]) +
+                     Kappa * Ap * eval[4]},
+                {h, W * u, W * v, W * w, -W},
+                {0.0_rt, u * v, 1.0_rt - u * u, 0.0_rt, -v},
+                {0.0_rt, u * w, 0.0_rt, 1.0_rt - u * u, -w},
+                {h * W * Am * (udir - eval[0]),
+                 1.0_rt + W * W * (v2 - udir * udir) * (2.0_rt * Kappa - 1.0_rt) * (1.0_rt - Am) -
+                     Kappa * Am,
+                 W * W * v * (2.0_rt * Kappa - 1.0_rt) * Am * (udir - eval[0]),
+                 W * W * w * (2.0_rt * Kappa - 1.0_rt) * Am * (udir - eval[0]),
+                 -udir -
+                     W * W * (v2 - udir * udir) * (2.0_rt * Kappa - 1.0_rt) *
+                         (udir - Am * eval[0]) +
+                     Kappa * Am * eval[0]}};
+
+            Real Delta = h * h * h * W * (Kappa - 1.0_rt) * (1.0_rt - udir * udir) *
                          (Ap * eval[4] - Am * eval[0]);
 
             for (int n = 0; n < 5; ++n) {
                 lvec[0][n] *= h * h / Delta;
-                lvec[1][n] *= W / (h - 1.0_rt);
-                lvec[2][n] *= 0.0_rt;
-                lvec[3][n] *= 0.0_rt;
-                // lvec[2][n] /= h * (1.0_rt - udir * udir);
-                // lvec[3][n] /= h * (1.0_rt - udir * udir);
+                lvec[1][n] *= W / (Kappa - 1.0_rt);
+                // lvec[2][n] *= 0.0_rt;
+                // lvec[3][n] *= 0.0_rt;
+                lvec[2][n] /= h * (1.0_rt - udir * udir);
+                lvec[3][n] /= h * (1.0_rt - udir * udir);
                 lvec[4][n] *= -h * h / Delta;
             }
 
+            // adjust for the fact we've defined tau to include - D
+            for (int n = 0; n < 5; ++n) {
+                lvec[n][4] += lvec[n][0];
+            }
+
             // define the reference states
-            Real factor;
 
             for (int n = 0; n < NUM_STATE; n++) {
 
-                if (n == QTEMP) {
+                if (n == UTEMP) {
                     continue;
                 }
 
@@ -1155,10 +1207,16 @@ void Castro::plm(const Box& bx, const Box& vbx, Array4<Real const> const& q_arr,
 #endif
                 }
 
-                slope(dU(i, j, k, n), deltar, deltal, flatn_arr(i, j, k, n));
-            }
+                slope(dU(i, j, k, n), deltar, deltal, flatn_arr(i, j, k));
 
-            for (int n = 0; n < NUM_STATE; n++) {
+                Real factor;
+
+                if (i == 64 && n == UEDEN) {
+                    AllPrint() << "dU(UEDEN) = " << dU(i, 0, 0, UEDEN) << ", deltar = " << deltar
+                               << ", deltal = " << deltal << ", flat = " << flatn_arr(i, j, k)
+                               << std::endl;
+                }
+
                 if (idir == 0) {
                     // this is one the right face of the current zone,
                     // so the fastest moving eigenvalue is e_val[4] = u + c
@@ -1204,6 +1262,7 @@ void Castro::plm(const Box& bx, const Box& vbx, Array4<Real const> const& q_arr,
             for (int n = 0; n < 5; ++n) {
                 Real summ = 0.0_rt;
                 for (int m = 0; m < 5; ++m) {
+                    // lvec[n,:] dot dU
                     summ += lvec[n][m] * dU(i, j, k, m);
                 }
 
@@ -1216,13 +1275,10 @@ void Castro::plm(const Box& bx, const Box& vbx, Array4<Real const> const& q_arr,
 
             for (int n = 0; n < 5; n++) {
 
-                if (n == QTEMP) {
-                    continue;
-                }
-
                 Real sum_l = 0.0_rt;
                 Real sum_r = 0.0_rt;
                 for (int m = 0; m < 5; ++m) {
+                    // beta dot rvec[:,n]
                     sum_l += betal[m] * rvec[m][n];
                     sum_r += betar[m] * rvec[m][n];
                 }
@@ -1383,36 +1439,39 @@ void Castro::consup_rhd(const Box& bx, Array4<Real> const& update, Array4<Real> 
     // essentially the flux divergence.  This can be added with dt to
     // get the update
 
-    amrex::ParallelFor(bx, NUM_STATE, [=] AMREX_GPU_HOST_DEVICE(int i, int j, int k, int n) noexcept {
-        if (n != UTEMP) {
-            Real volinv = 1.0 / vol(i, j, k);
+    amrex::ParallelFor(
+        bx, NUM_STATE, [=] AMREX_GPU_HOST_DEVICE(int i, int j, int k, int n) noexcept {
+            if (n != UTEMP) {
+                Real volinv = 1.0 / vol(i, j, k);
 
-            // if (n == NUM_STATE-1 && (i == 64 || i == 65)) {
-            //         AllPrint() << "Flux[" << i << "] = ";
-            //         for (int m = 0; m < NUM_STATE; ++m) {
-            //             AllPrint() << update(i,j,k,m) + (flux0(i,j,k,m)*area0(i,j,k) - flux0(i+1,j,k,m)*area0(i+1,j,k))*volinv << ", ";
-            //         }
-            //         AllPrint() << std::endl;
-            //     }
+                if (n == NUM_STATE - 1 && (i == 64 || i == 65)) {
+                    AllPrint() << "Flux[" << i << "] = ";
+                    for (int m = 0; m < NUM_STATE; ++m) {
+                        AllPrint() << flux0(i, j, k, m) << ", ";
+                    }
+                    AllPrint() << std::endl;
+                }
 
-            update(i, j, k, n) +=
-                (flux0(i, j, k, n) * area0(i, j, k) - flux0(i + 1, j, k, n) * area0(i + 1, j, k)
+                update(i, j, k, n) +=
+                    (flux0(i, j, k, n) * area0(i, j, k) - flux0(i + 1, j, k, n) * area0(i + 1, j, k)
 #if AMREX_SPACEDIM >= 2
-                 + flux1(i, j, k, n) * area1(i, j, k) - flux1(i, j + 1, k, n) * area1(i, j + 1, k)
+                     + flux1(i, j, k, n) * area1(i, j, k) -
+                     flux1(i, j + 1, k, n) * area1(i, j + 1, k)
 #endif
 #if AMREX_SPACEDIM == 3
-                 + flux2(i, j, k, n) * area2(i, j, k) - flux2(i, j, k + 1, n) * area2(i, j, k + 1)
+                     + flux2(i, j, k, n) * area2(i, j, k) -
+                     flux2(i, j, k + 1, n) * area2(i, j, k + 1)
 #endif
-                     ) *
-                volinv;
+                         ) *
+                    volinv;
 
-            if (n == NUM_STATE - 1 && (i == 64 || i == 65)) {
-                AllPrint() << "update[" << i << "] = ";
-                for (auto m = 0; m < NUM_STATE; ++m) {
-                    AllPrint() << update(i, j, k, m) << ", ";
+                if (n == NUM_STATE - 1 && (i == 64 || i == 65)) {
+                    AllPrint() << "update[" << i << "] = ";
+                    for (auto m = 0; m < NUM_STATE; ++m) {
+                        AllPrint() << update(i, j, k, m) << ", ";
+                    }
+                    AllPrint() << std::endl;
                 }
-                AllPrint() << std::endl;
             }
-        }
-    });
+        });
 }

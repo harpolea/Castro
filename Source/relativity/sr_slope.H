@@ -24,16 +24,20 @@ AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE void vanleer(Real& dW, const Real WR, c
 }
 
 AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE void centerdif(Real& dW, const Real WR, const Real WL) {
-    dW = (WR + WL) / 2.0_rt;
+    dW = 0.0;
+
+    if (WR * WL >= 0.0_rt) {
+        dW = (WR + WL) / 2.0_rt;
+    }
 }
 
 AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE void secondMC(Real& dW, const Real WR, const Real WL) {
 
     Real dlim = 0.0;
 
-    if (WR * WL >= 0.0_rt) {
-        dlim = 2.0_rt * amrex::min(std::abs(WR), std::abs(WL));
-    }
+    // if (WR * WL >= 0.0_rt) {
+    dlim = 2.0_rt * amrex::min(std::abs(WR), std::abs(WL));
+    // }
 
     dW = amrex::min(0.5_rt * std::abs(WR + WL), dlim) * std::copysign(1.0_rt, WR + WL);
 }
@@ -53,9 +57,9 @@ AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE void slope(Real& dW, const Real WR, con
         secondMC(dW, WR, WL);
     }
 
-    // if (use_flattening == 1) {
-    //     dW = flat * dW;
-    // }
+    if (use_flattening == 1) {
+        dW *= flat;
+    }
 }
 
 #endif

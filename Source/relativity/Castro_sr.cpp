@@ -17,6 +17,17 @@ void Castro::LorentzFac(const Box& bx, Array4<Real const> const& vel, Array4<Rea
 
 AMREX_GPU_HOST_DEVICE void Castro::ConsToPrim(Real* q_zone, Real* U_zone) {
 
+    // check a physical solution is possible 
+    if ((U_zone[UEDEN] + U_zone[URHO]) * (U_zone[UEDEN] + U_zone[URHO]) <= (U_zone[URHO]*U_zone[URHO] + U_zone[UMX]*U_zone[UMX] + U_zone[UMY]*U_zone[UMY] + U_zone[UMZ]*U_zone[UMZ])) {
+        AllPrint() << "Unphysical solution in zone! U = ";
+        for (int n = 0; n < NUM_STATE; ++n) {
+            AllPrint() << U_zone[n] << ", "; 
+        }
+        AllPrint() << std::endl;
+
+        amrex::Abort("Aborting!");
+    }
+
     for (auto n = 0; n < NUM_STATE; ++n) {
         q_zone[n] = 0.0_rt;
     }
@@ -27,12 +38,18 @@ AMREX_GPU_HOST_DEVICE void Castro::ConsToPrim(Real* q_zone, Real* U_zone) {
     Real p_lo =
         amrex::max(std::sqrt(amrex::max(a, 0.0_rt)), amrex::min(1.e-4_rt * p_hi, small_pres));
 
-    if (f_p(p_lo, U_zone) * f_p(p_hi, U_zone) > 0.0_rt) {
-        p_hi *= 100000.0_rt;
+    if (p_lo > p_hi) {
+        Real p = p_lo;
+        p_lo = p_hi;
+        p_hi = p;
     }
 
     if (f_p(p_lo, U_zone) * f_p(p_hi, U_zone) > 0.0_rt) {
-        p_lo *= 0.1_rt;
+        p_hi *= 1.0e5_rt;
+    }
+
+    if (f_p(p_lo, U_zone) * f_p(p_hi, U_zone) > 0.0_rt) {
+        p_lo *= 1.0e-3_rt;
     }
     if (f_p(p_lo, U_zone) * f_p(p_hi, U_zone) > 0.0_rt) {
         AllPrint() << "f_lo = " << f_p(p_lo, U_zone, true) << ", f_hi = " << f_p(p_hi, U_zone, true)
@@ -99,16 +116,16 @@ AMREX_GPU_HOST_DEVICE void Castro::PrimToCons(Real* q_zone, Real* U_zone) {
 
     U_zone[URHO] = q_zone[QRHO] * W;
 
-    U_zone[UMX] = U_zone[URHO] * h * W * q_zone[QU];
-    U_zone[UMY] = U_zone[URHO] * h * W * q_zone[QV];
-    U_zone[UMZ] = U_zone[URHO] * h * W * q_zone[QW];
+    U_zone[UMX] = q_zone[QRHO] * h * W * W * q_zone[QU];
+    U_zone[UMY] = q_zone[QRHO] * h * W * W * q_zone[QV];
+    U_zone[UMZ] = q_zone[QRHO] * h * W * W * q_zone[QW];
 
-    U_zone[UEDEN] = U_zone[URHO] * h * W - q_zone[QPRES] - U_zone[URHO];
+    U_zone[UEDEN] = q_zone[QRHO] * h * W * W - q_zone[QPRES] - U_zone[URHO];
     U_zone[UEINT] = U_zone[UEDEN];
     U_zone[UTEMP] = q_zone[QTEMP];
 
     for (auto n = 0; n < NumSpec; ++n) {
-        U_zone[UFS + n] = q_zone[QFS + n] * q_zone[QRHO];
+        U_zone[UFS + n] = q_zone[QFS + n] * q_zone[QRHO] * W;
     }
 }
 
@@ -123,7 +140,7 @@ AMREX_GPU_HOST_DEVICE void Castro::Flux(Real* F, const Real* q_zone, const Real*
     F[UMY] = U_zone[UMY] * q_zone[QU + dir];
     F[UMZ] = U_zone[UMZ] * q_zone[QU + dir];
     F[UMX + dir] += q_zone[QPRES];
-    F[UEDEN] = (U_zone[UEDEN] + q_zone[QPRES]) * q_zone[QU + dir];
+    F[UEDEN] = U_zone[UMX + dir] - U_zone[URHO] * q_zone[QU+dir];
     F[UEINT] = F[UEDEN];
     F[UTEMP] = 0.0_rt;
 
@@ -152,7 +169,7 @@ AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE Real f_p(Real pbar, const Real* U_zone,
 
     Real rho_star = U_zone[URHO] / W_star;
 
-    Real p = (eos_gamma - 1.0_rt) * rho_star * eps_star;
+    // Real p = (eos_gamma - 1.0_rt) * rho_star * eps_star;
 
     if (print_me) {
         AllPrint() << "W_star = " << W_star << std::endl;

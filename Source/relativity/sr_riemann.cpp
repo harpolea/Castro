@@ -34,8 +34,8 @@ void Castro::hlle(const Box& bx, Array4<Real const> const& UL, Array4<Real const
 
         // define the signal speeds
         // assume square grids
-        Real aL = -1.0_rt;  // * amrex::min(dx[0] / dt, 1.0_rt);
-        Real aR = 1.0_rt;   //amrex::min(dx[0] / dt, 1.0_rt);
+        Real aL = -amrex::min(dx[0] / dt, 1.0_rt);
+        Real aR = amrex::min(dx[0] / dt, 1.0_rt);
 
         Real FL[NUM_STATE];
         Real FR[NUM_STATE];
@@ -45,6 +45,18 @@ void Castro::hlle(const Box& bx, Array4<Real const> const& UL, Array4<Real const
         // get the fluxes
         Flux(FL, qL_cell, UL_cell, dir);
         Flux(FR, qR_cell, UR_cell, dir);
+
+        // Real aL_m = amrex::min(0.0_rt, aL);
+        // Real aR_p = amrex::max(0.0_rt, aR);
+
+        // for (int n = 0; n < NUM_STATE; ++n) {
+        //     if (n == UTEMP) {
+        //         F(i, j, k, n) = 0.0;
+        //         continue;
+        //     }
+
+        //     F(i,j,k,n) = (aR_p * FL[n] - aL_m * FR[n] + aR_p*aL_m * (UR_cell[n] - UL_cell[n]) / (aR_p - aL_m));
+        // }
 
         for (int n = 0; n < NUM_STATE; ++n) {
             F_HLLE[n] = (aR * FL[n] - aL * FR[n] + aR * aL * (UR_cell[n] - UL_cell[n])) / (aR - aL);
@@ -79,7 +91,7 @@ void Castro::hlle(const Box& bx, Array4<Real const> const& UL, Array4<Real const
             AllPrint() << i << " pL = " << qL_cell[QPRES] << ", pR = " << qL_cell[QPRES]
                        << ", a_star = " << a_star << std::endl;
 
-            AllPrint() << "i = " << i << ": " << qL_cell[QRHO] << ' ' << qR_cell[QRHO]
+            AllPrint() << "i = " << i << ": rhol, rhor = " << qL_cell[QRHO] << ' ' << qR_cell[QRHO]
                        << ", UEDEN = " << UL_cell[UEDEN] << ", UMX = " << UL_cell[UMX]
                        << ", FL = " << FL[UMX] << ", FR = " << FR[UMX] << std::endl;
         }
@@ -118,6 +130,12 @@ void Castro::hlle(const Box& bx, Array4<Real const> const& UL, Array4<Real const
         UR_star[UMX + dir] += (pR_star - qR_cell[QPRES]) / (aR - a_star);
 
         for (int n = 0; n < NUM_STATE; ++n) {
+
+            if (n == UTEMP) {
+                F(i, j, k, n) = 0.0;
+                continue;
+            }
+
             if (aR <= 0.0_rt) {  // right state
                 F(i, j, k, n) = FR[n];
             } else if (a_star <= 0.0_rt) {  // right star state
@@ -128,7 +146,7 @@ void Castro::hlle(const Box& bx, Array4<Real const> const& UL, Array4<Real const
                 } else if (n == UEDEN) {
                     F(i, j, k, n) = UR_star[UMX + dir] - UR_star[URHO] * a_star;
                 }
-            } else if (a_star < 0.0_rt) {  // left star state
+            } else if (aL < 0.0_rt) {  // left star state
                 F(i, j, k, n) = UL_star[n] * a_star;
 
                 if (n == UMX + dir) {

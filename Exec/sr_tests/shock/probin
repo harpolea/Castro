@@ -1,5 +1,12 @@
 &fortin
 
+  rhol = 10.0  
+  pl = 13.33
+  vl = 0.0
+  
+  rhor = 1.0  
+  pr = 1.0e-4
+  vr = 0.0
 
 /
 

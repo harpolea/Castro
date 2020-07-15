@@ -50,6 +50,20 @@ Castro::do_advance_ctu(Real time,
 
     initialize_do_advance(time, dt, amr_iteration, amr_ncycle);
 
+    for (MFIter mfi(S_new, hydro_tile_size); mfi.isValid(); ++mfi) {
+        // the valid region box
+        const Box& bx = mfi.growntilebox(NUM_GROW);
+        Array4<Real> const S_arr = Sborder.array(mfi);
+
+        if (bx.loVect3d()[0] <= 65 && bx.hiVect3d()[0] >= 65) {
+            AllPrint() << "state at start: ";
+            for (int i = 0; i < NUM_STATE; ++i) {
+                AllPrint() << S_arr(65,0,0,i) << ", ";
+            }
+            AllPrint() << std::endl;
+        }
+    }
+
     // Zero out the source term data.
 
     sources_for_hydro.setVal(0.0, NUM_GROW);
@@ -92,7 +106,7 @@ Castro::do_advance_ctu(Real time,
 
         // The result of the reactions is added directly to Sborder.
         burn_success = react_state(Sborder, R_old, prev_time, 0.5 * dt);
-        // clean_state(Sborder, prev_time, Sborder.nGrow());
+        clean_state(Sborder, prev_time, Sborder.nGrow());
 
     }
 #endif
@@ -101,6 +115,20 @@ Castro::do_advance_ctu(Real time,
     // reactions.
 
     MultiFab::Copy(S_new, Sborder, 0, 0, NUM_STATE, S_new.nGrow());
+
+    for (MFIter mfi(S_new, hydro_tile_size); mfi.isValid(); ++mfi) {
+        // the valid region box
+        const Box& bx = mfi.tilebox();
+        Array4<Real> const S_arr = S_new.array(mfi);
+
+        if (bx.loVect3d()[0] <= 65 && bx.hiVect3d()[0] >= 65) {
+            AllPrint() << "state after copy: ";
+            for (int i = 0; i < NUM_STATE; ++i) {
+                AllPrint() << S_arr(65,0,0,i) << ", ";
+            }
+            AllPrint() << std::endl;
+        }
+    }
 
 #ifdef REACTIONS
     if (time_integration_method != SimplifiedSpectralDeferredCorrections) {
@@ -135,27 +163,27 @@ Castro::do_advance_ctu(Real time,
 
     MultiFab& old_source = get_old_data(Source_Type);
 
-    if (apply_sources()) {
+//     if (apply_sources()) {
 
-      do_old_sources(
-#ifdef MHD
-                      Bx_old, By_old, Bz_old,
-#endif                
-                      old_source, Sborder, S_new, prev_time, dt, apply_sources_to_state, amr_iteration, amr_ncycle);
+//       do_old_sources(
+// #ifdef MHD
+//                       Bx_old, By_old, Bz_old,
+// #endif                
+//                       old_source, Sborder, S_new, prev_time, dt, apply_sources_to_state, amr_iteration, amr_ncycle);
 
-      // Apply the old sources to the sources for the hydro.
-      // Note that we are doing an add here, not a copy,
-      // in case we have already started with some source
-      // terms (e.g. the source term predictor, or the SDC source).
+//       // Apply the old sources to the sources for the hydro.
+//       // Note that we are doing an add here, not a copy,
+//       // in case we have already started with some source
+//       // terms (e.g. the source term predictor, or the SDC source).
 
-     if (do_hydro) {
-         AmrLevel::FillPatchAdd(*this, sources_for_hydro, NUM_GROW, time, Source_Type, 0, NSRC);
-     }
+//      if (do_hydro) {
+//          AmrLevel::FillPatchAdd(*this, sources_for_hydro, NUM_GROW, time, Source_Type, 0, NSRC);
+//      }
 
-    } else {
+//     } else {
       old_source.setVal(0.0, NUM_GROW);
 
-    }
+    // }
 
 
     // Do the hydro update.  We build directly off of Sborder, which
@@ -206,10 +234,10 @@ Castro::do_advance_ctu(Real time,
             const Box& bx = mfi.tilebox();
             Array4<Real const> const S_arr = S_new.array(mfi);
 
-            if (bx.loVect3d()[0] <= 64 && bx.hiVect3d()[0] >= 64) {
-                AllPrint() << "state after update, 65 (URHO, UMX, UEDEN): (" << S_arr(64,0,0, URHO) << ", " << S_arr(64,0,0, UMX) << ", " << S_arr(64,0,0,UEDEN) << ")" << std::endl;
+            if (bx.loVect3d()[0] <= 65 && bx.hiVect3d()[0] >= 65) {
+                AllPrint() << "state after update, 65 (URHO, UMX, UEDEN): (" << S_arr(65,0,0, URHO) << ", " << S_arr(65,0,0, UMX) << ", " << S_arr(65,0,0,UEDEN) << ")" << std::endl;
                 for (int i = 0; i < NUM_STATE; ++i) {
-                    AllPrint() << S_arr(64,0,0,i) << ", ";
+                    AllPrint() << S_arr(65,0,0,i) << ", ";
                 }
                 AllPrint() << std::endl;
             }
@@ -239,11 +267,11 @@ Castro::do_advance_ctu(Real time,
 
 
     // Sync up state after old sources and hydro source.
-//     clean_state(
-// #ifdef MHD
-//                 Bx_new, By_new, Bz_new,
-// #endif
-//                 S_new, cur_time, 0);
+    clean_state(
+#ifdef MHD
+                Bx_new, By_new, Bz_new,
+#endif
+                S_new, cur_time, 0);
 
 #ifndef AMREX_USE_CUDA
     // Check for NaN's.
@@ -299,11 +327,11 @@ Castro::do_advance_ctu(Real time,
     // since the hydro source only works on the valid zones.
 
     if (S_new.nGrow() > 0) {
-//       clean_state(
-// #ifdef MHD
-//                   Bx_new, By_new, Bz_new,
-// #endif                
-//                   S_new, cur_time, 0);
+      clean_state(
+#ifdef MHD
+                  Bx_new, By_new, Bz_new,
+#endif                
+                  S_new, cur_time, 0);
 
       expand_state(S_new, cur_time, S_new.nGrow());
     }
@@ -332,7 +360,7 @@ Castro::do_advance_ctu(Real time,
 
             MultiFab& S_new = get_new_data(State_Type);
 
-            // clean_state(S_new, time + dt, S_new.nGrow());
+            clean_state(S_new, time + dt, S_new.nGrow());
 
             // Compute the reactive source term for use in the next iteration.
 
@@ -354,7 +382,7 @@ Castro::do_advance_ctu(Real time,
     if (time_integration_method != SimplifiedSpectralDeferredCorrections) {
 
         burn_success = react_state(S_new, R_new, cur_time - 0.5 * dt, 0.5 * dt);
-        // clean_state(S_new, cur_time, S_new.nGrow());
+        clean_state(S_new, cur_time, S_new.nGrow());
 
         // Skip the rest of the advance if the burn was unsuccessful.
 
@@ -388,6 +416,20 @@ Castro::do_advance_ctu(Real time,
     }
 
     finalize_do_advance(time, dt, amr_iteration, amr_ncycle);
+
+    for (MFIter mfi(S_new, hydro_tile_size); mfi.isValid(); ++mfi) {
+        // the valid region box
+        const Box& bx = mfi.tilebox();
+        Array4<Real const> const S_arr = S_new.array(mfi);
+
+        if (bx.loVect3d()[0] <= 65 && bx.hiVect3d()[0] >= 65) {
+            AllPrint() << "state after finalize: ";
+            for (int i = 0; i < NUM_STATE; ++i) {
+                AllPrint() << S_arr(65,0,0,i) << ", ";
+            }
+            AllPrint() << std::endl;
+        }
+    }
 
     return status;
 }

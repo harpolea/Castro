@@ -1,5 +1,5 @@
 # ------------------  INPUTS TO MAIN PROGRAM  -------------------
-max_step = 200
+max_step = 500
 stop_time = 10
 
 # PROBLEM SIZE & GEOMETRY
@@ -26,7 +26,7 @@ castro.add_ext_src = 0
 
 # TIME STEP CONTROL
 
-castro.cfl            = 0.05     # cfl number for hyperbolic system
+castro.cfl            = 0.005     # cfl number for hyperbolic system
 castro.init_shrink    = 0.01    # scale back initial timestep
 castro.change_max     = 1.1     # maximum increase in dt over successive steps
 #castro.fixed_dt = 5.0e-5
@@ -46,11 +46,11 @@ amr.max_grid_size   = 256
 
 # CHECKPOINT FILES
 amr.check_file      = sr_shock_chk   # root name of checkpoint file
-amr.check_int       = 100       # number of timesteps between checkpoints
+amr.check_int       = -1      # number of timesteps between checkpoints
 
 # PLOTFILES
 amr.plot_file       = sr_shock_plt
-amr.plot_int        = 1
+amr.plot_int        = 10
 amr.plot_per        = 0.24
 amr.derive_plot_vars=ALL
 
@@ -59,3 +59,5 @@ amr.probin_file = probin
 
 
 castro.small_pres = 1.e-20
+castro.use_retry = 0
+castro.do_reflux = 0
