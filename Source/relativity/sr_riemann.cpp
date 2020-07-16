@@ -14,6 +14,7 @@ void Castro::hlle(const Box& bx, Array4<Real const> const& UL, Array4<Real const
     amrex::ParallelFor(bx, [=] AMREX_GPU_HOST_DEVICE(int i, int j, int k) noexcept {
         Real qL_cell[NQ];
         Real qR_cell[NQ];
+        
 
         Real UL_cell[NUM_STATE];
         Real UR_cell[NUM_STATE];
@@ -27,6 +28,15 @@ void Castro::hlle(const Box& bx, Array4<Real const> const& UL, Array4<Real const
         ConsToPrim(qL_cell, UL_cell);
         ConsToPrim(qR_cell, UR_cell);
 
+        // test c2p works
+        // Real UR_cell_test[NUM_STATE];
+        // PrimToCons(qR_cell, UR_cell_test);
+        // AllPrint() << "c2p2c: ";
+        // for (auto n = 0; n < NUM_STATE; ++n) {
+        //     AllPrint() << UR_cell_test[n] - UR_cell[n]<< ", ";
+        // }
+        // AllPrint() << std::endl;
+        
         // AllPrint() << "pL = " << qL_cell[QPRES] << ", pR = " << qL_cell[QPRES] << std::endl;
 
         // Real pL = qL_cell(i,j,k,QPRES);

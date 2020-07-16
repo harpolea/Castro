@@ -25,11 +25,13 @@ subroutine ca_initdata(level, time, lo, hi, nscal, &
 
   use probdata_module, only: rhol, rhor, pl, pr, vl, vr
   use amrex_constants_module, only: M_PI, FOUR3RD, ZERO, HALF, ONE
-  use meth_params_module , only: NVAR, URHO, UMX, UMZ, UEDEN, UEINT, UFS
+  use meth_params_module , only: NVAR, URHO, UMX, UMZ, UEDEN, UEINT, UFS, UTEMP
   use prob_params_module, only: center, coord_type, problo
   use amrex_fort_module, only: rt => amrex_real
   use network, only: nspec
   use extern_probin_module, only: eos_gamma
+  use eos_type_module, only : eos_t, eos_input_rp
+  use eos_module, only : eos
 
   implicit none
 
@@ -42,6 +44,8 @@ subroutine ca_initdata(level, time, lo, hi, nscal, &
   real(rt) :: xx, yy, zz
   real(rt) :: v, p, h, W, tau
   integer  :: i, j, k
+
+  type(eos_t) :: eos_state
 
   do k = lo(3), hi(3)
      do j = lo(2), hi(2)
@@ -60,8 +64,16 @@ subroutine ca_initdata(level, time, lo, hi, nscal, &
               v = vr
            endif
 
+           eos_state % rho = state(i,j,k,URHO)
+           eos_state % p = p 
+           eos_state % xn(:) = 1.0_rt 
+
+           call eos(eos_input_rp, eos_state)
+
+           state(i,j,k,UTEMP) = eos_state % T
+
            ! calculate the Lorentz factor 
-           W = 1 / sqrt(1 - v*v)
+           W = 1.0_rt / sqrt(1.0_rt - v*v)
 
            ! entropy 
            h = 1.0e0_rt + eos_gamma * p / ((eos_gamma - 1.0_rt) * state(i,j,k,URHO))

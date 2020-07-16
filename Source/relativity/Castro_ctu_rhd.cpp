@@ -1045,6 +1045,9 @@ void Castro::plm(const Box& bx, const Box& vbx, Array4<Real const> const& q_arr,
             for (int n = 0; n < NumSpec; ++n) {
                 eos_state.xn[n] = q_arr(i, j, k, QFS + n);
             }
+            for (int n = 0; n < NumAux; n++) {
+                eos_state.aux[n] = q_arr(i,j,k,QFX+n);
+            }
 
             eos(eos_input_rp, eos_state);
 
@@ -1298,6 +1301,7 @@ void Castro::plm(const Box& bx, const Box& vbx, Array4<Real const> const& q_arr,
                     Uzr(i, j, k, n) += sum_r;
 #endif
                 }
+                
 
                 // Print() << "qxr(" << i << "," << j << "," << k << ") = " << qxr(i,j,k,n) << ", q_arr(" << i << "," << j << "," << k << ") = " << q_arr(i,j,k,n) << std::endl;
             }

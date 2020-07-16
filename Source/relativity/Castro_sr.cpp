@@ -17,11 +17,13 @@ void Castro::LorentzFac(const Box& bx, Array4<Real const> const& vel, Array4<Rea
 
 AMREX_GPU_HOST_DEVICE void Castro::ConsToPrim(Real* q_zone, Real* U_zone) {
 
-    // check a physical solution is possible 
-    if ((U_zone[UEDEN] + U_zone[URHO]) * (U_zone[UEDEN] + U_zone[URHO]) <= (U_zone[URHO]*U_zone[URHO] + U_zone[UMX]*U_zone[UMX] + U_zone[UMY]*U_zone[UMY] + U_zone[UMZ]*U_zone[UMZ])) {
+    // check a physical solution is possible
+    if ((U_zone[UEDEN] + U_zone[URHO]) * (U_zone[UEDEN] + U_zone[URHO]) <=
+        (U_zone[URHO] * U_zone[URHO] + U_zone[UMX] * U_zone[UMX] + U_zone[UMY] * U_zone[UMY] +
+         U_zone[UMZ] * U_zone[UMZ])) {
         AllPrint() << "Unphysical solution in zone! U = ";
         for (int n = 0; n < NUM_STATE; ++n) {
-            AllPrint() << U_zone[n] << ", "; 
+            AllPrint() << U_zone[n] << ", ";
         }
         AllPrint() << std::endl;
 
@@ -92,12 +94,19 @@ AMREX_GPU_HOST_DEVICE void Castro::ConsToPrim(Real* q_zone, Real* U_zone) {
     for (auto n = 0; n < NumSpec; ++n) {
         q_zone[QFS + n] = U_zone[UFS + n] / q_zone[QRHO];
     }
+    for (int n = 0; n < NumAux; n++) {
+        q_zone[QFX+ n] = U_zone[UFX+n];
+    }
 
     eos_t eos_state;
     eos_state.rho = q_zone[QRHO];
     eos_state.p = q_zone[QPRES];
+    eos_state.e = q_zone[QREINT] / q_zone[QRHO];
     for (auto n = 0; n < NumSpec; ++n) {
         eos_state.xn[n] = q_zone[QFS + n];
+    }
+    for (int n = 0; n < NumAux; n++) {
+        eos_state.aux[n] = q_zone[QFX+n];
     }
 
     eos(eos_input_rp, eos_state);
@@ -127,6 +136,9 @@ AMREX_GPU_HOST_DEVICE void Castro::PrimToCons(Real* q_zone, Real* U_zone) {
     for (auto n = 0; n < NumSpec; ++n) {
         U_zone[UFS + n] = q_zone[QFS + n] * q_zone[QRHO] * W;
     }
+    for (int n = 0; n < NumAux; n++) {
+        U_zone[UFX+n] = q_zone[QFX+n];
+    }
 }
 
 AMREX_GPU_HOST_DEVICE void Castro::Flux(Real* F, const Real* q_zone, const Real* U_zone,
@@ -140,12 +152,15 @@ AMREX_GPU_HOST_DEVICE void Castro::Flux(Real* F, const Real* q_zone, const Real*
     F[UMY] = U_zone[UMY] * q_zone[QU + dir];
     F[UMZ] = U_zone[UMZ] * q_zone[QU + dir];
     F[UMX + dir] += q_zone[QPRES];
-    F[UEDEN] = U_zone[UMX + dir] - U_zone[URHO] * q_zone[QU+dir];
+    F[UEDEN] = U_zone[UMX + dir] - U_zone[URHO] * q_zone[QU + dir];
     F[UEINT] = F[UEDEN];
     F[UTEMP] = 0.0_rt;
 
     for (int n = 0; n < NumSpec; ++n) {
         F[UFS + n] = U_zone[UFS + n] * q_zone[QU + dir];
+    }
+    for (int n = 0; n < NumAux; n++) {
+        F[UFX + n] = 0.0_rt;
     }
 }
 
@@ -182,6 +197,9 @@ AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE Real f_p(Real pbar, const Real* U_zone,
     eos_state.e = eps_star;
     for (auto n = 0; n < NumSpec; ++n) {
         eos_state.xn[n] = U_zone[UFS + n] / rho_star;
+    }
+    for (int n = 0; n < NumAux; n++) {
+        eos_state.aux[n] = U_zone[UFX+n];
     }
 
     eos(eos_input_re, eos_state);
